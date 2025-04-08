@@ -8,6 +8,16 @@
 
 --------------------------------------------------------------------------------
 
+## Supported Model List
+
+✅ [HunyuanVideo-T2V](https://huggingface.co/tencent/HunyuanVideo)
+
+✅ [HunyuanVideo-I2V](https://huggingface.co/tencent/HunyuanVideo-I2V)
+
+✅ [Wan2.1-T2V](https://huggingface.co/Wan-AI/Wan2.1-T2V-1.3B)
+
+✅ [Wan2.1-I2V](https://huggingface.co/Wan-AI/Wan2.1-I2V-14B-480P)
+
 ## Fast Start Up With Conda
 
 ```shell
@@ -35,13 +45,13 @@ We have prepared a `pre-commit` hook to enforce consistent code formatting acros
 1. Install the required dependencies:
 
 ```shell
-    pip install ruff pre-commit
+pip install ruff pre-commit
 ```
 
 2. Then, run the following command before commit:
 
 ```shell
-    pre-commit run --all-files
+pre-commit run --all-files
 ```
 
 3. Finally, please double-check your code to ensure it complies with the following additional specifications as much as possible:
