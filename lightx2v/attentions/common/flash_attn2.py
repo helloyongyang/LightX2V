@@ -4,7 +4,7 @@ except ImportError:
     flash_attn_varlen_func = None
 
 
-def flash_attn2(q, k, v, cu_seqlens_q=None, cu_seqlens_kv=None, max_seqlen_q=None, max_seqlen_kv=None):
+def flash_attn2(q, k, v, cu_seqlens_q=None, cu_seqlens_kv=None, max_seqlen_q=None, max_seqlen_kv=None, model_cls=None):
     x = flash_attn_varlen_func(
         q,
         k,
