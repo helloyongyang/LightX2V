@@ -1,4 +1,5 @@
 import argparse
+from contextlib import contextmanager
 import torch
 import torch.distributed as dist
 import os
@@ -21,12 +22,22 @@ from lightx2v.text2v.models.schedulers.wan.feature_caching.scheduler import WanS
 
 from lightx2v.text2v.models.networks.hunyuan.model import HunyuanModel
 from lightx2v.text2v.models.networks.wan.model import WanModel
+from lightx2v.text2v.models.networks.wan.lora_adapter import WanLoraWrapper
+
 
 from lightx2v.text2v.models.video_encoders.hf.autoencoder_kl_causal_3d.model import VideoEncoderKLCausal3DModel
 from lightx2v.text2v.models.video_encoders.hf.wan.vae import WanVAE
 from lightx2v.utils.utils import save_videos_grid, seed_all, cache_video
 from lightx2v.common.ops import *
 from lightx2v.image2v.models.wan.model import CLIPModel
+
+
+@contextmanager
+def time_duration(label: str = ""):
+    start_time = time.time()
+    yield
+    end_time = time.time()
+    print(f"==> {label} start:{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(start_time))} cost {end_time - start_time:.2f} seconds")
 
 
 def load_models(args, model_config):
@@ -59,15 +70,27 @@ def load_models(args, model_config):
             shard_fn=None,
         )
         text_encoders = [text_encoder]
-        model = WanModel(args.model_path, model_config, init_device)
-        vae_model = WanVAE(vae_pth=os.path.join(args.model_path, "Wan2.1_VAE.pth"), device=init_device, parallel=args.parallel_vae)
+
+        with time_duration("Load Wan Model"):
+            model = WanModel(args.model_path, model_config, init_device)
+
+        if args.lora_path:
+            lora_wrapper = WanLoraWrapper(model)
+            with time_duration("Load LoRA Model"):
+                lora_name = lora_wrapper.load_lora(args.lora_path)
+                lora_wrapper.apply_lora(lora_name, args.strength_model)
+                print(f"Loaded LoRA: {lora_name}")
+
+        with time_duration("Load WAN VAE Model"):
+            vae_model = WanVAE(vae_pth=os.path.join(args.model_path, "Wan2.1_VAE.pth"), device=init_device, parallel=args.parallel_vae)
         if args.task == "i2v":
-            image_encoder = CLIPModel(
-                dtype=torch.float16,
-                device=init_device,
-                checkpoint_path=os.path.join(args.model_path, "models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth"),
-                tokenizer_path=os.path.join(args.model_path, "xlm-roberta-large"),
-            )
+            with time_duration("Load Image Encoder"):
+                image_encoder = CLIPModel(
+                    dtype=torch.float16,
+                    device=init_device,
+                    checkpoint_path=os.path.join(args.model_path, "models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth"),
+                    tokenizer_path=os.path.join(args.model_path, "xlm-roberta-large"),
+                )
     else:
         raise NotImplementedError(f"Unsupported model class: {args.model_cls}")
 
@@ -312,6 +335,10 @@ if __name__ == "__main__":
     parser.add_argument("--patch_size", default=(1, 2, 2))
     parser.add_argument("--teacache_thresh", type=float, default=0.26)
     parser.add_argument("--use_ret_steps", action="store_true", default=False)
+    parser.add_argument("--use_bfloat16", action="store_true", default=True)
+    parser.add_argument("--lora_path", type=str, default=None)
+    parser.add_argument("--strength_model", type=float, default=1.0)
+
     args = parser.parse_args()
 
     start_time = time.time()
@@ -338,6 +365,7 @@ if __name__ == "__main__":
         "feature_caching": args.feature_caching,
         "parallel_attn_type": args.parallel_attn_type,
         "parallel_vae": args.parallel_vae,
+        "use_bfloat16": args.use_bfloat16,
     }
 
     if args.config_path is not None:
@@ -347,10 +375,8 @@ if __name__ == "__main__":
 
     print(f"model_config: {model_config}")
 
-    model, text_encoders, vae_model, image_encoder = load_models(args, model_config)
-
-    load_models_time = time.time()
-    print(f"Load models cost: {load_models_time - start_time}")
+    with time_duration("Load models"):
+        model, text_encoders, vae_model, image_encoder = load_models(args, model_config)
 
     if args.task in ["i2v"]:
         image_encoder_output = run_image_encoder(args, image_encoder, vae_model)
