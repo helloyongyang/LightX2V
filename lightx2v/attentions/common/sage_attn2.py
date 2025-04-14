@@ -22,7 +22,7 @@ def sage_attn2(q, k, v, cu_seqlens_q=None, cu_seqlens_kv=None, max_seqlen_q=None
     if model_cls == "hunyuan":
         x1 = sageattn(
             q[:, : cu_seqlens_q[1], :].unsqueeze(0),
-            k[:, : cu_seqlens_q[1], :].unsqueeze(0),
+            k[:, : cu_seqlens_kv[1], :].unsqueeze(0),
             v[:, : cu_seqlens_kv[1], :].unsqueeze(0),
         )
         x2 = sageattn(
@@ -36,7 +36,7 @@ def sage_attn2(q, k, v, cu_seqlens_q=None, cu_seqlens_kv=None, max_seqlen_q=None
         x = (
             sageattn(
                 q[:, : cu_seqlens_q[1], :].unsqueeze(0),
-                k[:, : cu_seqlens_q[1], :].unsqueeze(0),
+                k[:, : cu_seqlens_kv[1], :].unsqueeze(0),
                 v[:, : cu_seqlens_kv[1], :].unsqueeze(0),
             )
             .transpose(2, 1)
