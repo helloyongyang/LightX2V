@@ -22,7 +22,20 @@ class WanPreInfer:
         self.dim = config["dim"]
         self.text_len = config["text_len"]
 
-    def infer(self, weights, x, t, context, seq_len, clip_fea=None, y=None):
+    def set_scheduler(self, scheduler):
+        self.scheduler = scheduler
+
+    def infer(self, weights, inputs, positive):
+        x = [self.scheduler.latents]
+        t = torch.stack([self.scheduler.timesteps[self.scheduler.step_index]])
+        if positive:
+            context = inputs["text_encoder_output"]["context"]
+        else:
+            context = inputs["text_encoder_output"]["context_null"]
+        seq_len = self.scheduler.seq_len
+        clip_fea = inputs["image_encoder_output"]["clip_encoder_out"]
+        y = [inputs["image_encoder_output"]["vae_encode_out"]]
+
         if self.task == "i2v":
             x = [torch.cat([u, v], dim=0) for u, v in zip(x, y)]
 

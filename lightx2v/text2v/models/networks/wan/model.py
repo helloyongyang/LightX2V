@@ -95,6 +95,8 @@ class WanModel:
 
     def set_scheduler(self, scheduler):
         self.scheduler = scheduler
+        self.pre_infer.set_scheduler(scheduler)
+        self.post_infer.set_scheduler(scheduler)
         self.transformer_infer.set_scheduler(scheduler)
 
     def to_cpu(self):
@@ -108,24 +110,13 @@ class WanModel:
         self.transformer_weights.to_cuda()
 
     @torch.no_grad()
-    def infer(self, text_encoders_output, image_encoder_output, args):
-        timestep = torch.stack([self.scheduler.timesteps[self.scheduler.step_index]])
-
+    def infer(self, inputs):
         if self.config["cpu_offload"]:
             self.pre_weight.to_cuda()
             self.post_weight.to_cuda()
 
-        embed, grid_sizes, pre_infer_out = self.pre_infer.infer(
-            self.pre_weight,
-            [self.scheduler.latents],
-            timestep,
-            text_encoders_output["context"],
-            self.scheduler.seq_len,
-            image_encoder_output["clip_encoder_out"],
-            [image_encoder_output["vae_encode_out"]],
-        )
+        embed, grid_sizes, pre_infer_out = self.pre_infer.infer(self.pre_weight, inputs, positive=True)
         x = self.transformer_infer.infer(self.transformer_weights, grid_sizes, embed, *pre_infer_out)
-
         noise_pred_cond = self.post_infer.infer(self.post_weight, x, embed, grid_sizes)[0]
 
         if self.config["feature_caching"] == "Tea":
@@ -133,16 +124,7 @@ class WanModel:
             if self.scheduler.cnt >= self.scheduler.num_steps:
                 self.scheduler.cnt = 0
 
-        embed, grid_sizes, pre_infer_out = self.pre_infer.infer(
-            self.pre_weight,
-            [self.scheduler.latents],
-            timestep,
-            text_encoders_output["context_null"],
-            self.scheduler.seq_len,
-            image_encoder_output["clip_encoder_out"],
-            [image_encoder_output["vae_encode_out"]],
-        )
-
+        embed, grid_sizes, pre_infer_out = self.pre_infer.infer(self.pre_weight, inputs, positive=False)
         x = self.transformer_infer.infer(self.transformer_weights, grid_sizes, embed, *pre_infer_out)
         noise_pred_uncond = self.post_infer.infer(self.post_weight, x, embed, grid_sizes)[0]
 
@@ -151,7 +133,7 @@ class WanModel:
             if self.scheduler.cnt >= self.scheduler.num_steps:
                 self.scheduler.cnt = 0
 
-        self.scheduler.noise_pred = noise_pred_uncond + args.sample_guide_scale * (noise_pred_cond - noise_pred_uncond)
+        self.scheduler.noise_pred = noise_pred_uncond + self.config.sample_guide_scale * (noise_pred_cond - noise_pred_uncond)
 
         if self.config["cpu_offload"]:
             self.pre_weight.to_cpu()

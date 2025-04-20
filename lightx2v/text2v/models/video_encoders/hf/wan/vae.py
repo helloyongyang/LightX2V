@@ -786,8 +786,8 @@ class WanVAE:
 
         return images
 
-    def decode(self, zs, generator, args):
-        if args.cpu_offload:
+    def decode(self, zs, generator, config):
+        if config.cpu_offload:
             self.to_cuda()
 
         if self.parallel:
@@ -806,7 +806,7 @@ class WanVAE:
         else:
             images = self.model.decode(zs.unsqueeze(0), self.scale).float().clamp_(-1, 1)
 
-        if args.cpu_offload:
+        if config.cpu_offload:
             images = images.cpu().float()
             self.to_cpu()
 

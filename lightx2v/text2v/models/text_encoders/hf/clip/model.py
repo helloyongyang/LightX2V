@@ -23,8 +23,8 @@ class TextEncoderHFClipModel:
         self.model = self.model.to("cuda")
 
     @torch.no_grad()
-    def infer(self, text, args):
-        if args.cpu_offload:
+    def infer(self, text, config):
+        if config.cpu_offload:
             self.to_cuda()
         tokens = self.tokenizer(
             text,
@@ -44,7 +44,7 @@ class TextEncoderHFClipModel:
         )
 
         last_hidden_state = outputs["pooler_output"]
-        if args.cpu_offload:
+        if config.cpu_offload:
             self.to_cpu()
         return last_hidden_state, tokens["attention_mask"]
 

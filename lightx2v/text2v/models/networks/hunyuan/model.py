@@ -69,12 +69,14 @@ class HunyuanModel:
         self.transformer_weights.load_weights(weight_dict)
 
     def _init_infer(self):
-        self.pre_infer = self.pre_infer_class()
-        self.post_infer = self.post_infer_class()
+        self.pre_infer = self.pre_infer_class(self.config)
+        self.post_infer = self.post_infer_class(self.config)
         self.transformer_infer = self.transformer_infer_class(self.config)
 
     def set_scheduler(self, scheduler):
         self.scheduler = scheduler
+        self.pre_infer.set_scheduler(scheduler)
+        self.post_infer.set_scheduler(scheduler)
         self.transformer_infer.set_scheduler(scheduler)
 
     def to_cpu(self):
@@ -88,28 +90,18 @@ class HunyuanModel:
         self.transformer_weights.to_cuda()
 
     @torch.no_grad()
-    def infer(self, text_encoder_output, image_encoder_output, args):
+    def infer(self, inputs):
         if self.config["cpu_offload"]:
             self.pre_weight.to_cuda()
             self.post_weight.to_cuda()
-        pre_infer_out = self.pre_infer.infer(
-            self.pre_weight,
-            self.scheduler.latents,
-            self.scheduler.timesteps[self.scheduler.step_index],
-            text_encoder_output["text_encoder_1_text_states"],
-            text_encoder_output["text_encoder_1_attention_mask"],
-            text_encoder_output["text_encoder_2_text_states"],
-            self.scheduler.freqs_cos,
-            self.scheduler.freqs_sin,
-            self.scheduler.guidance,
-            img_latents=image_encoder_output["img_latents"] if "img_latents" in image_encoder_output else None,
-        )
-        img, vec = self.transformer_infer.infer(self.transformer_weights, *pre_infer_out)
-        self.scheduler.noise_pred = self.post_infer.infer(self.post_weight, img, vec, self.scheduler.latents.shape)
+
+        inputs = self.pre_infer.infer(self.pre_weight, inputs)
+        inputs = self.transformer_infer.infer(self.transformer_weights, *inputs)
+        self.scheduler.noise_pred = self.post_infer.infer(self.post_weight, *inputs)
+
         if self.config["cpu_offload"]:
             self.pre_weight.to_cpu()
             self.post_weight.to_cpu()
-
         if self.config["feature_caching"] == "Tea":
             self.scheduler.cnt += 1
             if self.scheduler.cnt == self.scheduler.num_steps:

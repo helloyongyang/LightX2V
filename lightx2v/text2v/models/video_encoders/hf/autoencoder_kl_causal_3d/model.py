@@ -4,15 +4,15 @@ from .autoencoder_kl_causal_3d import AutoencoderKLCausal3D, DiagonalGaussianDis
 
 
 class VideoEncoderKLCausal3DModel:
-    def __init__(self, model_path, dtype, device, args):
+    def __init__(self, model_path, dtype, device, config):
         self.model_path = model_path
         self.dtype = dtype
         self.device = device
-        self.args = args
+        self.config = config
         self.load()
 
     def load(self):
-        if self.args.task == "t2v":
+        if self.config.task == "t2v":
             self.vae_path = os.path.join(self.model_path, "hunyuan-video-t2v-720p/vae")
         else:
             self.vae_path = os.path.join(self.model_path, "hunyuan-video-i2v-720p/vae")
@@ -30,8 +30,8 @@ class VideoEncoderKLCausal3DModel:
     def to_cuda(self):
         self.model = self.model.to("cuda")
 
-    def decode(self, latents, generator, args):
-        if args.cpu_offload:
+    def decode(self, latents, generator, config):
+        if config.cpu_offload:
             self.to_cuda()
         latents = latents / self.model.config.scaling_factor
         latents = latents.to(dtype=self.dtype, device=torch.device("cuda"))
@@ -39,11 +39,11 @@ class VideoEncoderKLCausal3DModel:
         image = self.model.decode(latents, return_dict=False, generator=generator)[0]
         image = (image / 2 + 0.5).clamp(0, 1)
         image = image.cpu().float()
-        if args.cpu_offload:
+        if config.cpu_offload:
             self.to_cpu()
         return image
 
-    def encode(self, x, args):
+    def encode(self, x, config):
         h = self.model.encoder(x)
         moments = self.model.quant_conv(h)
         posterior = DiagonalGaussianDistribution(moments)

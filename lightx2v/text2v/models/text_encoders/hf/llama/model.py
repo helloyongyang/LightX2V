@@ -34,8 +34,8 @@ class TextEncoderHFLlamaModel:
         self.model = self.model.to("cuda")
 
     @torch.no_grad()
-    def infer(self, text, args):
-        if args.cpu_offload:
+    def infer(self, text, config):
+        if config.cpu_offload:
             self.to_cuda()
         text = self.prompt_template.format(text)
         tokens = self.tokenizer(
@@ -57,7 +57,7 @@ class TextEncoderHFLlamaModel:
 
         last_hidden_state = outputs.hidden_states[-(self.hidden_state_skip_layer + 1)][:, self.crop_start :]
         attention_mask = tokens["attention_mask"][:, self.crop_start :]
-        if args.cpu_offload:
+        if config.cpu_offload:
             self.to_cpu()
         return last_hidden_state, attention_mask
 

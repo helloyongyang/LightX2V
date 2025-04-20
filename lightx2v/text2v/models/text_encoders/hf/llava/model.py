@@ -98,9 +98,9 @@ class TextEncoderHFLlavaModel:
         self.model = self.model.to("cuda")
 
     @torch.no_grad()
-    def infer(self, text, img, args):
-        # if args.cpu_offload:
-        #     self.to_cuda()
+    def infer(self, text, img, config):
+        if config.cpu_offload:
+            self.to_cuda()
         text = self.prompt_template.format(text)
         print(f"text: {text}")
         tokens = self.tokenizer(
@@ -148,8 +148,8 @@ class TextEncoderHFLlavaModel:
         last_hidden_state = torch.cat([image_last_hidden_state, text_last_hidden_state], dim=1)
         attention_mask = torch.cat([image_attention_mask, text_attention_mask], dim=1)
 
-        # if args.cpu_offload:
-        #     self.to_cpu()
+        if config.cpu_offload:
+            self.to_cpu()
         return last_hidden_state, attention_mask
 
 

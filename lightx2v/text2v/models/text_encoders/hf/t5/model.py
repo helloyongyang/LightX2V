@@ -492,8 +492,8 @@ class T5EncoderModel:
     def to_cuda(self):
         self.model = self.model.to("cuda")
 
-    def infer(self, texts, args):
-        if args.cpu_offload:
+    def infer(self, texts, config):
+        if config.cpu_offload:
             self.to_cuda()
 
         ids, mask = self.tokenizer(texts, return_mask=True, add_special_tokens=True)
@@ -502,7 +502,7 @@ class T5EncoderModel:
         seq_lens = mask.gt(0).sum(dim=1).long()
         context = self.model(ids, mask)
 
-        if args.cpu_offload:
+        if config.cpu_offload:
             self.to_cpu()
 
         return [u[:v] for u, v in zip(context, seq_lens)]

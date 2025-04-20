@@ -5,11 +5,25 @@ from lightx2v.attentions import attention
 
 
 class HunyuanPreInfer:
-    def __init__(self):
+    def __init__(self, config):
         self.heads_num = 24
+        self.config = config
 
-    def infer(self, weights, x, t, text_states, text_mask, text_states_2, freqs_cos, freqs_sin, guidance, img_latents=None):
-        if img_latents is not None:
+    def set_scheduler(self, scheduler):
+        self.scheduler = scheduler
+
+    def infer(self, weights, inputs):
+        x = self.scheduler.latents
+        t = self.scheduler.timesteps[self.scheduler.step_index]
+        freqs_cos = self.scheduler.freqs_cos
+        freqs_sin = self.scheduler.freqs_sin
+        guidance = self.scheduler.guidance
+
+        text_states = inputs["text_encoder_output"]["text_encoder_1_text_states"]
+        text_mask = inputs["text_encoder_output"]["text_encoder_1_attention_mask"]
+        text_states_2 = inputs["text_encoder_output"]["text_encoder_2_text_states"]
+
+        if self.config["task"] == "i2v":
             token_replace_t = torch.zeros_like(t)
             token_replace_vec = self.infer_time_in(weights, token_replace_t)
             th = x.shape[-2] // 2
@@ -22,7 +36,7 @@ class HunyuanPreInfer:
         infer_vector_out = self.infer_vector_in(weights, text_states_2)
         vec = time_out + infer_vector_out
 
-        if img_latents is not None:
+        if self.config["task"] == "i2v":
             token_replace_vec = token_replace_vec + infer_vector_out
 
         guidance_out = self.infer_guidance_in(weights, guidance)
@@ -43,7 +57,7 @@ class HunyuanPreInfer:
             cu_seqlens_qkv[2 * i + 2] = s2
 
         max_seqlen_qkv = img_seq_len + txt_seq_len
-        if img_latents is not None:
+        if self.config["task"] == "i2v":
             return img_out[0], infer_text_out, vec, cu_seqlens_qkv, max_seqlen_qkv, (freqs_cos, freqs_sin), token_replace_vec, frist_frame_token_num
         return img_out[0], infer_text_out, vec, cu_seqlens_qkv, max_seqlen_qkv, (freqs_cos, freqs_sin)
 

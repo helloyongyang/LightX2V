@@ -8,6 +8,9 @@ class WanPostInfer:
         self.out_dim = config["out_dim"]
         self.patch_size = (1, 2, 2)
 
+    def set_scheduler(self, scheduler):
+        self.scheduler = scheduler
+
     def infer(self, weights, x, e, grid_sizes):
         e = (weights.head_modulation + e.unsqueeze(1)).chunk(2, dim=1)
         norm_out = torch.nn.functional.layer_norm(x, (x.shape[1],), None, None, 1e-6).type_as(x)
