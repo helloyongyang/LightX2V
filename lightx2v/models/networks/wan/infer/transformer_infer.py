@@ -2,6 +2,7 @@ import torch
 from .utils import compute_freqs, compute_freqs_dist, apply_rotary_emb
 from lightx2v.attentions import attention
 from lightx2v.common.offload.manager import WeightStreamManager
+from lightx2v.utils.envs import *
 
 
 class WanTransformerInfer:
@@ -34,6 +35,7 @@ class WanTransformerInfer:
         cu_seqlens_k = torch.cat([k_lens.new_zeros([1]), k_lens]).cumsum(0, dtype=torch.int32)
         return cu_seqlens_q, cu_seqlens_k, lq, lk
 
+    @torch.compile(disable=not ENABLE_GRAPH_MODE)
     def infer(self, weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context):
         return self.infer_func(weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context)
 

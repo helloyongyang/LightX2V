@@ -10,6 +10,7 @@ import torchvision.transforms.functional as TF
 import numpy as np
 from PIL import Image
 
+from lightx2v.utils.envs import *
 from lightx2v.utils.utils import save_videos_grid, seed_all, cache_video
 from lightx2v.utils.profiler import ProfilingContext, ProfilingContext4Debug
 from lightx2v.utils.set_config import set_config
@@ -31,6 +32,9 @@ from lightx2v.models.networks.wan.lora_adapter import WanLoraWrapper
 
 from lightx2v.models.video_encoders.hf.autoencoder_kl_causal_3d.model import VideoEncoderKLCausal3DModel
 from lightx2v.models.video_encoders.hf.wan.vae import WanVAE
+
+from lightx2v.models.runners.default_runner import DefaultRunner
+from lightx2v.models.runners.graph_runner import GraphRunner
 
 from lightx2v.common.ops import *
 
@@ -271,22 +275,6 @@ def init_scheduler(config, image_encoder_output):
     return scheduler
 
 
-def run_main_inference(model, inputs):
-    for step_index in range(model.scheduler.infer_steps):
-        print(f"==> step_index: {step_index + 1} / {model.scheduler.infer_steps}")
-
-        with ProfilingContext4Debug("step_pre"):
-            model.scheduler.step_pre(step_index=step_index)
-
-        with ProfilingContext4Debug("infer"):
-            model.infer(inputs)
-
-        with ProfilingContext4Debug("step_post"):
-            model.scheduler.step_post()
-
-    return model.scheduler.latents, model.scheduler.generator
-
-
 def run_vae(latents, generator, config):
     images = vae_model.decode(latents, generator=generator, config=config)
     return images
@@ -358,7 +346,14 @@ if __name__ == "__main__":
 
     gc.collect()
     torch.cuda.empty_cache()
-    latents, generator = run_main_inference(model, inputs)
+
+    if ENABLE_GRAPH_MODE:
+        default_runner = DefaultRunner(model, inputs)
+        runner = GraphRunner(default_runner)
+    else:
+        runner = DefaultRunner(model, inputs)
+
+    latents, generator = runner.run()
 
     if config.cpu_offload:
         scheduler.clear()

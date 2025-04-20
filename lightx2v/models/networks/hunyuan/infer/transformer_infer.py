@@ -3,6 +3,7 @@ from einops import rearrange
 from lightx2v.attentions import attention
 from .utils_bf16 import apply_rotary_emb
 from lightx2v.common.offload.manager import WeightStreamManager
+from lightx2v.utils.envs import *
 
 
 class HunyuanTransformerInfer:
@@ -25,6 +26,7 @@ class HunyuanTransformerInfer:
     def set_scheduler(self, scheduler):
         self.scheduler = scheduler
 
+    @torch.compile(disable=not ENABLE_GRAPH_MODE)
     def infer(self, weights, img, txt, vec, cu_seqlens_qkv, max_seqlen_qkv, freqs_cis, token_replace_vec=None, frist_frame_token_num=None):
         return self.infer_func(weights, img, txt, vec, cu_seqlens_qkv, max_seqlen_qkv, freqs_cis, token_replace_vec, frist_frame_token_num)
 

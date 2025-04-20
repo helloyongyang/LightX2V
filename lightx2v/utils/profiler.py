@@ -1,10 +1,7 @@
 import time
-import os
 import torch
 from contextlib import ContextDecorator
-
-
-ENABLE_PROFILING_DEBUG = os.getenv("ENABLE_PROFILING_DEBUG", "false").lower() == "true"
+from lightx2v.utils.envs import *
 
 
 class _ProfilingContext(ContextDecorator):
