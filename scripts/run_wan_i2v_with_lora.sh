@@ -26,6 +26,8 @@ fi
 
 export PYTHONPATH=${lightx2v_path}:$PYTHONPATH
 
+export ENABLE_PROFILING_DEBUG=true
+
 python -m lightx2v \
 --model_cls wan2.1 \
 --task i2v \
