@@ -10,25 +10,25 @@ import torchvision.transforms.functional as TF
 import numpy as np
 from contextlib import contextmanager
 from PIL import Image
-from lightx2v.text2v.models.text_encoders.hf.llama.model import TextEncoderHFLlamaModel
-from lightx2v.text2v.models.text_encoders.hf.clip.model import TextEncoderHFClipModel
-from lightx2v.text2v.models.text_encoders.hf.t5.model import T5EncoderModel
-from lightx2v.text2v.models.text_encoders.hf.llava.model import TextEncoderHFLlavaModel
+from lightx2v.models.input_encoders.hf.llama.model import TextEncoderHFLlamaModel
+from lightx2v.models.input_encoders.hf.clip.model import TextEncoderHFClipModel
+from lightx2v.models.input_encoders.hf.t5.model import T5EncoderModel
+from lightx2v.models.input_encoders.hf.llava.model import TextEncoderHFLlavaModel
+from lightx2v.models.input_encoders.hf.xlm_roberta.model import CLIPModel
 
-from lightx2v.text2v.models.schedulers.hunyuan.scheduler import HunyuanScheduler
-from lightx2v.text2v.models.schedulers.hunyuan.feature_caching.scheduler import HunyuanSchedulerTaylorCaching, HunyuanSchedulerTeaCaching
-from lightx2v.text2v.models.schedulers.wan.scheduler import WanScheduler
-from lightx2v.text2v.models.schedulers.wan.feature_caching.scheduler import WanSchedulerTeaCaching
+from lightx2v.models.schedulers.hunyuan.scheduler import HunyuanScheduler
+from lightx2v.models.schedulers.hunyuan.feature_caching.scheduler import HunyuanSchedulerTaylorCaching, HunyuanSchedulerTeaCaching
+from lightx2v.models.schedulers.wan.scheduler import WanScheduler
+from lightx2v.models.schedulers.wan.feature_caching.scheduler import WanSchedulerTeaCaching
 
-from lightx2v.text2v.models.networks.hunyuan.model import HunyuanModel
-from lightx2v.text2v.models.networks.wan.model import WanModel
-from lightx2v.text2v.models.networks.wan.lora_adapter import WanLoraWrapper
+from lightx2v.models.networks.hunyuan.model import HunyuanModel
+from lightx2v.models.networks.wan.model import WanModel
+from lightx2v.models.networks.wan.lora_adapter import WanLoraWrapper
 
-from lightx2v.text2v.models.video_encoders.hf.autoencoder_kl_causal_3d.model import VideoEncoderKLCausal3DModel
-from lightx2v.text2v.models.video_encoders.hf.wan.vae import WanVAE
+from lightx2v.models.video_encoders.hf.autoencoder_kl_causal_3d.model import VideoEncoderKLCausal3DModel
+from lightx2v.models.video_encoders.hf.wan.vae import WanVAE
 from lightx2v.utils.utils import save_videos_grid, seed_all, cache_video
 from lightx2v.common.ops import *
-from lightx2v.image2v.models.wan.model import CLIPModel
 from lightx2v.utils.set_config import set_config
 
 

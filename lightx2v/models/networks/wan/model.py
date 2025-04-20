@@ -2,17 +2,17 @@ import os
 import torch
 import time
 import glob
-from lightx2v.text2v.models.networks.wan.weights.pre_weights import WanPreWeights
-from lightx2v.text2v.models.networks.wan.weights.post_weights import WanPostWeights
-from lightx2v.text2v.models.networks.wan.weights.transformer_weights import (
+from lightx2v.models.networks.wan.weights.pre_weights import WanPreWeights
+from lightx2v.models.networks.wan.weights.post_weights import WanPostWeights
+from lightx2v.models.networks.wan.weights.transformer_weights import (
     WanTransformerWeights,
 )
-from lightx2v.text2v.models.networks.wan.infer.pre_infer import WanPreInfer
-from lightx2v.text2v.models.networks.wan.infer.post_infer import WanPostInfer
-from lightx2v.text2v.models.networks.wan.infer.transformer_infer import (
+from lightx2v.models.networks.wan.infer.pre_infer import WanPreInfer
+from lightx2v.models.networks.wan.infer.post_infer import WanPostInfer
+from lightx2v.models.networks.wan.infer.transformer_infer import (
     WanTransformerInfer,
 )
-from lightx2v.text2v.models.networks.wan.infer.feature_caching.transformer_infer import WanTransformerInferTeaCaching
+from lightx2v.models.networks.wan.infer.feature_caching.transformer_infer import WanTransformerInferTeaCaching
 from safetensors import safe_open
 import lightx2v.attentions.distributed.ulysses.wrap as ulysses_dist_wrap
 import lightx2v.attentions.distributed.ring.wrap as ring_dist_wrap

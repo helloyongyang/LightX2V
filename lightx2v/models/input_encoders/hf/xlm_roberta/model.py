@@ -9,7 +9,7 @@ import torch.nn.functional as F
 import torchvision.transforms as T
 
 from lightx2v.attentions import attention
-from lightx2v.text2v.models.text_encoders.hf.t5.tokenizer import HuggingfaceTokenizer
+from lightx2v.models.input_encoders.hf.t5.tokenizer import HuggingfaceTokenizer
 
 from .xlm_roberta import XLMRoberta
 

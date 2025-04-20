@@ -1,8 +1,8 @@
 import os
 import torch
 
-from lightx2v.text2v.models.video_encoders.hf.autoencoder_kl_causal_3d.autoencoder_kl_causal_3d import AutoencoderKLCausal3D
-from lightx2v.text2v.models.video_encoders.trt.autoencoder_kl_causal_3d import trt_vae_infer
+from lightx2v.models.video_encoders.hf.autoencoder_kl_causal_3d.autoencoder_kl_causal_3d import AutoencoderKLCausal3D
+from lightx2v.models.video_encoders.trt.autoencoder_kl_causal_3d import trt_vae_infer
 
 
 class VideoEncoderKLCausal3DModel:

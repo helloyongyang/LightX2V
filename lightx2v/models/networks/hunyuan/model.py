@@ -1,12 +1,12 @@
 import os
 import torch
-from lightx2v.text2v.models.networks.hunyuan.weights.pre_weights import HunyuanPreWeights
-from lightx2v.text2v.models.networks.hunyuan.weights.post_weights import HunyuanPostWeights
-from lightx2v.text2v.models.networks.hunyuan.weights.transformer_weights import HunyuanTransformerWeights
-from lightx2v.text2v.models.networks.hunyuan.infer.pre_infer import HunyuanPreInfer
-from lightx2v.text2v.models.networks.hunyuan.infer.post_infer import HunyuanPostInfer
-from lightx2v.text2v.models.networks.hunyuan.infer.transformer_infer import HunyuanTransformerInfer
-from lightx2v.text2v.models.networks.hunyuan.infer.feature_caching.transformer_infer import HunyuanTransformerInferTaylorCaching, HunyuanTransformerInferTeaCaching
+from lightx2v.models.networks.hunyuan.weights.pre_weights import HunyuanPreWeights
+from lightx2v.models.networks.hunyuan.weights.post_weights import HunyuanPostWeights
+from lightx2v.models.networks.hunyuan.weights.transformer_weights import HunyuanTransformerWeights
+from lightx2v.models.networks.hunyuan.infer.pre_infer import HunyuanPreInfer
+from lightx2v.models.networks.hunyuan.infer.post_infer import HunyuanPostInfer
+from lightx2v.models.networks.hunyuan.infer.transformer_infer import HunyuanTransformerInfer
+from lightx2v.models.networks.hunyuan.infer.feature_caching.transformer_infer import HunyuanTransformerInferTaylorCaching, HunyuanTransformerInferTeaCaching
 
 import lightx2v.attentions.distributed.ulysses.wrap as ulysses_dist_wrap
 import lightx2v.attentions.distributed.ring.wrap as ring_dist_wrap

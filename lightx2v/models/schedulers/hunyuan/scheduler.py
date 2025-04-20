@@ -3,7 +3,7 @@ import numpy as np
 from diffusers.utils.torch_utils import randn_tensor
 from typing import Union, Tuple, List
 from typing import Any, Callable, Dict, List, Optional, Union, Tuple
-from lightx2v.text2v.models.schedulers.scheduler import BaseScheduler
+from lightx2v.models.schedulers.scheduler import BaseScheduler
 
 
 def _to_tuple(x, dim=2):

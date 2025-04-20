@@ -2,7 +2,7 @@ import math
 import numpy as np
 import torch
 from typing import List, Optional, Tuple, Union
-from lightx2v.text2v.models.schedulers.scheduler import BaseScheduler
+from lightx2v.models.schedulers.scheduler import BaseScheduler
 
 
 class WanScheduler(BaseScheduler):
