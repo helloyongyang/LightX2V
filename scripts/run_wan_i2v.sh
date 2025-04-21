@@ -30,6 +30,7 @@ fi
 export PYTHONPATH=${lightx2v_path}:$PYTHONPATH
 
 export ENABLE_PROFILING_DEBUG=true
+export ENABLE_GRAPH_MODE=false
 
 python ${lightx2v_path}/lightx2v/__main__.py \
 --model_cls wan2.1 \

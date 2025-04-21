@@ -26,7 +26,7 @@ class HunyuanTransformerInfer:
     def set_scheduler(self, scheduler):
         self.scheduler = scheduler
 
-    @torch.compile(disable=not ENABLE_GRAPH_MODE)
+    @torch.compile(disable=not CHECK_ENABLE_GRAPH_MODE())
     def infer(self, weights, img, txt, vec, cu_seqlens_qkv, max_seqlen_qkv, freqs_cis, token_replace_vec=None, frist_frame_token_num=None):
         return self.infer_func(weights, img, txt, vec, cu_seqlens_qkv, max_seqlen_qkv, freqs_cis, token_replace_vec, frist_frame_token_num)
 

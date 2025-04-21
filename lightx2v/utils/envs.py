@@ -1,8 +1,14 @@
 import os
+from functools import lru_cache
 
 
-global ENABLE_PROFILING_DEBUG
-ENABLE_PROFILING_DEBUG = os.getenv("ENABLE_PROFILING_DEBUG", "false").lower() == "true"
+@lru_cache(maxsize=None)
+def CHECK_ENABLE_PROFILING_DEBUG():
+    ENABLE_PROFILING_DEBUG = os.getenv("ENABLE_PROFILING_DEBUG", "false").lower() == "true"
+    return ENABLE_PROFILING_DEBUG
 
-global ENABLE_GRAPH_MODE
-ENABLE_GRAPH_MODE = os.getenv("ENABLE_GRAPH_MODE", "false").lower() == "true"
+
+@lru_cache(maxsize=None)
+def CHECK_ENABLE_GRAPH_MODE():
+    ENABLE_GRAPH_MODE = os.getenv("ENABLE_GRAPH_MODE", "false").lower() == "true"
+    return ENABLE_GRAPH_MODE

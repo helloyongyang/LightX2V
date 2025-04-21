@@ -35,7 +35,7 @@ class WanTransformerInfer:
         cu_seqlens_k = torch.cat([k_lens.new_zeros([1]), k_lens]).cumsum(0, dtype=torch.int32)
         return cu_seqlens_q, cu_seqlens_k, lq, lk
 
-    @torch.compile(disable=not ENABLE_GRAPH_MODE)
+    @torch.compile(disable=not CHECK_ENABLE_GRAPH_MODE())
     def infer(self, weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context):
         return self.infer_func(weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context)
 

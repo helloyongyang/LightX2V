@@ -347,7 +347,7 @@ if __name__ == "__main__":
     gc.collect()
     torch.cuda.empty_cache()
 
-    if ENABLE_GRAPH_MODE:
+    if CHECK_ENABLE_GRAPH_MODE():
         default_runner = DefaultRunner(model, inputs)
         runner = GraphRunner(default_runner)
     else:

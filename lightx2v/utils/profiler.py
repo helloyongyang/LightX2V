@@ -33,4 +33,4 @@ class _NullContext(ContextDecorator):
 
 
 ProfilingContext = _ProfilingContext
-ProfilingContext4Debug = _ProfilingContext if ENABLE_PROFILING_DEBUG else _NullContext
+ProfilingContext4Debug = _ProfilingContext if CHECK_ENABLE_PROFILING_DEBUG() else _NullContext
