@@ -2,8 +2,8 @@ import torch
 
 
 class BaseScheduler:
-    def __init__(self, args):
-        self.args = args
+    def __init__(self, config):
+        self.config = config
         self.step_index = 0
         self.latents = None
 

@@ -6,7 +6,7 @@ model_path=""
 
 # check section
 if [ -z "${CUDA_VISIBLE_DEVICES}" ]; then
-    cuda_devices=0
+    cuda_devices=6
     echo "Warn: CUDA_VISIBLE_DEVICES is not set, using defalt value: ${cuda_devices}, change at shell script or set env variable."
     export CUDA_VISIBLE_DEVICES=${cuda_devices}
 fi
@@ -26,16 +26,11 @@ export PYTHONPATH=${lightx2v_path}:$PYTHONPATH
 export ENABLE_PROFILING_DEBUG=true
 export ENABLE_GRAPH_MODE=false
 
-python ${lightx2v_path}/lightx2v/__main__.py \
+python -m lightx2v \
 --model_cls hunyuan \
---model_path $model_path \
 --task i2v \
+--model_path $model_path \
+--config_json ${lightx2v_path}/configs/hunyuan_i2v.json \
 --prompt "An Asian man with short hair in black tactical uniform and white clothes waves a firework stick." \
 --image_path ${lightx2v_path}/assets/inputs/imgs/img_1.jpg \
---infer_steps 20 \
---target_video_length 33 \
---target_height 720 \
---target_width 1280 \
---attention_type flash_attn2 \
---save_video_path ./output_lightx2v_hy_i2v.mp4 \
---seed 0
+--save_video_path ./output_lightx2v_hy_i2v.mp4

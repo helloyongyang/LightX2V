@@ -3,20 +3,37 @@ import os
 from easydict import EasyDict
 
 
+def get_default_config():
+    default_config = {
+        "do_mm_calib": False,
+        "cpu_offload": False,
+        "parallel_attn_type": None,  # [None, "ulysses", "ring"]
+        "parallel_vae": False,
+        "max_area": False,
+        "vae_stride": (4, 8, 8),
+        "patch_size": (1, 2, 2),
+        "feature_caching": "NoCaching",  # ["NoCaching", "TaylorSeer", "Tea"]
+        "teacache_thresh": 0.26,
+        "use_ret_steps": False,
+        "use_bfloat16": True,
+        "lora_path": None,
+        "strength_model": 1.0,
+    }
+    return default_config
+
+
 def set_config(args):
-    config = {k: v for k, v in vars(args).items()}
+    config = get_default_config()
+    config.update({k: v for k, v in vars(args).items()})
     config = EasyDict(config)
 
-    if args.mm_config:
-        config.mm_config = json.loads(args.mm_config)
-    else:
-        config.mm_config = None
+    with open(args.config_json, "r") as f:
+        config_json = json.load(f)
+    config.update(config_json)
 
-    try:
+    if os.path.exists(os.path.join(args.model_path, "config.json")):
         with open(os.path.join(args.model_path, "config.json"), "r") as f:
             model_config = json.load(f)
         config.update(model_config)
-    except Exception as e:
-        print(e)
 
     return config

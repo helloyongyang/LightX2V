@@ -6,7 +6,7 @@ model_path=""
 
 # check section
 if [ -z "${CUDA_VISIBLE_DEVICES}" ]; then
-    cuda_devices=0
+    cuda_devices=6
     echo "Warn: CUDA_VISIBLE_DEVICES is not set, using defalt value: ${cuda_devices}, change at shell script or set env variable."
     export CUDA_VISIBLE_DEVICES=${cuda_devices}
 fi
@@ -26,22 +26,11 @@ export PYTHONPATH=${lightx2v_path}:$PYTHONPATH
 export ENABLE_PROFILING_DEBUG=true
 export ENABLE_GRAPH_MODE=false
 
-python ${lightx2v_path}/lightx2v/__main__.py \
+python -m lightx2v \
 --model_cls wan2.1 \
 --task t2v \
 --model_path $model_path \
+--config_json ${lightx2v_path}/configs/wan_t2v.json \
 --prompt "Two anthropomorphic cats in comfy boxing gear and bright gloves fight intensely on a spotlighted stage." \
---infer_steps 50 \
---target_video_length 81 \
---target_width  832 \
---target_height 480 \
---attention_type flash_attn2 \
---seed 42 \
---sample_neg_promp 色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走 \
---save_video_path ./output_lightx2v_wan_t2v.mp4 \
---sample_guide_scale 6 \
---sample_shift 8 \
-# --mm_config '{"mm_type": "W-int8-channel-sym-A-int8-channel-sym-dynamic-Q8F", "weight_auto_quant": true}' \
-# --feature_caching Tea \
-# --use_ret_steps \
-# --teacache_thresh 0.2
+--negative_prompt 色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走 \
+--save_video_path ./output_lightx2v_wan_t2v.mp4

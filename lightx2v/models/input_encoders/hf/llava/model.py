@@ -102,7 +102,6 @@ class TextEncoderHFLlavaModel:
         if config.cpu_offload:
             self.to_cuda()
         text = self.prompt_template.format(text)
-        print(f"text: {text}")
         tokens = self.tokenizer(
             text,
             return_length=False,

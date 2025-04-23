@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # set path and first
-lightx2v_path=''
-model_path=''
-lora_path=''
+lightx2v_path=""
+model_path=""
+lora_path=""
 
 # check section
 if [ -z "${CUDA_VISIBLE_DEVICES}" ]; then
@@ -37,7 +37,7 @@ python -m lightx2v \
 --target_height 480 \
 --attention_type flash_attn3 \
 --seed 42 \
---sample_neg_promp "画面过曝，模糊，文字，字幕" \
+--negative_prompt "画面过曝，模糊，文字，字幕" \
 --save_video_path ./output_lightx2v_wan_i2v.mp4 \
 --sample_guide_scale 5 \
 --sample_shift 5 \

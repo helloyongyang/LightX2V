@@ -27,26 +27,16 @@ export ENABLE_PROFILING_DEBUG=true
 
 torchrun --nproc_per_node=4 ${lightx2v_path}/lightx2v/__main__.py \
 --model_cls hunyuan \
+--task t2v \
 --model_path $model_path \
+--config_json ${lightx2v_path}/configs/dist/hunyuan_t2v_dist_ulysses.json \
 --prompt "A cat walks on the grass, realistic style." \
---infer_steps 20 \
---target_video_length 33 \
---target_height 720 \
---target_width 1280 \
---attention_type flash_attn2 \
---mm_config '{"mm_type": "W-int8-channel-sym-A-int8-channel-sym-dynamic-Vllm", "weight_auto_quant": true}' \
---parallel_attn_type ulysses \
 --save_video_path ./output_lightx2v_hunyuan_t2v_dist_ulysses.mp4
 
 torchrun --nproc_per_node=4 ${lightx2v_path}/lightx2v/__main__.py \
 --model_cls hunyuan \
+--task t2v \
 --model_path $model_path \
+--config_json ${lightx2v_path}/configs/dist/hunyuan_t2v_dist_ring.json \
 --prompt "A cat walks on the grass, realistic style." \
---infer_steps 20 \
---target_video_length 33 \
---target_height 720 \
---target_width 1280 \
---attention_type flash_attn2 \
---mm_config '{"mm_type": "W-int8-channel-sym-A-int8-channel-sym-dynamic-Vllm", "weight_auto_quant": true}' \
---parallel_attn_type ring \
 --save_video_path ./output_lightx2v_hunyuan_t2v_dist_ring.mp4

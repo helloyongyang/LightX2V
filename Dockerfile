@@ -27,7 +27,7 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
 RUN pip config set global.index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple \
     && pip install packaging ninja vllm torch torchvision diffusers transformers \
      tokenizers accelerate safetensors opencv-python numpy imageio imageio-ffmpeg \
-     einops loguru sgl-kernel qtorch ftfy
+     einops loguru sgl-kernel qtorch ftfy easydict
 
 # install flash-attention 2
 RUN cd lightx2v/3rd/flash-attention && pip install --no-cache-dir -v -e .

@@ -4,8 +4,8 @@ import torch
 
 
 class HunyuanSchedulerTeaCaching(HunyuanScheduler):
-    def __init__(self, args, image_encoder_output):
-        super().__init__(args, image_encoder_output)
+    def __init__(self, config):
+        super().__init__(config)
         self.cnt = 0
         self.num_steps = self.args.infer_steps
         self.teacache_thresh = self.args.teacache_thresh
@@ -26,8 +26,8 @@ class HunyuanSchedulerTeaCaching(HunyuanScheduler):
 
 
 class HunyuanSchedulerTaylorCaching(HunyuanScheduler):
-    def __init__(self, args, image_encoder_output):
-        super().__init__(args, image_encoder_output)
+    def __init__(self, config):
+        super().__init__(config)
         self.cache_dic, self.current = cache_init(self.infer_steps)
 
     def step_pre(self, step_index):

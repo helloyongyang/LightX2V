@@ -33,10 +33,10 @@ class WanPreInfer:
         else:
             context = inputs["text_encoder_output"]["context_null"]
         seq_len = self.scheduler.seq_len
-        clip_fea = inputs["image_encoder_output"]["clip_encoder_out"]
-        y = [inputs["image_encoder_output"]["vae_encode_out"]]
 
         if self.task == "i2v":
+            clip_fea = inputs["image_encoder_output"]["clip_encoder_out"]
+            y = [inputs["image_encoder_output"]["vae_encode_out"]]
             x = [torch.cat([u, v], dim=0) for u, v in zip(x, y)]
 
         # embeddings

@@ -6,25 +6,28 @@ from lightx2v.models.schedulers.scheduler import BaseScheduler
 
 
 class WanScheduler(BaseScheduler):
-    def __init__(self, args):
-        super().__init__(args)
+    def __init__(self, config):
+        super().__init__(config)
         self.device = torch.device("cuda")
-        self.infer_steps = self.args.infer_steps
-        self.target_video_length = self.args.target_video_length
-        self.sample_shift = self.args.sample_shift
+        self.infer_steps = self.config.infer_steps
+        self.target_video_length = self.config.target_video_length
+        self.sample_shift = self.config.sample_shift
         self.shift = 1
         self.num_train_timesteps = 1000
         self.disable_corrector = []
         self.solver_order = 2
         self.noise_pred = None
-        self.generator = torch.Generator(device=self.device)
-        self.generator.manual_seed(self.args.seed)
-        self.prepare_latents(self.args.target_shape, dtype=torch.float32)
 
-        if self.args.task in ["t2v"]:
-            self.seq_len = math.ceil((self.args.target_shape[2] * self.args.target_shape[3]) / (self.args.patch_size[1] * self.args.patch_size[2]) * self.args.target_shape[1])
-        elif self.args.task in ["i2v"]:
-            self.seq_len = ((self.args.target_video_length - 1) // self.args.vae_stride[0] + 1) * args.lat_h * args.lat_w // (args.patch_size[1] * args.patch_size[2])
+    def prepare(self, image_encoder_output):
+        self.generator = torch.Generator(device=self.device)
+        self.generator.manual_seed(self.config.seed)
+
+        self.prepare_latents(self.config.target_shape, dtype=torch.float32)
+
+        if self.config.task in ["t2v"]:
+            self.seq_len = math.ceil((self.config.target_shape[2] * self.config.target_shape[3]) / (self.config.patch_size[1] * self.config.patch_size[2]) * self.config.target_shape[1])
+        elif self.config.task in ["i2v"]:
+            self.seq_len = ((self.config.target_video_length - 1) // self.config.vae_stride[0] + 1) * self.config.lat_h * self.config.lat_w // (self.config.patch_size[1] * self.config.patch_size[2])
 
         alphas = np.linspace(1, 1 / self.num_train_timesteps, self.num_train_timesteps)[::-1].copy()
         sigmas = 1.0 - alphas

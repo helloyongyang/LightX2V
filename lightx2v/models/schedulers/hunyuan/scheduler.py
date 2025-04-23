@@ -235,29 +235,27 @@ def get_1d_rotary_pos_embed_riflex(
 
 
 class HunyuanScheduler(BaseScheduler):
-    def __init__(self, args, image_encoder_output):
-        super().__init__(args)
-        self.infer_steps = self.args.infer_steps
-        self.image_encoder_output = image_encoder_output
+    def __init__(self, config):
+        super().__init__(config)
+        self.infer_steps = self.config.infer_steps
         self.shift = 7.0
         self.timesteps, self.sigmas = set_timesteps_sigmas(self.infer_steps, self.shift, device=torch.device("cuda"))
         assert len(self.timesteps) == self.infer_steps
         self.embedded_guidance_scale = 6.0
-        self.generator = [torch.Generator("cuda").manual_seed(seed) for seed in [self.args.seed]]
+        self.generator = [torch.Generator("cuda").manual_seed(seed) for seed in [self.config.seed]]
         self.noise_pred = None
-        self.prepare_latents(shape=self.args.target_shape, dtype=torch.float16)
+
+    def prepare(self, image_encoder_output):
+        self.image_encoder_output = image_encoder_output
+        self.prepare_latents(shape=self.config.target_shape, dtype=torch.float16, image_encoder_output=image_encoder_output)
         self.prepare_guidance()
-        if self.args.task == "t2v":
-            target_height, target_width = self.args.target_height, self.args.target_width
-        else:
-            target_height, target_width = self.image_encoder_output["target_height"], self.image_encoder_output["target_width"]
-        self.prepare_rotary_pos_embedding(video_length=self.args.target_video_length, height=target_height, width=target_width)
+        self.prepare_rotary_pos_embedding(video_length=self.config.target_video_length, height=self.config.target_height, width=self.config.target_width)
 
     def prepare_guidance(self):
         self.guidance = torch.tensor([self.embedded_guidance_scale], dtype=torch.bfloat16, device=torch.device("cuda")) * 1000.0
 
     def step_post(self):
-        if self.args.task == "t2v":
+        if self.config.task == "t2v":
             sample = self.latents.to(torch.float32)
             dt = self.sigmas[self.step_index + 1] - self.sigmas[self.step_index]
             self.latents = sample + self.noise_pred.to(torch.float32) * dt
@@ -267,16 +265,16 @@ class HunyuanScheduler(BaseScheduler):
             latents = sample + self.noise_pred[:, :, 1:, :, :].to(torch.float32) * dt
             self.latents = torch.concat([self.image_encoder_output["img_latents"], latents], dim=2)
 
-    def prepare_latents(self, shape, dtype):
-        if self.args.task == "t2v":
+    def prepare_latents(self, shape, dtype, image_encoder_output):
+        if self.config.task == "t2v":
             self.latents = randn_tensor(shape, generator=self.generator, device=torch.device("cuda"), dtype=dtype)
         else:
-            x1 = self.image_encoder_output["img_latents"].repeat(1, 1, (self.args.target_video_length - 1) // 4 + 1, 1, 1)
+            x1 = image_encoder_output["img_latents"].repeat(1, 1, (self.config.target_video_length - 1) // 4 + 1, 1, 1)
             x0 = randn_tensor(shape, generator=self.generator, device=torch.device("cuda"), dtype=dtype)
             t = torch.tensor([0.999]).to(device=torch.device("cuda"))
             self.latents = x0 * t + x1 * (1 - t)
             self.latents = self.latents.to(dtype=dtype)
-            self.latents = torch.concat([self.image_encoder_output["img_latents"], self.latents[:, :, 1:, :, :]], dim=2)
+            self.latents = torch.concat([image_encoder_output["img_latents"], self.latents[:, :, 1:, :, :]], dim=2)
 
     def prepare_rotary_pos_embedding(self, video_length, height, width):
         target_ndim = 3
@@ -305,7 +303,7 @@ class HunyuanScheduler(BaseScheduler):
         if len(rope_sizes) != target_ndim:
             rope_sizes = [1] * (target_ndim - len(rope_sizes)) + rope_sizes  # time axis
 
-        if self.args.task == "t2v":
+        if self.config.task == "t2v":
             head_dim = hidden_size // heads_num
             rope_dim_list = rope_dim_list
             if rope_dim_list is None:
