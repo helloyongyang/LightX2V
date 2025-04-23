@@ -21,6 +21,8 @@ if [ -z "${model_path}" ]; then
     exit 1
 fi
 
+export TOKENIZERS_PARALLELISM=false
+
 export PYTHONPATH=${lightx2v_path}:$PYTHONPATH
 
 export ENABLE_PROFILING_DEBUG=true
