@@ -27,7 +27,7 @@ git submodule update --init --recursive
 
 # create conda env and install requirments
 conda create -n lightx2v python=3.11 && conda activate lightx2v
-pip install -r requirements.txt
+pip install -r requirements.txt --use-deprecated=legacy-resolver
 
 # install flash-attention 2
 cd lightx2v/3rd/flash-attention && pip install --no-cache-dir -v -e .
