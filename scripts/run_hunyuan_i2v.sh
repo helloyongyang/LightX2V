@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # set path and first
-lightx2v_path=""
-model_path=""
+lightx2v_path=
+model_path=
 
 # check section
 if [ -z "${CUDA_VISIBLE_DEVICES}" ]; then
@@ -35,4 +35,4 @@ python -m lightx2v \
 --config_json ${lightx2v_path}/configs/hunyuan_i2v.json \
 --prompt "An Asian man with short hair in black tactical uniform and white clothes waves a firework stick." \
 --image_path ${lightx2v_path}/assets/inputs/imgs/img_1.jpg \
---save_video_path ./output_lightx2v_hy_i2v.mp4
+--save_video_path ${lightx2v_path}/save_results/output_lightx2v_hy_i2v.mp4

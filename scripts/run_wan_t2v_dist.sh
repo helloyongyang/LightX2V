@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # set path and first
-lightx2v_path=""
-model_path=""
+lightx2v_path=
+model_path=
 
 # check section
 if [ -z "${CUDA_VISIBLE_DEVICES}" ]; then
@@ -43,7 +43,7 @@ torchrun --nproc_per_node=4 ${lightx2v_path}/lightx2v/__main__.py \
 --sample_shift 8 \
 --parallel_attn_type ring \
 --parallel_vae \
---save_video_path ./output_lightx2v_wan_t2v_dist_ring.mp4
+--save_video_path ${lightx2v_path}/save_results/output_lightx2v_wan_t2v_dist_ring.mp4
 
 torchrun --nproc_per_node=4 ${lightx2v_path}/lightx2v/__main__.py \
 --model_cls wan2.1 \
@@ -61,4 +61,4 @@ torchrun --nproc_per_node=4 ${lightx2v_path}/lightx2v/__main__.py \
 --sample_shift 8 \
 --parallel_attn_type ulysses \
 --parallel_vae \
---save_video_path ./output_lightx2v_wan_t2v_dist_ulysses.mp4
+--save_video_path ${lightx2v_path}/save_results/output_lightx2v_wan_t2v_dist_ulysses.mp4

@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # set path and first
-lightx2v_path=""
-model_path=""
+lightx2v_path=
+model_path=
 
 # check section
 if [ -z "${CUDA_VISIBLE_DEVICES}" ]; then
@@ -33,7 +33,7 @@ torchrun --nproc_per_node=4 ${lightx2v_path}/lightx2v/__main__.py \
 --model_path $model_path \
 --config_json ${lightx2v_path}/configs/dist/hunyuan_t2v_dist_ulysses.json \
 --prompt "A cat walks on the grass, realistic style." \
---save_video_path ./output_lightx2v_hunyuan_t2v_dist_ulysses.mp4
+--save_video_path ${lightx2v_path}/save_results/output_lightx2v_hunyuan_t2v_dist_ulysses.mp4
 
 torchrun --nproc_per_node=4 ${lightx2v_path}/lightx2v/__main__.py \
 --model_cls hunyuan \
@@ -41,4 +41,4 @@ torchrun --nproc_per_node=4 ${lightx2v_path}/lightx2v/__main__.py \
 --model_path $model_path \
 --config_json ${lightx2v_path}/configs/dist/hunyuan_t2v_dist_ring.json \
 --prompt "A cat walks on the grass, realistic style." \
---save_video_path ./output_lightx2v_hunyuan_t2v_dist_ring.mp4
+--save_video_path ${lightx2v_path}/save_results/output_lightx2v_hunyuan_t2v_dist_ring.mp4

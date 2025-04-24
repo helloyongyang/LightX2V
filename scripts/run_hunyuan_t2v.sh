@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # set path and first
-lightx2v_path=""
-model_path=""
+lightx2v_path=
+model_path=
 
 # check section
 if [ -z "${CUDA_VISIBLE_DEVICES}" ]; then
@@ -34,4 +34,4 @@ python -m lightx2v \
 --model_path $model_path \
 --config_json ${lightx2v_path}/configs/hunyuan_t2v.json \
 --prompt "A cat walks on the grass, realistic style." \
---save_video_path ./output_lightx2v_hy_t2v.mp4
+--save_video_path ${lightx2v_path}/save_results/output_lightx2v_hy_t2v.mp4
