@@ -25,7 +25,11 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
     && update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1
 
 RUN pip config set global.index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple \
-    && pip install -r /workspace/lightx2v/requirements.txt --use-deprecated=legacy-resolver
+    && pip install -r /workspace/lightx2v/requirements.txt
+
+# Install again separately to bypass the version conflict check
+RUN pip config set global.index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple \
+    && pip install transformers==4.45.2
 
 # install flash-attention 2
 RUN cd lightx2v/3rd/flash-attention && pip install --no-cache-dir -v -e .

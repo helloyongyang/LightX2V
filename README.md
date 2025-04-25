@@ -27,7 +27,10 @@ git submodule update --init --recursive
 
 # create conda env and install requirments
 conda create -n lightx2v python=3.11 && conda activate lightx2v
-pip install -r requirements.txt --use-deprecated=legacy-resolver
+pip install -r requirements.txt
+
+# Install again separately to bypass the version conflict check
+pip install transformers==4.45.2
 
 # install flash-attention 2
 cd lightx2v/3rd/flash-attention && pip install --no-cache-dir -v -e .
