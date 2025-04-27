@@ -11,6 +11,12 @@ class DefaultRunner:
         self.config = config
         self.model, self.text_encoders, self.vae_model, self.image_encoder = self.load_model()
 
+    def set_inputs(self, inputs):
+        self.config["prompt"] = inputs.get("prompt", "")
+        self.config["negative_prompt"] = inputs.get("negative_prompt", "")
+        self.config["image_path"] = inputs.get("image_path", "")
+        self.config["save_video_path"] = inputs.get("save_video_path", "")
+
     def run_input_encoder(self):
         image_encoder_output = None
         if self.config["task"] == "i2v":

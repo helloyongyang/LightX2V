@@ -28,12 +28,12 @@ def set_config(args):
     config.update({k: v for k, v in vars(args).items()})
     config = EasyDict(config)
 
-    with open(args.config_json, "r") as f:
+    with open(config.config_json, "r") as f:
         config_json = json.load(f)
     config.update(config_json)
 
-    if os.path.exists(os.path.join(args.model_path, "config.json")):
-        with open(os.path.join(args.model_path, "config.json"), "r") as f:
+    if os.path.exists(os.path.join(config.model_path, "config.json")):
+        with open(os.path.join(config.model_path, "config.json"), "r") as f:
             model_config = json.load(f)
         config.update(model_config)
 
