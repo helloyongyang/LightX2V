@@ -20,7 +20,7 @@
 
 ✅ [Wan2.1-T2V-CausVid](https://huggingface.co/lightx2v/Wan2.1-T2V-14B-CausVid)
 
-## Fast Start Up With Conda
+## Build Env With Conda
 
 ```shell
 # clone repo and submodules
@@ -39,16 +39,32 @@ cd lightx2v/3rd/flash-attention && pip install --no-cache-dir -v -e .
 
 # install flash-attention 3, only if hopper
 cd lightx2v/3rd/flash-attention/hopper && pip install --no-cache-dir -v -e .
-
-# modify the parameters of the running script
-bash scripts/run_hunyuan_t2v.sh
 ```
 
-## Fast Start Up With Docker
+## Build Env With Docker
 
 ```shell
 docker pull lightx2v/lightx2v:latest
 docker run -it --rm --name lightx2v --gpus all --ipc=host lightx2v/lightx2v:latest
+```
+
+## Run
+
+Infer
+
+```shell
+# modify the parameters of the running script
+bash scripts/run_hunyuan_t2v.sh
+```
+
+Start A Server
+
+```shell
+# modify the parameters of the running script
+bash scripts/start_server.sh
+
+# modify the message of the post.py
+python post.py
 ```
 
 ## Contributing Guidelines
