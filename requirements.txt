@@ -4,7 +4,7 @@ vllm
 torch
 torchvision
 diffusers
-transformers==4.45.2
+transformers
 tokenizers
 accelerate
 safetensors
