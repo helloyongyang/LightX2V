@@ -97,17 +97,17 @@ class HunyuanPreWeights:
             self.guidance_in_mlp_2,
         ]
 
-        for mm_weight in self.weight_list:
-            if isinstance(mm_weight, MMWeightTemplate) or isinstance(mm_weight, LNWeightTemplate) or isinstance(mm_weight, Conv3dWeightTemplate):
-                mm_weight.set_config(self.config["mm_config"])
-                mm_weight.load(weight_dict)
+        for weight in self.weight_list:
+            if isinstance(weight, MMWeightTemplate) or isinstance(weight, LNWeightTemplate) or isinstance(weight, Conv3dWeightTemplate):
+                weight.set_config(self.config["mm_config"])
+                weight.load(weight_dict)
 
     def to_cpu(self):
-        for mm_weight in self.weight_list:
-            if isinstance(mm_weight, MMWeightTemplate) or isinstance(mm_weight, LNWeightTemplate) or isinstance(mm_weight, Conv3dWeightTemplate):
-                mm_weight.to_cpu()
+        for weight in self.weight_list:
+            if isinstance(weight, MMWeightTemplate) or isinstance(weight, LNWeightTemplate) or isinstance(weight, Conv3dWeightTemplate):
+                weight.to_cpu()
 
     def to_cuda(self):
-        for mm_weight in self.weight_list:
-            if isinstance(mm_weight, MMWeightTemplate) or isinstance(mm_weight, LNWeightTemplate) or isinstance(mm_weight, Conv3dWeightTemplate):
-                mm_weight.to_cuda()
+        for weight in self.weight_list:
+            if isinstance(weight, MMWeightTemplate) or isinstance(weight, LNWeightTemplate) or isinstance(weight, Conv3dWeightTemplate):
+                weight.to_cuda()

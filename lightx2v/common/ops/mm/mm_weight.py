@@ -87,9 +87,9 @@ class MMWeightQuantTemplate(MMWeightTemplate):
         self.weight_need_transpose = True
         self.act_quant_func = None
 
-    """
-    weight load functions
-    """
+    # =========================
+    # weight load functions
+    # =========================
 
     def load(self, weight_dict):
         self.load_func(weight_dict)
@@ -140,9 +140,9 @@ class MMWeightQuantTemplate(MMWeightTemplate):
         x_scaled = (x_view * (448.0 / x_amax)).to(torch.float8_e4m3fn)
         return x_scaled.view_as(x_padded)[:m, :n].contiguous(), (x_amax / 448.0).view(x_view.size(0), x_view.size(2))
 
-    """
-    act quant kernels
-    """
+    # =========================
+    # act quant kernels
+    # =========================
 
     def act_quant_fp8_perchannel_sym_vllm(self, x):
         input_tensor_quant, input_tensor_scale = ops.scaled_fp8_quant(x, None, scale_ub=None, use_per_token_if_dynamic=True)

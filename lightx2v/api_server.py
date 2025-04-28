@@ -59,7 +59,7 @@ class Message(BaseModel):
 
 
 @app.post("/v1/local/video/generate")
-async def v1_local_video_generate(message: Message, request: Request):
+async def v1_local_video_generate(message: Message):
     global runner
     runner.set_inputs(message)
     await asyncio.to_thread(runner.run_pipeline)

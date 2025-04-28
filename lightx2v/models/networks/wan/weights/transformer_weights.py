@@ -81,31 +81,31 @@ class WanTransformerAttentionBlock:
             self.weight_list.append(self.cross_attn_v_img)
             self.weight_list.append(self.cross_attn_norm_k_img)
 
-        for mm_weight in self.weight_list:
-            if isinstance(mm_weight, (MMWeightTemplate, LNWeightTemplate, RMSWeightTemplate)):
-                mm_weight.set_config(self.config["mm_config"])
-                mm_weight.load(weight_dict)
+        for weight in self.weight_list:
+            if isinstance(weight, (MMWeightTemplate, LNWeightTemplate, RMSWeightTemplate)):
+                weight.set_config(self.config["mm_config"])
+                weight.load(weight_dict)
 
     def to_cpu(self):
-        for mm_weight in self.weight_list:
-            if isinstance(mm_weight, (MMWeightTemplate, LNWeightTemplate, RMSWeightTemplate)):
-                mm_weight.to_cpu()
+        for weight in self.weight_list:
+            if isinstance(weight, (MMWeightTemplate, LNWeightTemplate, RMSWeightTemplate)):
+                weight.to_cpu()
         self.modulation = self.modulation.cpu()
 
     def to_cuda(self):
-        for mm_weight in self.weight_list:
-            if isinstance(mm_weight, (MMWeightTemplate, LNWeightTemplate, RMSWeightTemplate)):
-                mm_weight.to_cuda()
+        for weight in self.weight_list:
+            if isinstance(weight, (MMWeightTemplate, LNWeightTemplate, RMSWeightTemplate)):
+                weight.to_cuda()
         self.modulation = self.modulation.cuda()
 
     def to_cpu_sync(self):
-        for mm_weight in self.weight_list:
-            if isinstance(mm_weight, (MMWeightTemplate, LNWeightTemplate, RMSWeightTemplate)):
-                mm_weight.to_cpu(non_blocking=True)
+        for weight in self.weight_list:
+            if isinstance(weight, (MMWeightTemplate, LNWeightTemplate, RMSWeightTemplate)):
+                weight.to_cpu(non_blocking=True)
         self.modulation = self.modulation.to("cpu", non_blocking=True)
 
     def to_cuda_sync(self):
-        for mm_weight in self.weight_list:
-            if isinstance(mm_weight, (MMWeightTemplate, LNWeightTemplate, RMSWeightTemplate)):
-                mm_weight.to_cuda(non_blocking=True)
+        for weight in self.weight_list:
+            if isinstance(weight, (MMWeightTemplate, LNWeightTemplate, RMSWeightTemplate)):
+                weight.to_cuda(non_blocking=True)
         self.modulation = self.modulation.cuda(non_blocking=True)

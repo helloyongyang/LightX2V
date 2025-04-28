@@ -79,30 +79,30 @@ class HunyuanTransformerDoubleBlock:
             self.txt_mlp_fc2,
         ]
 
-        for mm_weight in self.weight_list:
-            if isinstance(mm_weight, (MMWeightTemplate, RMSWeightTemplate)):
-                mm_weight.set_config(self.config["mm_config"])
-                mm_weight.load(weight_dict)
+        for weight in self.weight_list:
+            if isinstance(weight, (MMWeightTemplate, RMSWeightTemplate)):
+                weight.set_config(self.config["mm_config"])
+                weight.load(weight_dict)
 
     def to_cpu(self):
-        for mm_weight in self.weight_list:
-            if isinstance(mm_weight, (MMWeightTemplate, RMSWeightTemplate)):
-                mm_weight.to_cpu()
+        for weight in self.weight_list:
+            if isinstance(weight, (MMWeightTemplate, RMSWeightTemplate)):
+                weight.to_cpu()
 
     def to_cuda(self):
-        for mm_weight in self.weight_list:
-            if isinstance(mm_weight, (MMWeightTemplate, RMSWeightTemplate)):
-                mm_weight.to_cuda()
+        for weight in self.weight_list:
+            if isinstance(weight, (MMWeightTemplate, RMSWeightTemplate)):
+                weight.to_cuda()
 
     def to_cpu_sync(self):
-        for mm_weight in self.weight_list:
-            if isinstance(mm_weight, (MMWeightTemplate, RMSWeightTemplate)):
-                mm_weight.to_cpu(non_blocking=True)
+        for weight in self.weight_list:
+            if isinstance(weight, (MMWeightTemplate, RMSWeightTemplate)):
+                weight.to_cpu(non_blocking=True)
 
     def to_cuda_sync(self):
-        for mm_weight in self.weight_list:
-            if isinstance(mm_weight, (MMWeightTemplate, RMSWeightTemplate)):
-                mm_weight.to_cuda(non_blocking=True)
+        for weight in self.weight_list:
+            if isinstance(weight, (MMWeightTemplate, RMSWeightTemplate)):
+                weight.to_cuda(non_blocking=True)
 
 
 class HunyuanTransformerSingleBlock:
@@ -131,27 +131,27 @@ class HunyuanTransformerSingleBlock:
             self.modulation,
         ]
 
-        for mm_weight in self.weight_list:
-            if isinstance(mm_weight, (MMWeightTemplate, RMSWeightTemplate)):
-                mm_weight.set_config(self.config["mm_config"])
-                mm_weight.load(weight_dict)
+        for weight in self.weight_list:
+            if isinstance(weight, (MMWeightTemplate, RMSWeightTemplate)):
+                weight.set_config(self.config["mm_config"])
+                weight.load(weight_dict)
 
     def to_cpu(self):
-        for mm_weight in self.weight_list:
-            if isinstance(mm_weight, (MMWeightTemplate, RMSWeightTemplate)):
-                mm_weight.to_cpu()
+        for weight in self.weight_list:
+            if isinstance(weight, (MMWeightTemplate, RMSWeightTemplate)):
+                weight.to_cpu()
 
     def to_cuda(self):
-        for mm_weight in self.weight_list:
-            if isinstance(mm_weight, (MMWeightTemplate, RMSWeightTemplate)):
-                mm_weight.to_cuda()
+        for weight in self.weight_list:
+            if isinstance(weight, (MMWeightTemplate, RMSWeightTemplate)):
+                weight.to_cuda()
 
     def to_cpu_sync(self):
-        for mm_weight in self.weight_list:
-            if isinstance(mm_weight, (MMWeightTemplate, RMSWeightTemplate)):
-                mm_weight.to_cpu(non_blocking=True)
+        for weight in self.weight_list:
+            if isinstance(weight, (MMWeightTemplate, RMSWeightTemplate)):
+                weight.to_cpu(non_blocking=True)
 
     def to_cuda_sync(self):
-        for mm_weight in self.weight_list:
-            if isinstance(mm_weight, (MMWeightTemplate, RMSWeightTemplate)):
-                mm_weight.to_cuda(non_blocking=True)
+        for weight in self.weight_list:
+            if isinstance(weight, (MMWeightTemplate, RMSWeightTemplate)):
+                weight.to_cuda(non_blocking=True)

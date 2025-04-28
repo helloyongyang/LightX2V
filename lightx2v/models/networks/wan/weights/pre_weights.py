@@ -40,19 +40,19 @@ class WanPreWeights:
             self.weight_list.append(self.proj_3)
             self.weight_list.append(self.proj_4)
 
-        for mm_weight in self.weight_list:
-            if isinstance(mm_weight, (MMWeightTemplate, LNWeightTemplate, Conv3dWeightTemplate)):
-                mm_weight.set_config(self.config["mm_config"])
-                mm_weight.load(weight_dict)
+        for weight in self.weight_list:
+            if isinstance(weight, (MMWeightTemplate, LNWeightTemplate, Conv3dWeightTemplate)):
+                weight.set_config(self.config["mm_config"])
+                weight.load(weight_dict)
                 if self.config["cpu_offload"]:
-                    mm_weight.to_cpu()
+                    weight.to_cpu()
 
     def to_cpu(self):
-        for mm_weight in self.weight_list:
-            if isinstance(mm_weight, (MMWeightTemplate, LNWeightTemplate, Conv3dWeightTemplate)):
-                mm_weight.to_cpu()
+        for weight in self.weight_list:
+            if isinstance(weight, (MMWeightTemplate, LNWeightTemplate, Conv3dWeightTemplate)):
+                weight.to_cpu()
 
     def to_cuda(self):
-        for mm_weight in self.weight_list:
-            if isinstance(mm_weight, (MMWeightTemplate, LNWeightTemplate, Conv3dWeightTemplate)):
-                mm_weight.to_cuda()
+        for weight in self.weight_list:
+            if isinstance(weight, (MMWeightTemplate, LNWeightTemplate, Conv3dWeightTemplate)):
+                weight.to_cuda()
