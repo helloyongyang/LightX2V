@@ -27,7 +27,13 @@ class WanPreInfer:
 
     def infer(self, weights, inputs, positive):
         x = [self.scheduler.latents]
-        t = torch.stack([self.scheduler.timesteps[self.scheduler.step_index]])
+
+        if self.scheduler.flag_df:
+            t = self.scheduler.df_timesteps[self.scheduler.step_index].unsqueeze(0)
+            assert t.dim() == 2  # df推理模型timestep是二维
+        else:
+            t = torch.stack([self.scheduler.timesteps[self.scheduler.step_index]])
+
         if positive:
             context = inputs["text_encoder_output"]["context"]
         else:
@@ -47,13 +53,22 @@ class WanPreInfer:
         assert seq_lens.max() <= seq_len
         x = torch.cat([torch.cat([u, u.new_zeros(1, seq_len - u.size(1), u.size(2))], dim=1) for u in x])
 
-        embed = sinusoidal_embedding_1d(self.freq_dim, t)
+        embed = sinusoidal_embedding_1d(self.freq_dim, t.flatten())
         embed = weights.time_embedding_0.apply(embed)
         embed = torch.nn.functional.silu(embed)
         embed = weights.time_embedding_2.apply(embed)
         embed0 = torch.nn.functional.silu(embed)
 
         embed0 = weights.time_projection_1.apply(embed0).unflatten(1, (6, self.dim))
+
+        if self.scheduler.flag_df:
+            b, f = t.shape
+            assert b == len(x)  # batch_size == 1
+            embed = embed.view(b, f, 1, 1, self.dim)
+            embed0 = embed0.view(b, f, 1, 1, 6, self.dim)
+            embed = embed.repeat(1, 1, grid_sizes[0][1], grid_sizes[0][2], 1).flatten(1, 3)
+            embed0 = embed0.repeat(1, 1, grid_sizes[0][1], grid_sizes[0][2], 1, 1).flatten(1, 3)
+            embed0 = embed0.transpose(1, 2).contiguous()
 
         # text embeddings
         stacked = torch.stack([torch.cat([u, u.new_zeros(self.text_len - u.size(0), u.size(1))]) for u in context])

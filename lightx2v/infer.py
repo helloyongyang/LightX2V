@@ -12,6 +12,7 @@ from lightx2v.utils.registry_factory import RUNNER_REGISTER
 from lightx2v.models.runners.hunyuan.hunyuan_runner import HunyuanRunner
 from lightx2v.models.runners.wan.wan_runner import WanRunner
 from lightx2v.models.runners.wan.wan_causal_runner import WanCausalRunner
+from lightx2v.models.runners.wan.wan_skyreels_v2_df_runner import WanSkyreelsV2DFRunner
 from lightx2v.models.runners.graph_runner import GraphRunner
 
 from lightx2v.common.ops import *
@@ -34,7 +35,7 @@ def init_runner(config):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model_cls", type=str, required=True, choices=["wan2.1", "hunyuan", "wan2.1_causal"], default="hunyuan")
+    parser.add_argument("--model_cls", type=str, required=True, choices=["wan2.1", "hunyuan", "wan2.1_causal", "wan2.1_skyreels_v2_df"], default="hunyuan")
     parser.add_argument("--task", type=str, choices=["t2v", "i2v"], default="t2v")
     parser.add_argument("--model_path", type=str, required=True)
     parser.add_argument("--config_json", type=str, required=True)

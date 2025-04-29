@@ -18,7 +18,7 @@ class WanScheduler(BaseScheduler):
         self.solver_order = 2
         self.noise_pred = None
 
-    def prepare(self, image_encoder_output):
+    def prepare(self, image_encoder_output=None):
         self.generator = torch.Generator(device=self.device)
         self.generator.manual_seed(self.config.seed)
 
