@@ -123,18 +123,20 @@ class WanModel:
             self.scheduler.cnt += 1
             if self.scheduler.cnt >= self.scheduler.num_steps:
                 self.scheduler.cnt = 0
+        self.scheduler.noise_pred = noise_pred_cond
 
-        embed, grid_sizes, pre_infer_out = self.pre_infer.infer(self.pre_weight, inputs, positive=False)
-        x = self.transformer_infer.infer(self.transformer_weights, grid_sizes, embed, *pre_infer_out)
-        noise_pred_uncond = self.post_infer.infer(self.post_weight, x, embed, grid_sizes)[0]
+        if self.config["enable_cfg"]:
+            embed, grid_sizes, pre_infer_out = self.pre_infer.infer(self.pre_weight, inputs, positive=False)
+            x = self.transformer_infer.infer(self.transformer_weights, grid_sizes, embed, *pre_infer_out)
+            noise_pred_uncond = self.post_infer.infer(self.post_weight, x, embed, grid_sizes)[0]
 
-        if self.config["feature_caching"] == "Tea":
-            self.scheduler.cnt += 1
-            if self.scheduler.cnt >= self.scheduler.num_steps:
-                self.scheduler.cnt = 0
+            if self.config["feature_caching"] == "Tea":
+                self.scheduler.cnt += 1
+                if self.scheduler.cnt >= self.scheduler.num_steps:
+                    self.scheduler.cnt = 0
 
-        self.scheduler.noise_pred = noise_pred_uncond + self.config.sample_guide_scale * (noise_pred_cond - noise_pred_uncond)
+            self.scheduler.noise_pred = noise_pred_uncond + self.config.sample_guide_scale * (noise_pred_cond - noise_pred_uncond)
 
-        if self.config["cpu_offload"]:
-            self.pre_weight.to_cpu()
-            self.post_weight.to_cpu()
+            if self.config["cpu_offload"]:
+                self.pre_weight.to_cpu()
+                self.post_weight.to_cpu()

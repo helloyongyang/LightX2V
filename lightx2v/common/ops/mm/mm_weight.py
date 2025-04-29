@@ -4,6 +4,7 @@ from vllm import _custom_ops as ops
 import sgl_kernel
 from lightx2v.utils.registry_factory import MM_WEIGHT_REGISTER
 from lightx2v.utils.quant_utils import IntegerQuantizer, FloatQuantizer
+from loguru import logger
 
 try:
     import q8_kernels.functional as Q8F
@@ -461,7 +462,7 @@ if __name__ == "__main__":
     mm_weight.load(weight_dict)
     input_tensor = torch.randn(1024, 4096).to(torch.bfloat16).cuda()
     output_tensor = mm_weight.apply(input_tensor)
-    print(output_tensor.shape)
+    logger.info(output_tensor.shape)
 
     weight_dict = {
         "xx.weight": torch.randn(8192, 4096),
@@ -473,7 +474,7 @@ if __name__ == "__main__":
     mm_weight.load(weight_dict)
     input_tensor = torch.randn(1024, 4096).to(torch.bfloat16).cuda()
     output_tensor = mm_weight.apply(input_tensor)
-    print(output_tensor.shape)
+    logger.info(output_tensor.shape)
 
     weight_dict = {
         "xx.weight": torch.randn(8192, 4096),
@@ -485,4 +486,4 @@ if __name__ == "__main__":
     mm_weight.load(weight_dict)
     input_tensor = torch.randn(1024, 4096).to(torch.bfloat16).cuda()
     output_tensor = mm_weight.apply(input_tensor)
-    print(output_tensor.shape)
+    logger.info(output_tensor.shape)

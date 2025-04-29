@@ -10,6 +10,7 @@ import torchvision.transforms as T
 
 from lightx2v.attentions import attention
 from lightx2v.models.input_encoders.hf.t5.tokenizer import HuggingfaceTokenizer
+from loguru import logger
 
 from .xlm_roberta import XLMRoberta
 
@@ -190,7 +191,7 @@ class VisionTransformer(nn.Module):
         norm_eps=1e-5,
     ):
         if image_size % patch_size != 0:
-            print("[WARNING] image_size is not divisible by patch_size", flush=True)
+            logger.info("[WARNING] image_size is not divisible by patch_size", flush=True)
         assert pool_type in ("token", "token_fc", "attn_pool")
         out_dim = out_dim or dim
         super().__init__()

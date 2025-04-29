@@ -7,6 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.distributed as dist
 from einops import rearrange
+from loguru import logger
 
 __all__ = [
     "WanVAE",
@@ -801,7 +802,7 @@ class WanVAE:
                 split_dim = 2
                 images = self.decode_dist(zs, world_size, cur_rank, split_dim)
             else:
-                print("Fall back to naive decode mode")
+                logger.info("Fall back to naive decode mode")
                 images = self.model.decode(zs.unsqueeze(0), self.scale).float().clamp_(-1, 1)
         else:
             images = self.model.decode(zs.unsqueeze(0), self.scale).float().clamp_(-1, 1)

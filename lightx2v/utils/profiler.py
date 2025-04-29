@@ -2,6 +2,7 @@ import time
 import torch
 from contextlib import ContextDecorator
 from lightx2v.utils.envs import *
+from loguru import logger
 
 
 class _ProfilingContext(ContextDecorator):
@@ -16,7 +17,7 @@ class _ProfilingContext(ContextDecorator):
     def __exit__(self, exc_type, exc_val, exc_tb):
         torch.cuda.synchronize()
         elapsed = time.perf_counter() - self.start_time
-        print(f"[Profile] {self.name} cost {elapsed:.6f} seconds")
+        logger.info(f"[Profile] {self.name} cost {elapsed:.6f} seconds")
         return False
 
 
