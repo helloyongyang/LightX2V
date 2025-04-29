@@ -4,6 +4,7 @@ import psutil
 import argparse
 from fastapi import FastAPI, Request
 from pydantic import BaseModel
+from loguru import logger
 import uvicorn
 import json
 import asyncio
@@ -26,15 +27,15 @@ def kill_all_related_processes():
         try:
             child.kill()
         except Exception as e:
-            print(f"Failed to kill child process {child.pid}: {e}")
+            logger.info(f"Failed to kill child process {child.pid}: {e}")
     try:
         current_process.kill()
     except Exception as e:
-        print(f"Failed to kill main process: {e}")
+        logger.info(f"Failed to kill main process: {e}")
 
 
 def signal_handler(sig, frame):
-    print("\nReceived Ctrl+C, shutting down all related processes...")
+    logger.info("\nReceived Ctrl+C, shutting down all related processes...")
     kill_all_related_processes()
     sys.exit(0)
 
@@ -79,11 +80,11 @@ if __name__ == "__main__":
     parser.add_argument("--config_json", type=str, required=True)
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
-    print(f"args: {args}")
+    logger.info(f"args: {args}")
 
     with ProfilingContext("Init Server Cost"):
         config = set_config(args)
-        print(f"config:\n{json.dumps(config, ensure_ascii=False, indent=4)}")
+        logger.info(f"config:\n{json.dumps(config, ensure_ascii=False, indent=4)}")
         runner = init_runner(config)
 
     uvicorn.run(app, host="0.0.0.0", port=config.port, reload=False, workers=1)

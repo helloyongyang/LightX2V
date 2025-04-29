@@ -14,6 +14,7 @@ from lightx2v.models.networks.wan.model import WanModel
 from lightx2v.models.networks.wan.lora_adapter import WanLoraWrapper
 from lightx2v.models.video_encoders.hf.wan.vae import WanVAE
 import torch.distributed as dist
+from loguru import logger
 
 
 @RUNNER_REGISTER("wan2.1")
@@ -47,7 +48,7 @@ class WanRunner(DefaultRunner):
             lora_wrapper = WanLoraWrapper(model)
             lora_name = lora_wrapper.load_lora(self.config.lora_path)
             lora_wrapper.apply_lora(lora_name, self.config.strength_model)
-            print(f"Loaded LoRA: {lora_name}")
+            logger.info(f"Loaded LoRA: {lora_name}")
 
         vae_model = WanVAE(vae_pth=os.path.join(self.config.model_path, "Wan2.1_VAE.pth"), device=init_device, parallel=self.config.parallel_vae)
         if self.config.task == "i2v":

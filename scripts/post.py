@@ -1,4 +1,5 @@
 import requests
+from loguru import logger
 
 
 url = "http://localhost:8000/v1/local/video/generate"
@@ -10,8 +11,8 @@ message = {
     "save_video_path": "./output_lightx2v_wan_t2v_ap4.mp4",  # It is best to set it to an absolute path.
 }
 
-print(f"message: {message}")
+logger.info(f"message: {message}")
 
 response = requests.post(url, json=message)
 
-print(f"response: {response.json()}")
+logger.info(f"response: {response.json()}")

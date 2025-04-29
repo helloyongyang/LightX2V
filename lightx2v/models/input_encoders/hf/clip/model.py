@@ -1,5 +1,6 @@
 import torch
 from transformers import CLIPTextModel, AutoTokenizer
+from loguru import logger
 
 
 class TextEncoderHFClipModel:
@@ -54,4 +55,4 @@ if __name__ == "__main__":
     model = TextEncoderHFClipModel(model_path, torch.device("cuda"))
     text = "A cat walks on the grass, realistic style."
     outputs = model.infer(text)
-    print(outputs)
+    logger.info(outputs)

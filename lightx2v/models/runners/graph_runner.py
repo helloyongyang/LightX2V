@@ -1,4 +1,5 @@
 from lightx2v.utils.profiler import ProfilingContext4Debug
+from loguru import logger
 
 
 class GraphRunner:
@@ -7,10 +8,10 @@ class GraphRunner:
         self.compile()
 
     def compile(self):
-        print("start compile...")
+        logger.info("start compile...")
         with ProfilingContext4Debug("compile"):
             self.runner.run_step()
-        print("end compile...")
+        logger.info("end compile...")
 
     def run_pipeline(self):
         return self.runner.run_pipeline()

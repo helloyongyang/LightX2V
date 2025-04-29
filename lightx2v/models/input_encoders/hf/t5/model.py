@@ -8,6 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .tokenizer import HuggingfaceTokenizer
+from loguru import logger
 
 __all__ = [
     "T5Model",
@@ -522,4 +523,4 @@ if __name__ == "__main__":
     )
     text = "Two anthropomorphic cats in comfy boxing gear and bright gloves fight intensely on a spotlighted stage."
     outputs = model.infer(text)
-    print(outputs)
+    logger.info(outputs)

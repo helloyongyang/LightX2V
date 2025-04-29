@@ -1,5 +1,6 @@
 import os
 from einops import rearrange
+from loguru import logger
 
 import torch
 import torchvision
@@ -81,5 +82,5 @@ def cache_video(
             error = e
             continue
     else:
-        print(f"cache_video failed, error: {error}", flush=True)
+        logger.info(f"cache_video failed, error: {error}", flush=True)
         return None

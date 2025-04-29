@@ -1,4 +1,5 @@
 from typing import Optional
+from loguru import logger
 import torch
 import torch.distributed as dist
 
@@ -21,7 +22,7 @@ class RingComm:
     def send_recv(self, to_send: torch.Tensor, recv_tensor: Optional[torch.Tensor] = None) -> torch.Tensor:
         if recv_tensor is None:
             res = torch.empty_like(to_send)
-            # print(f"send_recv: empty_like {to_send.shape}")
+            # logger.info(f"send_recv: empty_like {to_send.shape}")
         else:
             res = recv_tensor
 

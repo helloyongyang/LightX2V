@@ -3,6 +3,7 @@ from PIL import Image
 import numpy as np
 import torchvision.transforms as transforms
 from transformers import LlavaForConditionalGeneration, CLIPImageProcessor, AutoTokenizer
+from loguru import logger
 
 
 def generate_crop_size_list(base_size=256, patch_size=32, max_ratio=4.0):
@@ -158,4 +159,4 @@ if __name__ == "__main__":
     img_path = "/mtc/yongyang/projects/lightx2v/assets/inputs/imgs/img_1.jpg"
     img = Image.open(img_path).convert("RGB")
     outputs = model.infer(text, img, None)
-    print(outputs)
+    logger.info(outputs)

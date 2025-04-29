@@ -2,6 +2,7 @@ import torch
 import torch.distributed as dist
 from lightx2v.attentions import attention
 from lightx2v.utils.utils import seed_all
+from loguru import logger
 
 
 seed_all(42)
@@ -65,10 +66,10 @@ def test_part_head():
     # 验证结果一致性
     if cur_rank == 0:
         # import pdb; pdb.set_trace()
-        print("Outputs match:", torch.allclose(single_gpu_output, combined_output, rtol=1e-3, atol=1e-3))
+        logger.info("Outputs match:", torch.allclose(single_gpu_output, combined_output, rtol=1e-3, atol=1e-3))
 
     # # 验证结果一致性
-    # print("Outputs match:", torch.allclose(single_gpu_output, combined_output, rtol=1e-3, atol=1e-3))
+    # logger.info("Outputs match:", torch.allclose(single_gpu_output, combined_output, rtol=1e-3, atol=1e-3))
 
 
 if __name__ == "__main__":

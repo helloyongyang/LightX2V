@@ -1,5 +1,6 @@
 import torch
 from qtorch.quant import float_quantize
+from loguru import logger
 
 
 class BaseQuantizer(object):
@@ -168,23 +169,23 @@ if __name__ == "__main__":
     weight = torch.randn(4096, 4096, dtype=torch.bfloat16).cuda()
     quantizer = IntegerQuantizer(4, False, "per_group", group_size=128)
     q_weight = quantizer.fake_quant_tensor(weight)
-    print(weight)
-    print(q_weight)
-    print(f"cosine = {torch.cosine_similarity(weight.view(1, -1).to(torch.float64), q_weight.view(1, -1).to(torch.float64))}")
+    logger.info(weight)
+    logger.info(q_weight)
+    logger.info(f"cosine = {torch.cosine_similarity(weight.view(1, -1).to(torch.float64), q_weight.view(1, -1).to(torch.float64))}")
 
     realq_weight, scales, zeros = quantizer.real_quant_tensor(weight)
-    print(f"realq_weight = {realq_weight}, {realq_weight.shape}")
-    print(f"scales = {scales}, {scales.shape}")
-    print(f"zeros = {zeros}, {zeros.shape}")
+    logger.info(f"realq_weight = {realq_weight}, {realq_weight.shape}")
+    logger.info(f"scales = {scales}, {scales.shape}")
+    logger.info(f"zeros = {zeros}, {zeros.shape}")
 
     weight = torch.randn(8192, 4096, dtype=torch.bfloat16).cuda()
     quantizer = FloatQuantizer("e4m3", True, "per_channel")
     q_weight = quantizer.fake_quant_tensor(weight)
-    print(weight)
-    print(q_weight)
-    print(f"cosine = {torch.cosine_similarity(weight.view(1, -1).to(torch.float64), q_weight.view(1, -1).to(torch.float64))}")
+    logger.info(weight)
+    logger.info(q_weight)
+    logger.info(f"cosine = {torch.cosine_similarity(weight.view(1, -1).to(torch.float64), q_weight.view(1, -1).to(torch.float64))}")
 
     realq_weight, scales, zeros = quantizer.real_quant_tensor(weight)
-    print(f"realq_weight = {realq_weight}, {realq_weight.shape}")
-    print(f"scales = {scales}, {scales.shape}")
-    print(f"zeros = {zeros}")
+    logger.info(f"realq_weight = {realq_weight}, {realq_weight.shape}")
+    logger.info(f"scales = {scales}, {scales.shape}")
+    logger.info(f"zeros = {zeros}")

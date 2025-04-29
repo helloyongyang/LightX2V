@@ -14,6 +14,7 @@ from lightx2v.models.input_encoders.hf.xlm_roberta.model import CLIPModel
 from lightx2v.models.networks.wan.causal_model import WanCausalModel
 from lightx2v.models.networks.wan.lora_adapter import WanLoraWrapper
 from lightx2v.models.video_encoders.hf.wan.vae import WanVAE
+from loguru import logger
 import torch.distributed as dist
 
 
@@ -54,7 +55,7 @@ class WanCausalRunner(WanRunner):
             lora_wrapper = WanLoraWrapper(model)
             lora_name = lora_wrapper.load_lora(self.config.lora_path)
             lora_wrapper.apply_lora(lora_name, self.config.strength_model)
-            print(f"Loaded LoRA: {lora_name}")
+            logger.info(f"Loaded LoRA: {lora_name}")
 
         vae_model = WanVAE(vae_pth=os.path.join(self.config.model_path, "Wan2.1_VAE.pth"), device=init_device, parallel=self.config.parallel_vae)
         if self.config.task == "i2v":
@@ -95,13 +96,13 @@ class WanCausalRunner(WanRunner):
         start_block_idx = 0
 
         for fragment_idx in range(self.num_fragments):
-            print(f"=======> fragment_idx: {fragment_idx + 1} / {self.num_fragments}")
+            logger.info(f"=======> fragment_idx: {fragment_idx + 1} / {self.num_fragments}")
 
             kv_start = 0
             kv_end = kv_start + self.num_frame_per_block * self.frame_seq_length
 
             if fragment_idx > 0:
-                print("recompute the kv_cache ...")
+                logger.info("recompute the kv_cache ...")
                 with ProfilingContext4Debug("step_pre"):
                     self.model.scheduler.latents = self.model.scheduler.last_sample
                     self.model.scheduler.step_pre(step_index=self.model.scheduler.infer_steps - 1)
@@ -115,12 +116,12 @@ class WanCausalRunner(WanRunner):
             infer_blocks = self.infer_blocks - (fragment_idx > 0)
 
             for block_idx in range(infer_blocks):
-                print(f"=======> block_idx: {block_idx + 1} / {infer_blocks}")
-                print(f"=======> kv_start: {kv_start}, kv_end: {kv_end}")
+                logger.info(f"=======> block_idx: {block_idx + 1} / {infer_blocks}")
+                logger.info(f"=======> kv_start: {kv_start}, kv_end: {kv_end}")
                 self.model.scheduler.reset()
 
                 for step_index in range(self.model.scheduler.infer_steps):
-                    print(f"==> step_index: {step_index + 1} / {self.model.scheduler.infer_steps}")
+                    logger.info(f"==> step_index: {step_index + 1} / {self.model.scheduler.infer_steps}")
 
                     with ProfilingContext4Debug("step_pre"):
                         self.model.scheduler.step_pre(step_index=step_index)

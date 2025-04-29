@@ -15,6 +15,7 @@ from lightx2v.models.runners.wan.wan_causal_runner import WanCausalRunner
 from lightx2v.models.runners.graph_runner import GraphRunner
 
 from lightx2v.common.ops import *
+from loguru import logger
 
 
 def init_runner(config):
@@ -37,17 +38,17 @@ if __name__ == "__main__":
     parser.add_argument("--task", type=str, choices=["t2v", "i2v"], default="t2v")
     parser.add_argument("--model_path", type=str, required=True)
     parser.add_argument("--config_json", type=str, required=True)
-
+    parser.add_argument("--enable_cfg", type=bool, default=False)
     parser.add_argument("--prompt", type=str, required=True)
     parser.add_argument("--negative_prompt", type=str, default="")
     parser.add_argument("--image_path", type=str, default="", help="The path to input image file or path for image-to-video (i2v) task")
     parser.add_argument("--save_video_path", type=str, default="./output_lightx2v.mp4", help="The path to save video path/file")
     args = parser.parse_args()
-    print(f"args: {args}")
+    logger.info(f"args: {args}")
 
     with ProfilingContext("Total Cost"):
         config = set_config(args)
-        print(f"config:\n{json.dumps(config, ensure_ascii=False, indent=4)}")
+        logger.info(f"config:\n{json.dumps(config, ensure_ascii=False, indent=4)}")
         runner = init_runner(config)
 
         runner.run_pipeline()
