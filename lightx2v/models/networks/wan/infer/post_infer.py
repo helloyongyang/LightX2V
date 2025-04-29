@@ -13,10 +13,10 @@ class WanPostInfer:
 
     def infer(self, weights, x, e, grid_sizes):
         if e.dim() == 2:
-            modulation = weights.head_modulation  # 1, 2, dim
+            modulation = weights.head_modulation.tensor  # 1, 2, dim
             e = (modulation + e.unsqueeze(1)).chunk(2, dim=1)
         elif e.dim() == 3:  # For Diffustion forcing
-            modulation = weights.head_modulation.unsqueeze(2)  # 1, 2, seq, dim
+            modulation = weights.head_modulation.tensor.unsqueeze(2)  # 1, 2, seq, dim
             e = (modulation + e.unsqueeze(1)).chunk(2, dim=1)
             e = [ei.squeeze(1) for ei in e]
 

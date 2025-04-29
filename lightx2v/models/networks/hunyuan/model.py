@@ -64,9 +64,9 @@ class HunyuanModel:
         self.post_weight = self.post_weight_class(self.config)
         self.transformer_weights = self.transformer_weight_class(self.config)
         # load weights
-        self.pre_weight.load_weights(weight_dict)
-        self.post_weight.load_weights(weight_dict)
-        self.transformer_weights.load_weights(weight_dict)
+        self.pre_weight.load(weight_dict)
+        self.post_weight.load(weight_dict)
+        self.transformer_weights.load(weight_dict)
 
     def _init_infer(self):
         self.pre_infer = self.pre_infer_class(self.config)

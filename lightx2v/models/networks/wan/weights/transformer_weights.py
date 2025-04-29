@@ -1,11 +1,10 @@
-from lightx2v.utils.registry_factory import MM_WEIGHT_REGISTER, LN_WEIGHT_REGISTER, RMS_WEIGHT_REGISTER
-from lightx2v.common.ops.mm.mm_weight import MMWeightTemplate
-from lightx2v.common.ops.norm.layer_norm_weight import LNWeightTemplate
-from lightx2v.common.ops.norm.rms_norm_weight import RMSWeightTemplate
+from lightx2v.utils.registry_factory import MM_WEIGHT_REGISTER, LN_WEIGHT_REGISTER, RMS_WEIGHT_REGISTER, TENSOR_REGISTER
+from lightx2v.common.modules.weight_module import WeightModule, WeightModuleList
 
 
-class WanTransformerWeights:
+class WanTransformerWeights(WeightModule):
     def __init__(self, config):
+        super().__init__()
         self.blocks_num = config["num_layers"]
         self.task = config["task"]
         self.config = config
@@ -13,99 +12,39 @@ class WanTransformerWeights:
             self.mm_type = "Calib"
         else:
             self.mm_type = config["mm_config"].get("mm_type", "Default") if config["mm_config"] else "Default"
-
-    def load_weights(self, weight_dict):
-        self.blocks_weights = [WanTransformerAttentionBlock(i, self.task, self.mm_type, self.config) for i in range(self.blocks_num)]
-        for block in self.blocks_weights:
-            block.load_weights(weight_dict)
-
-    def to_cpu(self):
-        for block in self.blocks_weights:
-            block.to_cpu()
-
-    def to_cuda(self):
-        for block in self.blocks_weights:
-            block.to_cuda()
+        self.blocks = WeightModuleList([WanTransformerAttentionBlock(i, self.task, self.mm_type, self.config) for i in range(self.blocks_num)])
+        self.add_module("blocks", self.blocks)
 
 
-class WanTransformerAttentionBlock:
+class WanTransformerAttentionBlock(WeightModule):
     def __init__(self, block_index, task, mm_type, config):
+        super().__init__()
         self.block_index = block_index
         self.mm_type = mm_type
         self.task = task
         self.config = config
 
-    def load_weights(self, weight_dict):
-        self.self_attn_q = MM_WEIGHT_REGISTER[self.mm_type](f"blocks.{self.block_index}.self_attn.q.weight", f"blocks.{self.block_index}.self_attn.q.bias")
-        self.self_attn_k = MM_WEIGHT_REGISTER[self.mm_type](f"blocks.{self.block_index}.self_attn.k.weight", f"blocks.{self.block_index}.self_attn.k.bias")
-        self.self_attn_v = MM_WEIGHT_REGISTER[self.mm_type](f"blocks.{self.block_index}.self_attn.v.weight", f"blocks.{self.block_index}.self_attn.v.bias")
-        self.self_attn_o = MM_WEIGHT_REGISTER[self.mm_type](f"blocks.{self.block_index}.self_attn.o.weight", f"blocks.{self.block_index}.self_attn.o.bias")
-        self.self_attn_norm_q = RMS_WEIGHT_REGISTER["sgl-kernel"](f"blocks.{self.block_index}.self_attn.norm_q.weight")
-        self.self_attn_norm_k = RMS_WEIGHT_REGISTER["sgl-kernel"](f"blocks.{self.block_index}.self_attn.norm_k.weight")
+        self.add_module("self_attn_q", MM_WEIGHT_REGISTER[self.mm_type](f"blocks.{self.block_index}.self_attn.q.weight", f"blocks.{self.block_index}.self_attn.q.bias"))
+        self.add_module("self_attn_k", MM_WEIGHT_REGISTER[self.mm_type](f"blocks.{self.block_index}.self_attn.k.weight", f"blocks.{self.block_index}.self_attn.k.bias"))
+        self.add_module("self_attn_v", MM_WEIGHT_REGISTER[self.mm_type](f"blocks.{self.block_index}.self_attn.v.weight", f"blocks.{self.block_index}.self_attn.v.bias"))
+        self.add_module("self_attn_o", MM_WEIGHT_REGISTER[self.mm_type](f"blocks.{self.block_index}.self_attn.o.weight", f"blocks.{self.block_index}.self_attn.o.bias"))
+        self.add_module("self_attn_norm_q", RMS_WEIGHT_REGISTER["sgl-kernel"](f"blocks.{self.block_index}.self_attn.norm_q.weight"))
+        self.add_module("self_attn_norm_k", RMS_WEIGHT_REGISTER["sgl-kernel"](f"blocks.{self.block_index}.self_attn.norm_k.weight"))
 
-        self.norm3 = LN_WEIGHT_REGISTER["Default"](f"blocks.{self.block_index}.norm3.weight", f"blocks.{self.block_index}.norm3.bias", eps=1e-6)
-        self.cross_attn_q = MM_WEIGHT_REGISTER[self.mm_type](f"blocks.{self.block_index}.cross_attn.q.weight", f"blocks.{self.block_index}.cross_attn.q.bias")
-        self.cross_attn_k = MM_WEIGHT_REGISTER[self.mm_type](f"blocks.{self.block_index}.cross_attn.k.weight", f"blocks.{self.block_index}.cross_attn.k.bias")
-        self.cross_attn_v = MM_WEIGHT_REGISTER[self.mm_type](f"blocks.{self.block_index}.cross_attn.v.weight", f"blocks.{self.block_index}.cross_attn.v.bias")
-        self.cross_attn_o = MM_WEIGHT_REGISTER[self.mm_type](f"blocks.{self.block_index}.cross_attn.o.weight", f"blocks.{self.block_index}.cross_attn.o.bias")
-        self.cross_attn_norm_q = RMS_WEIGHT_REGISTER["sgl-kernel"](f"blocks.{self.block_index}.cross_attn.norm_q.weight")
-        self.cross_attn_norm_k = RMS_WEIGHT_REGISTER["sgl-kernel"](f"blocks.{self.block_index}.cross_attn.norm_k.weight")
+        self.add_module("norm3", LN_WEIGHT_REGISTER["Default"](f"blocks.{self.block_index}.norm3.weight", f"blocks.{self.block_index}.norm3.bias", eps=1e-6))
+        self.add_module("cross_attn_q", MM_WEIGHT_REGISTER[self.mm_type](f"blocks.{self.block_index}.cross_attn.q.weight", f"blocks.{self.block_index}.cross_attn.q.bias"))
+        self.add_module("cross_attn_k", MM_WEIGHT_REGISTER[self.mm_type](f"blocks.{self.block_index}.cross_attn.k.weight", f"blocks.{self.block_index}.cross_attn.k.bias"))
+        self.add_module("cross_attn_v", MM_WEIGHT_REGISTER[self.mm_type](f"blocks.{self.block_index}.cross_attn.v.weight", f"blocks.{self.block_index}.cross_attn.v.bias"))
+        self.add_module("cross_attn_o", MM_WEIGHT_REGISTER[self.mm_type](f"blocks.{self.block_index}.cross_attn.o.weight", f"blocks.{self.block_index}.cross_attn.o.bias"))
+        self.add_module("cross_attn_norm_q", RMS_WEIGHT_REGISTER["sgl-kernel"](f"blocks.{self.block_index}.cross_attn.norm_q.weight"))
+        self.add_module("cross_attn_norm_k", RMS_WEIGHT_REGISTER["sgl-kernel"](f"blocks.{self.block_index}.cross_attn.norm_k.weight"))
 
-        self.ffn_0 = MM_WEIGHT_REGISTER[self.mm_type](f"blocks.{self.block_index}.ffn.0.weight", f"blocks.{self.block_index}.ffn.0.bias")
-        self.ffn_2 = MM_WEIGHT_REGISTER[self.mm_type](f"blocks.{self.block_index}.ffn.2.weight", f"blocks.{self.block_index}.ffn.2.bias")
-        self.modulation = weight_dict[f"blocks.{self.block_index}.modulation"]
-
-        self.weight_list = [
-            self.self_attn_q,
-            self.self_attn_k,
-            self.self_attn_v,
-            self.self_attn_o,
-            self.self_attn_norm_q,
-            self.self_attn_norm_k,
-            self.norm3,
-            self.cross_attn_q,
-            self.cross_attn_k,
-            self.cross_attn_v,
-            self.cross_attn_o,
-            self.cross_attn_norm_q,
-            self.cross_attn_norm_k,
-            self.ffn_0,
-            self.ffn_2,
-        ]
+        self.add_module("ffn_0", MM_WEIGHT_REGISTER[self.mm_type](f"blocks.{self.block_index}.ffn.0.weight", f"blocks.{self.block_index}.ffn.0.bias"))
+        self.add_module("ffn_2", MM_WEIGHT_REGISTER[self.mm_type](f"blocks.{self.block_index}.ffn.2.weight", f"blocks.{self.block_index}.ffn.2.bias"))
 
         if self.task == "i2v":
-            self.cross_attn_k_img = MM_WEIGHT_REGISTER[self.mm_type](f"blocks.{self.block_index}.cross_attn.k_img.weight", f"blocks.{self.block_index}.cross_attn.k_img.bias")
-            self.cross_attn_v_img = MM_WEIGHT_REGISTER[self.mm_type](f"blocks.{self.block_index}.cross_attn.v_img.weight", f"blocks.{self.block_index}.cross_attn.v_img.bias")
-            self.cross_attn_norm_k_img = RMS_WEIGHT_REGISTER["sgl-kernel"](f"blocks.{self.block_index}.cross_attn.norm_k_img.weight")
-            self.weight_list.append(self.cross_attn_k_img)
-            self.weight_list.append(self.cross_attn_v_img)
-            self.weight_list.append(self.cross_attn_norm_k_img)
+            self.add_module("cross_attn_k_img", MM_WEIGHT_REGISTER[self.mm_type](f"blocks.{self.block_index}.cross_attn.k_img.weight", f"blocks.{self.block_index}.cross_attn.k_img.bias"))
+            self.add_module("cross_attn_v_img", MM_WEIGHT_REGISTER[self.mm_type](f"blocks.{self.block_index}.cross_attn.v_img.weight", f"blocks.{self.block_index}.cross_attn.v_img.bias"))
+            self.add_module("cross_attn_norm_k_img", RMS_WEIGHT_REGISTER["sgl-kernel"](f"blocks.{self.block_index}.cross_attn.norm_k_img.weight"))
 
-        for weight in self.weight_list:
-            if isinstance(weight, (MMWeightTemplate, LNWeightTemplate, RMSWeightTemplate)):
-                weight.set_config(self.config["mm_config"])
-                weight.load(weight_dict)
-
-    def to_cpu(self):
-        for weight in self.weight_list:
-            if isinstance(weight, (MMWeightTemplate, LNWeightTemplate, RMSWeightTemplate)):
-                weight.to_cpu()
-        self.modulation = self.modulation.cpu()
-
-    def to_cuda(self):
-        for weight in self.weight_list:
-            if isinstance(weight, (MMWeightTemplate, LNWeightTemplate, RMSWeightTemplate)):
-                weight.to_cuda()
-        self.modulation = self.modulation.cuda()
-
-    def to_cpu_sync(self):
-        for weight in self.weight_list:
-            if isinstance(weight, (MMWeightTemplate, LNWeightTemplate, RMSWeightTemplate)):
-                weight.to_cpu(non_blocking=True)
-        self.modulation = self.modulation.to("cpu", non_blocking=True)
-
-    def to_cuda_sync(self):
-        for weight in self.weight_list:
-            if isinstance(weight, (MMWeightTemplate, LNWeightTemplate, RMSWeightTemplate)):
-                weight.to_cuda(non_blocking=True)
-        self.modulation = self.modulation.cuda(non_blocking=True)
+        self.register_parameter("modulation", TENSOR_REGISTER["Default"](f"blocks.{self.block_index}.modulation"))

@@ -84,9 +84,9 @@ class WanModel:
         self.post_weight = self.post_weight_class(self.config)
         self.transformer_weights = self.transformer_weight_class(self.config)
         # load weights
-        self.pre_weight.load_weights(self.original_weight_dict)
-        self.post_weight.load_weights(self.original_weight_dict)
-        self.transformer_weights.load_weights(self.original_weight_dict)
+        self.pre_weight.load(self.original_weight_dict)
+        self.post_weight.load(self.original_weight_dict)
+        self.transformer_weights.load(self.original_weight_dict)
 
     def _init_infer(self):
         self.pre_infer = self.pre_infer_class(self.config)
@@ -109,9 +109,6 @@ class WanModel:
         self.post_weight.to_cuda()
         self.transformer_weights.to_cuda()
 
-    def do_classifier_free_guidance(self) -> bool:
-        return self.config.sample_guide_scale > 1
-
     @torch.no_grad()
     def infer(self, inputs):
         if self.config["cpu_offload"]:
@@ -128,7 +125,7 @@ class WanModel:
                 self.scheduler.cnt = 0
         self.scheduler.noise_pred = noise_pred_cond
 
-        if self.do_classifier_free_guidance():
+        if self.config["enable_cfg"]:
             embed, grid_sizes, pre_infer_out = self.pre_infer.infer(self.pre_weight, inputs, positive=False)
             x = self.transformer_infer.infer(self.transformer_weights, grid_sizes, embed, *pre_infer_out)
             noise_pred_uncond = self.post_infer.infer(self.post_weight, x, embed, grid_sizes)[0]

@@ -42,7 +42,7 @@ class WanTransformerInfer:
     def _infer_with_offload(self, weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context):
         for block_idx in range(self.blocks_num):
             if block_idx == 0:
-                self.weights_stream_mgr.active_weights[0] = weights.blocks_weights[0]
+                self.weights_stream_mgr.active_weights[0] = weights.blocks[0]
                 self.weights_stream_mgr.active_weights[0].to_cuda()
 
             with torch.cuda.stream(self.weights_stream_mgr.compute_stream):
@@ -58,7 +58,7 @@ class WanTransformerInfer:
                 )
 
             if block_idx < self.blocks_num - 1:
-                self.weights_stream_mgr.prefetch_weights(block_idx + 1, weights.blocks_weights)
+                self.weights_stream_mgr.prefetch_weights(block_idx + 1, weights.blocks)
             self.weights_stream_mgr.swap_weights()
 
         return x
@@ -66,7 +66,7 @@ class WanTransformerInfer:
     def _infer_without_offload(self, weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context):
         for block_idx in range(self.blocks_num):
             x = self.infer_block(
-                weights.blocks_weights[block_idx],
+                weights.blocks[block_idx],
                 grid_sizes,
                 embed,
                 x,
@@ -79,12 +79,12 @@ class WanTransformerInfer:
 
     def infer_block(self, weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context):
         if embed0.dim() == 3:
-            modulation = weights.modulation.unsqueeze(2)  # 1, 6, 1, dim
+            modulation = weights.modulation.tensor.unsqueeze(2)  # 1, 6, 1, dim
             embed0 = embed0.unsqueeze(0)  #
             embed0 = (modulation + embed0).chunk(6, dim=1)
             embed0 = [ei.squeeze(1) for ei in embed0]
         elif embed0.dim() == 2:
-            embed0 = (weights.modulation + embed0).chunk(6, dim=1)
+            embed0 = (weights.modulation.tensor + embed0).chunk(6, dim=1)
 
         norm1_out = torch.nn.functional.layer_norm(x, (x.shape[1],), None, None, 1e-6)
         norm1_out = (norm1_out * (1 + embed0[1]) + embed0[0]).squeeze(0)
