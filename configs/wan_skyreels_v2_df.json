@@ -1,0 +1,20 @@
+{
+    "infer_steps": 20,
+    "target_video_length": 97,
+    "text_len": 512,
+    "target_height": 544,
+    "target_width": 960,
+    "num_frames": 257,
+    "base_num_frames": 97,
+    "overlap_history": 17,
+    "addnoise_condition": 0,
+    "causal_block_size": 1,
+    "attention_type": "flash_attn3",
+    "seed": 42,
+    "sample_guide_scale": 5,
+    "sample_shift": 3,
+    "mm_config": {
+        "mm_type": "W-fp8-channel-sym-A-fp8-channel-sym-dynamic-Sgl",
+        "weight_auto_quant": true
+    }
+}

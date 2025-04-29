@@ -12,7 +12,14 @@ class WanPostInfer:
         self.scheduler = scheduler
 
     def infer(self, weights, x, e, grid_sizes):
-        e = (weights.head_modulation + e.unsqueeze(1)).chunk(2, dim=1)
+        if e.dim() == 2:
+            modulation = weights.head_modulation  # 1, 2, dim
+            e = (modulation + e.unsqueeze(1)).chunk(2, dim=1)
+        elif e.dim() == 3:  # For Diffustion forcing
+            modulation = weights.head_modulation.unsqueeze(2)  # 1, 2, seq, dim
+            e = (modulation + e.unsqueeze(1)).chunk(2, dim=1)
+            e = [ei.squeeze(1) for ei in e]
+
         norm_out = torch.nn.functional.layer_norm(x, (x.shape[1],), None, None, 1e-6).type_as(x)
         out = norm_out * (1 + e[1].squeeze(0)) + e[0].squeeze(0)
         x = weights.head.apply(out)

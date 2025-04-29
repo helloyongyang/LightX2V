@@ -78,7 +78,13 @@ class WanTransformerInfer:
         return x
 
     def infer_block(self, weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context):
-        embed0 = (weights.modulation + embed0).chunk(6, dim=1)
+        if embed0.dim() == 3:
+            modulation = weights.modulation.unsqueeze(2)  # 1, 6, 1, dim
+            embed0 = embed0.unsqueeze(0)  #
+            embed0 = (modulation + embed0).chunk(6, dim=1)
+            embed0 = [ei.squeeze(1) for ei in embed0]
+        elif embed0.dim() == 2:
+            embed0 = (weights.modulation + embed0).chunk(6, dim=1)
 
         norm1_out = torch.nn.functional.layer_norm(x, (x.shape[1],), None, None, 1e-6)
         norm1_out = (norm1_out * (1 + embed0[1]) + embed0[0]).squeeze(0)

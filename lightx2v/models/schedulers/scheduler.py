@@ -6,6 +6,7 @@ class BaseScheduler:
         self.config = config
         self.step_index = 0
         self.latents = None
+        self.flag_df = False
 
     def step_pre(self, step_index):
         self.step_index = step_index
