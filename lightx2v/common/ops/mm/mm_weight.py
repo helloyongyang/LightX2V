@@ -64,7 +64,7 @@ class MMWeight(MMWeightTemplate):
         super().__init__(weight_name, bias_name)
 
     def load(self, weight_dict):
-        if GET_RUNNING_FLAG() == "save_naive_quant" or self.config.get("weight_auto_quant", False):
+        if GET_RUNNING_FLAG() == "save_naive_quant" or self.config.get("weight_auto_quant", False) or self.config.get("mm_type", "Default") == "Default":
             self.weight = weight_dict[self.weight_name].t().cuda()
             self.bias = weight_dict[self.bias_name].cuda() if self.bias_name is not None else None
         else:

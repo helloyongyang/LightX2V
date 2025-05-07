@@ -90,7 +90,7 @@ class WanModel:
 
     def _init_weights(self, weight_dict=None):
         if weight_dict is None:
-            if GET_RUNNING_FLAG() == "save_naive_quant" or self.config["mm_config"].get("weight_auto_quant", False):
+            if GET_RUNNING_FLAG() == "save_naive_quant" or self.config["mm_config"].get("weight_auto_quant", False) or self.config["mm_config"].get("mm_type", "Default") == "Default":
                 self.original_weight_dict = self._load_ckpt()
             else:
                 self.original_weight_dict = self._load_ckpt_quant_model()

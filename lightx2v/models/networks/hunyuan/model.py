@@ -73,7 +73,7 @@ class HunyuanModel:
         return weight_dict
 
     def _init_weights(self):
-        if GET_RUNNING_FLAG() == "save_naive_quant" or self.config["mm_config"].get("weight_auto_quant", False):
+        if GET_RUNNING_FLAG() == "save_naive_quant" or self.config["mm_config"].get("weight_auto_quant", False) or self.config["mm_config"].get("mm_type", "Default") == "Default":
             weight_dict = self._load_ckpt()
         else:
             weight_dict = self._load_ckpt_quant_model()
