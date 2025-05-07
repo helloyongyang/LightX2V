@@ -48,3 +48,11 @@ class Conv2dWeight(Conv2dWeightTemplate):
         self.weight = self.weight.cuda(non_blocking=non_blocking)
         if self.bias is not None:
             self.bias = self.bias.cuda(non_blocking=non_blocking)
+
+    def state_dict(self, destination=None):
+        if destination is None:
+            destination = {}
+        destination[self.weight_name] = self.weight.cpu().detach().clone()
+        if self.bias is not None:
+            destination[self.bias_name] = self.bias.cpu().detach().clone()
+        return destination

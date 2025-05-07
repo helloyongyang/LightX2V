@@ -24,15 +24,15 @@ class WeightModule:
             if hasattr(parameter, "load"):
                 parameter.load(weight_dict)
 
-    def state_dict(self, destination=None, prefix=""):
+    def state_dict(self, destination=None):
         if destination is None:
             destination = {}
         for name, param in self._parameters.items():
             if param is not None:
-                destination[prefix + name] = param.detach().cpu().clone()
+                param.state_dict(destination)
         for name, module in self._modules.items():
             if module is not None:
-                module.state_dict(destination, prefix + name + ".")
+                module.state_dict(destination)
         return destination
 
     def named_parameters(self, prefix=""):

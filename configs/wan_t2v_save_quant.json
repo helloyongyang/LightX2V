@@ -11,7 +11,7 @@
     "enable_cfg": true,
     "cpu_offload": false,
     "mm_config": {
-        "mm_type": "W-fp8-channel-sym-A-fp8-channel-sym-dynamic-Sgl",
-        "weight_auto_quant": true
-    }
+        "mm_type": "W-fp8-channel-sym-A-fp8-channel-sym-dynamic-Sgl"
+    },
+    "naive_quant_path": "./wan_t2v_quant_model"
 }
