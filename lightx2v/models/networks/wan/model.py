@@ -12,7 +12,9 @@ from lightx2v.models.networks.wan.infer.post_infer import WanPostInfer
 from lightx2v.models.networks.wan.infer.transformer_infer import (
     WanTransformerInfer,
 )
-from lightx2v.models.networks.wan.infer.feature_caching.transformer_infer import WanTransformerInferTeaCaching
+from lightx2v.models.networks.wan.infer.feature_caching.transformer_infer import (
+    WanTransformerInferTeaCaching,
+)
 from safetensors import safe_open
 import lightx2v.attentions.distributed.ulysses.wrap as ulysses_dist_wrap
 import lightx2v.attentions.distributed.ring.wrap as ring_dist_wrap
@@ -83,9 +85,32 @@ class WanModel:
 
     def _load_ckpt_quant_model(self):
         assert self.config.get("naive_quant_path") is not None, "naive_quant_path is None"
-        logger.info(f"Loading quant model from {self.config.naive_quant_path}")
-        quant_weights_path = os.path.join(self.config.naive_quant_path, "quant_weights.pth")
-        weight_dict = torch.load(quant_weights_path, map_location=self.device, weights_only=True)
+        ckpt_path = self.config.naive_quant_path
+        logger.info(f"Loading quant model from {ckpt_path}")
+
+        quant_pth_file = os.path.join(ckpt_path, "quant_weights.pth")
+
+        if os.path.exists(quant_pth_file):
+            logger.info("Found quant_weights.pth, loading as PyTorch model.")
+            weight_dict = torch.load(quant_pth_file, map_location=self.device, weights_only=True)
+        else:
+            index_files = [f for f in os.listdir(ckpt_path) if f.endswith(".index.json")]
+            if not index_files:
+                raise FileNotFoundError(f"No quant_weights.pth or *.index.json found in {ckpt_path}")
+
+            index_path = os.path.join(ckpt_path, index_files[0])
+            logger.info(f"quant_weights.pth not found. Using safetensors index: {index_path}")
+
+            with open(index_path, "r") as f:
+                index_data = json.load(f)
+
+            weight_dict = {}
+            for filename in set(index_data["weight_map"].values()):
+                safetensor_path = os.path.join(ckpt_path, filename)
+                logger.info(f"Loading weights from {safetensor_path}")
+                partial_weights = load_file(safetensor_path, device=self.device)
+                weight_dict.update(partial_weights)
+
         return weight_dict
 
     def _init_weights(self, weight_dict=None):

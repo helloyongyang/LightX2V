@@ -88,9 +88,9 @@ class DefaultRunner:
     def save_video(self, images):
         if not self.config.parallel_attn_type or (self.config.parallel_attn_type and dist.get_rank() == 0):
             if self.config.model_cls in ["wan2.1", "wan2.1_causvid", "wan2.1_skyreels_v2_df"]:
-                cache_video(tensor=images, save_file=self.config.save_video_path, fps=16, nrow=1, normalize=True, value_range=(-1, 1))
+                cache_video(tensor=images, save_file=self.config.save_video_path, fps=self.config.get("fps", 16), nrow=1, normalize=True, value_range=(-1, 1))
             else:
-                save_videos_grid(images, self.config.save_video_path, fps=24)
+                save_videos_grid(images, self.config.save_video_path, fps=self.config.get("fps", 24))
 
     def run_pipeline(self):
         if self.has_prompt_enhancer and self.config["use_prompt_enhancer"]:
