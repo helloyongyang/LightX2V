@@ -1,4 +1,5 @@
 import argparse
+import torch
 from loguru import logger
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from lightx2v.utils.profiler import ProfilingContext4Debug, ProfilingContext
@@ -38,6 +39,7 @@ class PromptEnhancer:
         self.model = self.model.to(device)
 
     @ProfilingContext("Run prompt enhancer")
+    @torch.no_grad()
     def __call__(self, prompt):
         prompt = prompt.strip()
         prompt = sys_prompt.format(prompt)
@@ -46,11 +48,20 @@ class PromptEnhancer:
         model_inputs = self.tokenizer([text], return_tensors="pt").to(self.model.device)
         generated_ids = self.model.generate(
             **model_inputs,
-            max_new_tokens=2048,
+            max_new_tokens=8192,
         )
-        generated_ids = [output_ids[len(input_ids) :] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)]
-        rewritten_prompt = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
-        logger.info(f"Enhanced prompt: {rewritten_prompt}")
+        output_ids = generated_ids[0][len(model_inputs.input_ids[0]) :].tolist()
+
+        think_id = self.tokenizer.encode("</think>")
+        if len(think_id) == 1:
+            index = len(output_ids) - output_ids[::-1].index(think_id[0])
+        else:
+            index = 0
+
+        thinking_content = self.tokenizer.decode(output_ids[:index], skip_special_tokens=True).strip("\n")
+        logger.info(f"[Enhanced] thinking content: {thinking_content}")
+        rewritten_prompt = self.tokenizer.decode(output_ids[index:], skip_special_tokens=True).strip("\n")
+        logger.info(f"[Enhanced] rewritten prompt: {rewritten_prompt}")
         return rewritten_prompt
 
 

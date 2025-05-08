@@ -19,6 +19,7 @@ def get_default_config():
         "lora_path": None,
         "strength_model": 1.0,
         "mm_config": {},
+        "use_prompt_enhancer": False,
     }
     return default_config
 

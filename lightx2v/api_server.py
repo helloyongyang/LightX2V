@@ -68,8 +68,8 @@ async def v1_local_video_generate(message: Message):
     logger.info(f"message: {message}")
     await asyncio.to_thread(runner.run_pipeline)
     response = {"response": "finished", "save_video_path": message.save_video_path}
-    if runner.has_prompt_enhancer and message.use_prompt_enhancer:
-        response["enhanced_prompt"] = runner.config["prompt"]
+    if message.use_prompt_enhancer:
+        response["prompt_enhanced"] = runner.config["prompt_enhanced"]
     return response
 
 
@@ -80,11 +80,12 @@ async def v1_local_video_generate(message: Message):
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model_cls", type=str, required=True, choices=["wan2.1", "hunyuan", "wan2.1_causvid"], default="hunyuan")
+    parser.add_argument("--model_cls", type=str, required=True, choices=["wan2.1", "hunyuan", "wan2.1_causvid", "wan2.1_skyreels_v2_df"], default="hunyuan")
     parser.add_argument("--task", type=str, choices=["t2v", "i2v"], default="t2v")
     parser.add_argument("--model_path", type=str, required=True)
     parser.add_argument("--config_json", type=str, required=True)
     parser.add_argument("--prompt_enhancer", default=None)
+
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
     logger.info(f"args: {args}")
