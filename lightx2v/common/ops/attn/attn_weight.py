@@ -58,6 +58,11 @@ class AttnWeightTemplate(metaclass=ABCMeta):
     def to_cuda(self, non_blocking=False):
         self.weight = self.weight.cuda(non_blocking=non_blocking)
 
+    def state_dict(self, destination=None):
+        if destination is None:
+            destination = {}
+        return destination
+
 
 @ATTN_WEIGHT_REGISTER("flash_attn2")
 class FlashAttn2Weight(AttnWeightTemplate):

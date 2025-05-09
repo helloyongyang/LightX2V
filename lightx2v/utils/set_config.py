@@ -20,6 +20,7 @@ def get_default_config():
         "strength_model": 1.0,
         "mm_config": {},
         "use_prompt_enhancer": False,
+        "sparge": False,
     }
     return default_config
 
