@@ -138,7 +138,7 @@ async def v1_local_video_generate(message: Message):
         task_id = ServiceStatus.start_task(message)
         # Use background threads to perform long-running tasks
         threading.Thread(target=local_video_generate, args=(message,), daemon=True).start()
-        return {"task_id": task_id, "task_status": "processing"}
+        return {"task_id": task_id, "task_status": "processing", "save_video_path": message.save_video_path}
     except RuntimeError as e:
         return {"error": str(e)}
 
