@@ -12,5 +12,5 @@
     "mm_config": {
         "mm_type": "W-fp8-channel-sym-A-fp8-channel-sym-dynamic-Sgl"
     },
-    "naive_quant_path": "./wan_i2v_quant_model"
+    "quant_model_path": "./wan_i2v_quant_model"
 }

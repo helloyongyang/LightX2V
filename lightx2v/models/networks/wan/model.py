@@ -35,8 +35,8 @@ class WanModel:
         self._init_infer_class()
         self._init_weights()
         if GET_RUNNING_FLAG() == "save_naive_quant":
-            assert self.config.get("naive_quant_path") is not None, "naive_quant_path is None"
-            self.save_weights(self.config.naive_quant_path)
+            assert self.config.get("quant_model_path") is not None, "quant_model_path is None"
+            self.save_weights(self.config.quant_model_path)
             sys.exit(0)
 
         self._init_infer()
@@ -85,8 +85,8 @@ class WanModel:
         return weight_dict
 
     def _load_quant_ckpt(self):
-        assert self.config.get("naive_quant_path") is not None, "naive_quant_path is None"
-        ckpt_path = self.config.naive_quant_path
+        assert self.config.get("quant_model_path") is not None, "quant_model_path is None"
+        ckpt_path = self.config.quant_model_path
         logger.info(f"Loading quant model from {ckpt_path}")
 
         quant_pth_file = os.path.join(ckpt_path, "quant_weights.pth")

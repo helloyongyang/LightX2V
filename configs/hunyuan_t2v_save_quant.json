@@ -8,5 +8,5 @@
     "mm_config": {
         "mm_type": "W-int8-channel-sym-A-int8-channel-sym-dynamic-Vllm"
     },
-    "naive_quant_path": "./hy_t2v_quant_model"
+    "quant_model_path": "./hy_t2v_quant_model"
 }
