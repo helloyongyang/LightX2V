@@ -113,7 +113,7 @@ class WanRunner(DefaultRunner):
                 torch.concat(
                     [
                         torch.nn.functional.interpolate(img[None].cpu(), size=(h, w), mode="bicubic").transpose(0, 1),
-                        torch.zeros(3, 80, h, w),
+                        torch.zeros(3, config.target_video_length - 1, h, w),
                     ],
                     dim=1,
                 ).cuda()
