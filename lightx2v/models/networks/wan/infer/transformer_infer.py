@@ -50,6 +50,7 @@ class WanTransformerInfer:
                 x = self.infer_block(
                     self.weights_stream_mgr.active_weights[0],
                     grid_sizes,
+                    embed,
                     x,
                     embed0,
                     seq_lens,
@@ -119,6 +120,7 @@ class WanTransformerInfer:
             x = self.infer_block(
                 weights.blocks[block_idx],
                 grid_sizes,
+                embed,
                 x,
                 embed0,
                 seq_lens,
