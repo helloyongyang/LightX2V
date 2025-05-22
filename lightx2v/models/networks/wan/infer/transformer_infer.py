@@ -37,10 +37,10 @@ class WanTransformerInfer:
         return cu_seqlens_q, cu_seqlens_k
 
     @torch.compile(disable=not CHECK_ENABLE_GRAPH_MODE())
-    def infer(self, weights, grid_sizes, x, embed0, seq_lens, freqs, context):
-        return self.infer_func(weights, grid_sizes, x, embed0, seq_lens, freqs, context)
+    def infer(self, weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context):
+        return self.infer_func(weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context)
 
-    def _infer_with_offload(self, weights, grid_sizes, x, embed0, seq_lens, freqs, context):
+    def _infer_with_offload(self, weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context):
         for block_idx in range(self.blocks_num):
             if block_idx == 0:
                 self.weights_stream_mgr.active_weights[0] = weights.blocks[0]
@@ -63,7 +63,7 @@ class WanTransformerInfer:
 
         return x
 
-    def _infer_with_phases_offload(self, weights, grid_sizes, x, embed0, seq_lens, freqs, context):
+    def _infer_with_phases_offload(self, weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context):
         for block_idx in range(weights.blocks_num):
             weights.blocks[block_idx].modulation.to_cuda()
 
@@ -114,7 +114,7 @@ class WanTransformerInfer:
 
         return x
 
-    def _infer_without_offload(self, weights, grid_sizes, x, embed0, seq_lens, freqs, context):
+    def _infer_without_offload(self, weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context):
         for block_idx in range(self.blocks_num):
             x = self.infer_block(
                 weights.blocks[block_idx],
@@ -249,7 +249,7 @@ class WanTransformerInfer:
         x.add_(y * c_gate_msa.squeeze(0))
         return x
 
-    def infer_block(self, weights, grid_sizes, x, embed0, seq_lens, freqs, context):
+    def infer_block(self, weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context):
         if embed0.dim() == 3:
             modulation = weights.modulation.tensor.unsqueeze(2)
             embed0 = (modulation + embed0).chunk(6, dim=1)
