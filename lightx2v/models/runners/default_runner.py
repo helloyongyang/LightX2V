@@ -1,6 +1,8 @@
 import asyncio
 import gc
 import aiohttp
+import requests
+from requests.exceptions import RequestException
 import torch
 import torch.distributed as dist
 import torchvision.transforms.functional as TF
@@ -16,28 +18,65 @@ from loguru import logger
 class DefaultRunner:
     def __init__(self, config):
         self.config = config
-        # TODO: implement prompt enhancer
         self.has_prompt_enhancer = False
-        # if self.config.prompt_enhancer is not None and self.config.task == "t2v":
-        #     self.config["use_prompt_enhancer"] = True
-        #     self.has_prompt_enhancer = True
+        if self.config["task"] == "t2v" and self.config.get("sub_servers", {}).get("prompt_enhancer") is not None:
+            self.has_prompt_enhancer = True
+            if not self.check_sub_servers("prompt_enhancer"):
+                self.has_prompt_enhancer = False
+                logger.warning("No prompt enhancer server available, disable prompt enhancer.")
+
         if self.config["mode"] == "split_server":
             self.model = self.load_transformer()
             self.text_encoders, self.vae_model, self.image_encoder = None, None, None
             self.tensor_transporter = TensorTransporter()
             self.image_transporter = ImageTransporter()
+            if not self.check_sub_servers("text_encoders"):
+                raise ValueError("No text encoder server available")
+            if "wan2.1" in self.config["model_cls"] and not self.check_sub_servers("image_encoder"):
+                raise ValueError("No image encoder server available")
+            if not self.check_sub_servers("vae_model"):
+                raise ValueError("No vae model server available")
         else:
             self.model, self.text_encoders, self.vae_model, self.image_encoder = self.load_model()
 
+    def check_sub_servers(self, task_type):
+        urls = self.config.get("sub_servers", {}).get(task_type, [])
+        available_servers = []
+        for url in urls:
+            try:
+                status_url = f"{url}/v1/local/{task_type}/generate/service_status"
+                response = requests.get(status_url, timeout=2)
+                if response.status_code == 200:
+                    available_servers.append(url)
+                else:
+                    logger.warning(f"Service {url} returned status code {response.status_code}")
+
+            except RequestException as e:
+                logger.warning(f"Failed to connect to {url}: {str(e)}")
+                continue
+        logger.info(f"{task_type} available servers: {available_servers}")
+        self.config["sub_servers"][task_type] = available_servers
+        return len(available_servers) > 0
+
     def set_inputs(self, inputs):
         self.config["prompt"] = inputs.get("prompt", "")
-        if self.has_prompt_enhancer and self.config["mode"] != "infer":
+        if self.has_prompt_enhancer:
             self.config["use_prompt_enhancer"] = inputs.get("use_prompt_enhancer", False)  # Reset use_prompt_enhancer from clinet side.
         self.config["negative_prompt"] = inputs.get("negative_prompt", "")
         self.config["image_path"] = inputs.get("image_path", "")
         self.config["save_video_path"] = inputs.get("save_video_path", "")
 
-    async def post_encoders(self, prompt, img=None, i2v=False):
+    def post_prompt_enhancer(self):
+        while True:
+            for url in self.config["sub_servers"]["prompt_enhancer"]:
+                response = requests.get(f"{url}/v1/local/prompt_enhancer/generate/service_status").json()
+                if response["service_status"] == "idle":
+                    response = requests.post(f"{url}/v1/local/prompt_enhancer/generate", json={"task_id": generate_task_id(), "prompt": self.config["prompt"]})
+                    self.config["prompt_enhanced"] = response.json()["output"]
+                    logger.info(f"Enhanced prompt: {self.config['prompt_enhanced']}")
+                    return
+
+    async def post_encoders(self, prompt, img=None, n_prompt=None, i2v=False):
         tasks = []
         img_byte = self.image_transporter.prepare_image(img) if img is not None else None
         if i2v:
@@ -54,11 +93,16 @@ class DefaultRunner:
             )
         tasks.append(
             asyncio.create_task(
-                self.post_task(task_type="text_encoder", urls=self.config["sub_servers"]["text_encoders"], message={"task_id": generate_task_id(), "text": prompt, "img": img_byte}, device="cuda")
+                self.post_task(
+                    task_type="text_encoders",
+                    urls=self.config["sub_servers"]["text_encoders"],
+                    message={"task_id": generate_task_id(), "text": prompt, "img": img_byte, "n_prompt": n_prompt},
+                    device="cuda",
+                )
             )
         )
         results = await asyncio.gather(*tasks)
-        # clip_encoder, vae_encoder, text_encoder
+        # clip_encoder, vae_encoder, text_encoders
         if not i2v:
             return None, None, results[0]
         if "wan2.1" in self.config["model_cls"]:
@@ -69,11 +113,12 @@ class DefaultRunner:
     async def run_input_encoder(self):
         image_encoder_output = None
         prompt = self.config["prompt_enhanced"] if self.config["use_prompt_enhancer"] else self.config["prompt"]
+        n_prompt = self.config.get("negative_prompt", "")
         i2v = self.config["task"] == "i2v"
         img = Image.open(self.config["image_path"]).convert("RGB") if i2v else None
         with ProfilingContext("Run Encoders"):
             if self.config["mode"] == "split_server":
-                clip_encoder_out, vae_encode_out, text_encoder_output = await self.post_encoders(prompt, img, i2v)
+                clip_encoder_out, vae_encode_out, text_encoder_output = await self.post_encoders(prompt, img, n_prompt, i2v)
                 if i2v:
                     if self.config["model_cls"] in ["hunyuan"]:
                         image_encoder_output = {"img": img, "img_latents": vae_encode_out}
@@ -157,7 +202,7 @@ class DefaultRunner:
 
     async def run_pipeline(self):
         if self.config["use_prompt_enhancer"]:
-            self.config["prompt_enhanced"] = self.prompt_enhancer(self.config["prompt"])
+            self.config["prompt_enhanced"] = self.post_prompt_enhancer()
         self.init_scheduler()
         await self.run_input_encoder()
         self.model.scheduler.prepare(self.inputs["image_encoder_output"])
