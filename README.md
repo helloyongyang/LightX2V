@@ -7,6 +7,9 @@
 </div>
 
 --------------------------------------------------------------------------------
+![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/ModelTC/lightx2v)
+
 
 ## Supported Model List
 
