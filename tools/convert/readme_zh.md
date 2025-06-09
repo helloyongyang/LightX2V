@@ -46,7 +46,7 @@ python converter.py \
     --output /Path/To/output \
     --output_ext .pth\
     --output_name wan_fp8 \
-    --dtype torch.float8_e4m3_fn \
+    --dtype torch.float8_e4m3fn \
     --model_type wan_dit
 ```
 
@@ -70,7 +70,7 @@ python converter.py \
     --output /Path/To/output \
     --output_ext .pth\
     --output_name hunyuan_fp8 \
-    --dtype torch.float8_e4m3_fn \
+    --dtype torch.float8_e4m3fn \
     --model_type hunyuan_dit
 ```
 
