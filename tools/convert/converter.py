@@ -579,7 +579,7 @@ def main():
     model_type_keys_map = {
         "wan_dit": {
             "key_idx": 2,
-            "target_keys": ["self_attn", "cross_attnffn"],
+            "target_keys": ["self_attn", "cross_attn", "ffn"],
             "ignore_key": None,
         },
         "hunyuan_dit": {
