@@ -120,12 +120,12 @@ class MMWeightQuantTemplate(MMWeightTemplate):
             self.weight = self.lazy_load_file.get_tensor(self.weight_name).pin_memory()
             self.weight_scale = self.lazy_load_file.get_tensor(self.weight_scale_name).float().pin_memory()
             if self.bias_name is not None:
-                self.bias = self.lazy_load_file.get_tensor(self.bias_name).pin_memory()
+                self.bias = self.lazy_load_file.get_tensor(self.bias_name).to(torch.bfloat16).pin_memory()
         else:
             self.weight = self.lazy_load_file.get_tensor(self.weight_name)
             self.weight_scale = self.lazy_load_file.get_tensor(self.weight_scale_name).float()
             if self.bias_name is not None:
-                self.bias = self.lazy_load_file.get_tensor(self.bias_name)
+                self.bias = self.lazy_load_file.get_tensor(self.bias_name).to(torch.bfloat16)
 
         if self.weight_need_transpose:
             self.weight = self.weight.t()

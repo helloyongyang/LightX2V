@@ -244,4 +244,4 @@ class MemoryBuffer:
         with self.lock:
             if not self.cache:
                 return -1
-            return max((key[0] + 1) % 40 for key in self.cache.keys())
+            return (list(self.cache.keys())[-1][0] + 1) % 40

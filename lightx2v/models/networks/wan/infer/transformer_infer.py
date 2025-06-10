@@ -59,7 +59,6 @@ class WanTransformerInfer:
     def infer(self, weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context):
         return self.infer_func(weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context)
 
-    # bug
     def _infer_with_offload(self, weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context):
         for block_idx in range(self.blocks_num):
             if block_idx == 0:
@@ -138,8 +137,6 @@ class WanTransformerInfer:
 
     def _infer_with_phases_lazy_offload(self, weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context):
         self.weights_stream_mgr.prefetch_weights_from_disk(weights)
-
-        self.weights_stream_mgr._async_prefetch_block(weights)
 
         for block_idx in range(weights.blocks_num):
             with torch.cuda.stream(self.weights_stream_mgr.compute_stream):
