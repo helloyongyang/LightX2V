@@ -26,6 +26,7 @@ class DefaultRunner:
                 logger.warning("No prompt enhancer server available, disable prompt enhancer.")
 
     def init_modules(self):
+        logger.info("Initializing runner modules...")
         self.set_init_device()
         if self.config["mode"] == "split_server":
             self.tensor_transporter = TensorTransporter()
@@ -164,6 +165,7 @@ class DefaultRunner:
             self.vae_decoder = self.load_vae_decoder()
         images = self.vae_decoder.decode(latents, generator=generator, config=self.config)
         if self.config.get("lazy_load", False):
+            del self.vae_decoder
             torch.cuda.empty_cache()
             gc.collect()
         return images
