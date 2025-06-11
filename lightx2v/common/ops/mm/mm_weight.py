@@ -1,12 +1,19 @@
 import torch
 from abc import ABCMeta, abstractmethod
-from vllm import _custom_ops as ops
-
-import sgl_kernel
 from lightx2v.utils.registry_factory import MM_WEIGHT_REGISTER
 from lightx2v.utils.quant_utils import IntegerQuantizer, FloatQuantizer
 from lightx2v.utils.envs import *
 from loguru import logger
+
+try:
+    from vllm import _custom_ops as ops
+except ImportError:
+    ops = None
+
+try:
+    import sgl_kernel
+except ImportError:
+    sgl_kernel = None
 
 try:
     import q8_kernels.functional as Q8F

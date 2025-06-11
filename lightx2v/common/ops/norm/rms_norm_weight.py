@@ -1,7 +1,11 @@
 import torch
 from abc import ABCMeta, abstractmethod
 from lightx2v.utils.registry_factory import RMS_WEIGHT_REGISTER
-import sgl_kernel
+
+try:
+    import sgl_kernel
+except ImportError:
+    sgl_kernel = None
 
 
 class RMSWeightTemplate(metaclass=ABCMeta):
@@ -83,8 +87,13 @@ class RMSWeightSgl(RMSWeight):
         super().__init__(weight_name, lazy_load, lazy_load_file, eps)
 
     def apply(self, input_tensor):
-        input_tensor = input_tensor.contiguous()
-        orig_shape = input_tensor.shape
-        input_tensor = input_tensor.view(-1, orig_shape[-1])
-        input_tensor = sgl_kernel.rmsnorm(input_tensor, self.weight, self.eps).view(orig_shape)
+        if sgl_kernel is None:
+            # sgl_kernel is not available, fallback to default implementation
+            input_tensor = input_tensor * torch.rsqrt(input_tensor.pow(2).mean(-1, keepdim=True) + self.eps)
+            input_tensor = input_tensor * self.weight
+        else:
+            input_tensor = input_tensor.contiguous()
+            orig_shape = input_tensor.shape
+            input_tensor = input_tensor.view(-1, orig_shape[-1])
+            input_tensor = sgl_kernel.rmsnorm(input_tensor, self.weight, self.eps).view(orig_shape)
         return input_tensor
