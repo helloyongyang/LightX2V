@@ -526,7 +526,7 @@ def copy_non_weight_files(source_dir, target_dir):
 
     logger.info(f"Start copying non-weighted files and subdirectories...")
 
-    for item in tqdm(os.listdir(source_dir), desc="复制非权重文件"):
+    for item in tqdm(os.listdir(source_dir), desc="copy non-weighted file"):
         source_item = os.path.join(source_dir, item)
         target_item = os.path.join(target_dir, item)
 
@@ -536,9 +536,9 @@ def copy_non_weight_files(source_dir, target_dir):
                 copy_non_weight_files(source_item, target_item)
             elif os.path.isfile(source_item) and not any(source_item.endswith(ext) for ext in ignore_extensions):
                 shutil.copy2(source_item, target_item)
-                logger.debug(f"复制文件: {source_item} -> {target_item}")
+                logger.debug(f"copy file: {source_item} -> {target_item}")
         except Exception as e:
-            logger.error(f"复制 {source_item} 时出错: {str(e)}")
+            logger.error(f"copy {source_item} : {str(e)}")
 
     logger.info(f"Non-weight files and subdirectories copied")
 
