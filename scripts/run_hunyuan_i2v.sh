@@ -24,7 +24,7 @@ fi
 export TOKENIZERS_PARALLELISM=false
 
 export PYTHONPATH=${lightx2v_path}:$PYTHONPATH
-
+export DTYPE=BF16
 export ENABLE_PROFILING_DEBUG=true
 export ENABLE_GRAPH_MODE=false
 

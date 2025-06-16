@@ -26,6 +26,7 @@ export TOKENIZERS_PARALLELISM=false
 export PYTHONPATH=${lightx2v_path}:$PYTHONPATH
 export ENABLE_PROFILING_DEBUG=true
 export ENABLE_GRAPH_MODE=false
+export DTYPE=BF16
 
 echo "=========================================="
 echo "启动分布式推理API服务器"

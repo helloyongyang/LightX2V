@@ -102,7 +102,12 @@ class WanRunner(DefaultRunner):
         return vae_decoder
 
     def load_vae(self):
-        return self.load_vae_encoder(), self.load_vae_decoder()
+        vae_encoder = self.load_vae_encoder()
+        if vae_encoder is None or self.config.get("tiny_vae", False):
+            vae_decoder = self.load_vae_decoder()
+        else:
+            vae_decoder = vae_encoder
+        return vae_encoder, vae_decoder
 
     def init_scheduler(self):
         if self.config.feature_caching == "NoCaching":

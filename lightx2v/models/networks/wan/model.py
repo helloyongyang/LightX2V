@@ -62,16 +62,11 @@ class WanModel:
         else:
             raise NotImplementedError(f"Unsupported feature_caching type: {self.config['feature_caching']}")
 
-    def _load_safetensor_to_dict(self, file_path):
-        use_bfloat16 = self.config.get("use_bfloat16", True)
+    def _load_safetensor_to_dict(self, file_path, use_bf16, skip_bf16):
         with safe_open(file_path, framework="pt") as f:
-            if use_bfloat16:
-                tensor_dict = {key: f.get_tensor(key).pin_memory().to(torch.bfloat16).to(self.device) for key in f.keys()}
-            else:
-                tensor_dict = {key: f.get_tensor(key).pin_memory().to(self.device) for key in f.keys()}
-        return tensor_dict
+            return {key: (f.get_tensor(key).to(torch.bfloat16) if use_bf16 or all(s not in key for s in skip_bf16) else f.get_tensor(key)).pin_memory().to(self.device) for key in f.keys()}
 
-    def _load_ckpt(self):
+    def _load_ckpt(self, use_bf16, skip_bf16):
         safetensors_pattern = os.path.join(self.model_path, "*.safetensors")
         safetensors_files = glob.glob(safetensors_pattern)
 
@@ -79,51 +74,55 @@ class WanModel:
             raise FileNotFoundError(f"No .safetensors files found in directory: {self.model_path}")
         weight_dict = {}
         for file_path in safetensors_files:
-            file_weights = self._load_safetensor_to_dict(file_path)
+            file_weights = self._load_safetensor_to_dict(file_path, use_bf16, skip_bf16)
             weight_dict.update(file_weights)
         return weight_dict
 
-    def _load_quant_ckpt(self):
+    def _load_quant_ckpt(self, use_bf16, skip_bf16):
         ckpt_path = self.config.dit_quantized_ckpt
         logger.info(f"Loading quant dit model from {ckpt_path}")
 
-        if ckpt_path.endswith(".pth"):
-            logger.info(f"Loading {ckpt_path} as PyTorch model.")
-            weight_dict = torch.load(ckpt_path, map_location=self.device, weights_only=True)
-        else:
-            index_files = [f for f in os.listdir(ckpt_path) if f.endswith(".index.json")]
-            if not index_files:
-                raise FileNotFoundError(f"No .pth file or *.index.json found in {ckpt_path}")
+        index_files = [f for f in os.listdir(ckpt_path) if f.endswith(".index.json")]
+        if not index_files:
+            raise FileNotFoundError(f"No *.index.json found in {ckpt_path}")
 
-            index_path = os.path.join(ckpt_path, index_files[0])
-            logger.info(f" Using safetensors index: {index_path}")
+        index_path = os.path.join(ckpt_path, index_files[0])
+        logger.info(f" Using safetensors index: {index_path}")
 
-            with open(index_path, "r") as f:
-                index_data = json.load(f)
+        with open(index_path, "r") as f:
+            index_data = json.load(f)
 
-            weight_dict = {}
-            for filename in set(index_data["weight_map"].values()):
-                safetensor_path = os.path.join(ckpt_path, filename)
-                with safe_open(safetensor_path, framework="pt", device=str(self.device)) as f:
-                    logger.info(f"Loading weights from {safetensor_path}")
-                    for k in f.keys():
-                        weight_dict[k] = f.get_tensor(k).pin_memory()
-                        if weight_dict[k].dtype == torch.float:
-                            weight_dict[k] = weight_dict[k].pin_memory().to(torch.bfloat16)
+        weight_dict = {}
+        for filename in set(index_data["weight_map"].values()):
+            safetensor_path = os.path.join(ckpt_path, filename)
+            with safe_open(safetensor_path, framework="pt") as f:
+                logger.info(f"Loading weights from {safetensor_path}")
+                for k in f.keys():
+                    if f.get_tensor(k).dtype == torch.float:
+                        if use_bf16 or all(s not in k for s in skip_bf16):
+                            weight_dict[k] = f.get_tensor(k).pin_memory().to(torch.bfloat16).to(self.device)
+                        else:
+                            weight_dict[k] = f.get_tensor(k).pin_memory().to(self.device)
+                    else:
+                        weight_dict[k] = f.get_tensor(k).pin_memory().to(self.device)
 
         return weight_dict
 
-    def _load_quant_split_ckpt(self):
+    def _load_quant_split_ckpt(self, use_bf16, skip_bf16):
         lazy_load_model_path = self.config.dit_quantized_ckpt
         logger.info(f"Loading splited quant model from {lazy_load_model_path}")
         pre_post_weight_dict, transformer_weight_dict = {}, {}
 
         safetensor_path = os.path.join(lazy_load_model_path, "non_block.safetensors")
-        with safe_open(safetensor_path, framework="pt", device=str(self.device)) as f:
+        with safe_open(safetensor_path, framework="pt", device="cpu") as f:
             for k in f.keys():
-                pre_post_weight_dict[k] = f.get_tensor(k).pin_memory()
-                if pre_post_weight_dict[k].dtype == torch.float:
-                    pre_post_weight_dict[k] = pre_post_weight_dict[k].pin_memory().to(torch.bfloat16)
+                if f.get_tensor(k).dtype == torch.float:
+                    if use_bf16 or all(s not in k for s in skip_bf16):
+                        pre_post_weight_dict[k] = f.get_tensor(k).pin_memory().to(torch.bfloat16).to(self.device)
+                    else:
+                        pre_post_weight_dict[k] = f.get_tensor(k).pin_memory().to(self.device)
+                else:
+                    pre_post_weight_dict[k] = f.get_tensor(k).pin_memory().to(self.device)
 
         safetensors_pattern = os.path.join(lazy_load_model_path, "block_*.safetensors")
         safetensors_files = glob.glob(safetensors_pattern)
@@ -134,27 +133,32 @@ class WanModel:
             with safe_open(file_path, framework="pt") as f:
                 for k in f.keys():
                     if "modulation" in k:
-                        transformer_weight_dict[k] = f.get_tensor(k).pin_memory()
-                        if transformer_weight_dict[k].dtype == torch.float:
-                            transformer_weight_dict[k] = transformer_weight_dict[k].pin_memory().to(torch.bfloat16)
+                        if f.get_tensor(k).dtype == torch.float:
+                            if use_bf16 or all(s not in k for s in skip_bf16):
+                                transformer_weight_dict[k] = f.get_tensor(k).pin_memory().to(torch.bfloat16).to(self.device)
+                            else:
+                                transformer_weight_dict[k] = f.get_tensor(k).pin_memory().to(self.device)
 
         return pre_post_weight_dict, transformer_weight_dict
 
     def _init_weights(self, weight_dict=None):
+        use_bf16 = GET_DTYPE() == "BF16"
+
+        # Some layers run with float32 to achieve high accuracy
+        skip_bf16 = {"norm", "embedding", "modulation", "time"}
         if weight_dict is None:
             if not self.dit_quantized or self.weight_auto_quant:
-                self.original_weight_dict = self._load_ckpt()
+                self.original_weight_dict = self._load_ckpt(use_bf16, skip_bf16)
             else:
                 if not self.config.get("lazy_load", False):
-                    self.original_weight_dict = self._load_quant_ckpt()
+                    self.original_weight_dict = self._load_quant_ckpt(use_bf16, skip_bf16)
                 else:
                     (
                         self.original_weight_dict,
                         self.transformer_weight_dict,
-                    ) = self._load_quant_split_ckpt()
+                    ) = self._load_quant_split_ckpt(use_bf16, skip_bf16)
         else:
             self.original_weight_dict = weight_dict
-
         # init weights
         self.pre_weight = self.pre_weight_class(self.config)
         self.post_weight = self.post_weight_class(self.config)

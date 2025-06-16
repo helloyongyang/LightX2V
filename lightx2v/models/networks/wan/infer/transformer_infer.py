@@ -1,6 +1,9 @@
 import torch
 from .utils import compute_freqs, compute_freqs_dist, apply_rotary_emb
-from lightx2v.common.offload.manager import WeightAsyncStreamManager, LazyWeightAsyncStreamManager
+from lightx2v.common.offload.manager import (
+    WeightAsyncStreamManager,
+    LazyWeightAsyncStreamManager,
+)
 from lightx2v.utils.envs import *
 
 
@@ -90,6 +93,7 @@ class WanTransformerInfer:
 
             if embed0.dim() == 3:
                 modulation = weights.blocks[block_idx].modulation.tensor.unsqueeze(2)
+
                 current_embed0 = (modulation + embed0).chunk(6, dim=1)
                 shift_msa, scale_msa, gate_msa, c_shift_msa, c_scale_msa, c_gate_msa = [ei.squeeze(1) for ei in current_embed0]
             elif embed0.dim() == 2:
@@ -217,10 +221,18 @@ class WanTransformerInfer:
             norm1_weight = 1 + scale_msa
             norm1_bias = shift_msa
 
-        norm1_out = torch.nn.functional.layer_norm(x, (x.shape[1],), None, None, 1e-6)
+        norm1_out = weights.norm1.apply(x)
+
+        if GET_DTYPE() != "BF16":
+            norm1_out = norm1_out.float()
+
         norm1_out = (norm1_out * norm1_weight + norm1_bias).squeeze(0)
 
+        if GET_DTYPE() != "BF16":
+            norm1_out = norm1_out.to(torch.bfloat16)
+
         s, n, d = *norm1_out.shape[:1], self.num_heads, self.head_dim
+
         q = weights.self_attn_norm_q.apply(weights.self_attn_q.apply(norm1_out)).view(s, n, d)
         k = weights.self_attn_norm_k.apply(weights.self_attn_k.apply(norm1_out)).view(s, n, d)
         v = weights.self_attn_v.apply(norm1_out).view(s, n, d)
@@ -257,28 +269,35 @@ class WanTransformerInfer:
             )
 
         y = weights.self_attn_o.apply(attn_out)
-        x.add_(y * gate_msa.squeeze(0))
+
+        if GET_DTYPE() != "BF16":
+            x = x.float() + y.float() * gate_msa.squeeze(0)
+        else:
+            x.add_(y * gate_msa.squeeze(0))
         return x
 
     def _infer_cross_attn(self, weights, x, context):
         norm3_out = weights.norm3.apply(x)
-
         if self.task == "i2v":
             context_img = context[:257]
             context = context[257:]
         else:
             context_img = None
 
+        if GET_DTYPE() != "BF16":
+            context = context.to(torch.bfloat16)
+            if self.task == "i2v":
+                context_img = context_img.to(torch.bfloat16)
+
         n, d = self.num_heads, self.head_dim
+
         q = weights.cross_attn_norm_q.apply(weights.cross_attn_q.apply(norm3_out)).view(-1, n, d)
         k = weights.cross_attn_norm_k.apply(weights.cross_attn_k.apply(context)).view(-1, n, d)
         v = weights.cross_attn_v.apply(context).view(-1, n, d)
-
         cu_seqlens_q, cu_seqlens_k = self._calculate_q_k_len(
             q,
             k_lens=torch.tensor([k.size(0)], dtype=torch.int32, device=k.device),
         )
-
         attn_out = weights.cross_attn_1.apply(
             q=q,
             k=k,
@@ -309,7 +328,6 @@ class WanTransformerInfer:
                 max_seqlen_kv=k_img.size(0),
                 model_cls=self.config["model_cls"],
             )
-
             attn_out = attn_out + img_attn_out
 
         attn_out = weights.cross_attn_o.apply(attn_out)
@@ -324,11 +342,21 @@ class WanTransformerInfer:
             norm2_weight = 1 + c_scale_msa.squeeze(0)
             norm2_bias = c_shift_msa.squeeze(0)
 
-        norm2_out = torch.nn.functional.layer_norm(x, (x.shape[1],), None, None, 1e-6)
-        y = weights.ffn_0.apply(norm2_out * norm2_weight + norm2_bias)
+        norm2_out = weights.norm2.apply(x)
+        if GET_DTYPE() != "BF16":
+            norm2_out = norm2_out.float()
+        norm2_out = norm2_out * norm2_weight + norm2_bias
+        if GET_DTYPE() != "BF16":
+            norm2_out = norm2_out.to(torch.bfloat16)
+
+        y = weights.ffn_0.apply(norm2_out)
         y = torch.nn.functional.gelu(y, approximate="tanh")
         y = weights.ffn_2.apply(y)
-        x.add_(y * c_gate_msa.squeeze(0))
+
+        if GET_DTYPE() != "BF16":
+            x = x.float() + y.float() * c_gate_msa.squeeze(0)
+        else:
+            x.add_(y * c_gate_msa.squeeze(0))
         return x
 
     def infer_block(self, weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context):

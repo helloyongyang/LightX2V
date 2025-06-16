@@ -339,7 +339,6 @@ def quantize_model(
     weights,
     w_bit=8,
     target_keys=["attn", "ffn"],
-    min_params=1e6,
     key_idx=2,
     ignore_key=None,
     dtype=torch.int8,
@@ -351,7 +350,6 @@ def quantize_model(
         weights: Model state dictionary
         w_bit: Quantization bit width
         target_keys: List of module names to quantize
-        min_params: Minimum parameter count to process tensor
 
     Returns:
         Modified state dictionary with quantized weights and scales
@@ -371,7 +369,7 @@ def quantize_model(
             tensor = weights[key]
 
             # Skip non-tensors, small tensors, and non-2D tensors
-            if not isinstance(tensor, torch.Tensor) or tensor.numel() < min_params or tensor.dim() != 2:
+            if not isinstance(tensor, torch.Tensor) or tensor.dim() != 2:
                 continue
 
             # Check if key matches target modules
@@ -442,7 +440,6 @@ def convert_weights(args):
             converted_weights,
             w_bit=args.bits,
             target_keys=args.target_keys,
-            min_params=args.min_params,
             key_idx=args.key_idx,
             ignore_key=args.ignore_key,
             dtype=args.dtype,
@@ -522,7 +519,7 @@ def convert_weights(args):
 
 
 def copy_non_weight_files(source_dir, target_dir):
-    ignore_extensions = [".pth", ".pt", ".safetensors"]
+    ignore_extensions = [".pth", ".pt", ".safetensors", ".index.json"]
 
     logger.info(f"Start copying non-weighted files and subdirectories...")
 
@@ -576,12 +573,6 @@ def main():
     parser.add_argument("--quantized", action="store_true")
     parser.add_argument("--bits", type=int, default=8, choices=[8], help="Quantization bit width")
     parser.add_argument(
-        "--min_params",
-        type=int,
-        default=1000000,
-        help="Minimum parameters to consider for quantization",
-    )
-    parser.add_argument(
         "--device",
         type=str,
         default="cpu",
@@ -595,47 +586,48 @@ def main():
     )
     args = parser.parse_args()
 
-    if args.dtype == "torch.int8":
-        args.dtype = torch.int8
-    elif args.dtype == "torch.float8_e4m3fn":
-        args.dtype = torch.float8_e4m3fn
-    else:
-        raise ValueError(f"Not support dtype :{args.dtype}")
+    if args.quantized:
+        if args.dtype == "torch.int8":
+            args.dtype = torch.int8
+        elif args.dtype == "torch.float8_e4m3fn":
+            args.dtype = torch.float8_e4m3fn
+        else:
+            raise ValueError(f"Not support dtype :{args.dtype}")
 
-    model_type_keys_map = {
-        "wan_dit": {
-            "key_idx": 2,
-            "target_keys": ["self_attn", "cross_attn", "ffn"],
-            "ignore_key": None,
-        },
-        "hunyuan_dit": {
-            "key_idx": 2,
-            "target_keys": [
-                "img_mod",
-                "img_attn_qkv",
-                "img_attn_proj",
-                "img_mlp",
-                "txt_mod",
-                "txt_attn_qkv",
-                "txt_attn_proj",
-                "txt_mlp",
-                "linear1",
-                "linear2",
-                "modulation",
-            ],
-            "ignore_key": None,
-        },
-        "wan_t5": {"key_idx": 2, "target_keys": ["attn", "ffn"], "ignore_key": None},
-        "wan_clip": {
-            "key_idx": 3,
-            "target_keys": ["attn", "mlp"],
-            "ignore_key": "textual",
-        },
-    }
+        model_type_keys_map = {
+            "wan_dit": {
+                "key_idx": 2,
+                "target_keys": ["self_attn", "cross_attn", "ffn"],
+                "ignore_key": None,
+            },
+            "hunyuan_dit": {
+                "key_idx": 2,
+                "target_keys": [
+                    "img_mod",
+                    "img_attn_qkv",
+                    "img_attn_proj",
+                    "img_mlp",
+                    "txt_mod",
+                    "txt_attn_qkv",
+                    "txt_attn_proj",
+                    "txt_mlp",
+                    "linear1",
+                    "linear2",
+                    "modulation",
+                ],
+                "ignore_key": None,
+            },
+            "wan_t5": {"key_idx": 2, "target_keys": ["attn", "ffn"], "ignore_key": None},
+            "wan_clip": {
+                "key_idx": 3,
+                "target_keys": ["attn", "mlp"],
+                "ignore_key": "textual",
+            },
+        }
 
-    args.target_keys = model_type_keys_map[args.model_type]["target_keys"]
-    args.key_idx = model_type_keys_map[args.model_type]["key_idx"]
-    args.ignore_key = model_type_keys_map[args.model_type]["ignore_key"]
+        args.target_keys = model_type_keys_map[args.model_type]["target_keys"]
+        args.key_idx = model_type_keys_map[args.model_type]["key_idx"]
+        args.ignore_key = model_type_keys_map[args.model_type]["ignore_key"]
 
     if os.path.isfile(args.output):
         raise ValueError("Output path must be a directory, not a file")

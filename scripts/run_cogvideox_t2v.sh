@@ -27,7 +27,7 @@ export PYTHONPATH=${lightx2v_path}:$PYTHONPATH
 
 export ENABLE_PROFILING_DEBUG=true
 export ENABLE_GRAPH_MODE=false
-
+export DTYPE=BF16
 export PYTHONPATH=/mtc/wushuo/VideoGen/diffusers:$PYTHONPATH
 
 python -m lightx2v.infer \

@@ -142,6 +142,7 @@ class MMWeightQuantTemplate(MMWeightTemplate):
             self.load_func(weight_dict)
             if self.weight_need_transpose:
                 self.weight = self.weight.t()
+                self.pinned_weight = self.pinned_weight.t()
 
     def clear(self):
         attrs = ["weight", "weight_scale", "bias"]

@@ -1,4 +1,5 @@
 import os
+import torch
 from functools import lru_cache
 
 
@@ -17,4 +18,10 @@ def CHECK_ENABLE_GRAPH_MODE():
 @lru_cache(maxsize=None)
 def GET_RUNNING_FLAG():
     RUNNING_FLAG = os.getenv("RUNNING_FLAG", "infer")
+    return RUNNING_FLAG
+
+
+@lru_cache(maxsize=None)
+def GET_DTYPE():
+    RUNNING_FLAG = os.getenv("DTYPE")
     return RUNNING_FLAG
