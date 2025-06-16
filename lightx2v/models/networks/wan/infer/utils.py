@@ -72,10 +72,6 @@ def apply_rotary_emb(x, freqs_i):
     # Apply rotary embedding
     x_i = torch.view_as_real(x_i * freqs_i).flatten(2)
     x_i = torch.cat([x_i, x[seq_len:]])
-    # if GET_DTYPE() == "BF16":
-    #     x_i = x_i.to(torch.bfloat16)
-    # else:
-    #     x_i = x_i.float()
     return x_i.to(torch.bfloat16)
 
 

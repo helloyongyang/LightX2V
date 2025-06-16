@@ -38,9 +38,15 @@ class Conv3dWeight(Conv3dWeightTemplate):
         self.pinned_bias = torch.empty(self.bias.shape, pin_memory=True, dtype=self.bias.dtype) if self.bias_name is not None else None
 
     def apply(self, input_tensor):
-        # if input_tensor.dtype == torch.float:
-        #     input_tensor = input_tensor.to(torch.bfloat16)
-        input_tensor = torch.nn.functional.conv3d(input_tensor, weight=self.weight, bias=self.bias, stride=self.stride, padding=self.padding, dilation=self.dilation, groups=self.groups)
+        input_tensor = torch.nn.functional.conv3d(
+            input_tensor,
+            weight=self.weight,
+            bias=self.bias,
+            stride=self.stride,
+            padding=self.padding,
+            dilation=self.dilation,
+            groups=self.groups,
+        )
         return input_tensor
 
     def to_cpu(self, non_blocking=False):

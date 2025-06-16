@@ -33,7 +33,7 @@ python converter.py \
     --quantized \
     --source /Path/To/Wan-AI/Wan2.1-I2V-14B-480P/ \
     --output /Path/To/output \
-    --output_ext .pth\
+    --output_ext .safetensors \
     --output_name wan_int8 \
     --dtype torch.int8 \
     --model_type wan_dit
@@ -44,7 +44,7 @@ python converter.py \
     --quantized \
     --source /Path/To/Wan-AI/Wan2.1-I2V-14B-480P/ \
     --output /Path/To/output \
-    --output_ext .pth\
+    --output_ext .safetensors \
     --output_name wan_fp8 \
     --dtype torch.float8_e4m3fn \
     --model_type wan_dit
@@ -57,7 +57,7 @@ python converter.py \
     --quantized \
     --source /Path/To/hunyuan/lightx2v_format/i2v/ \
     --output /Path/To/output \
-    --output_ext .pth\
+    --output_ext ..safetensors \
     --output_name hunyuan_int8 \
     --dtype torch.int8 \
     --model_type hunyuan_dit
@@ -68,7 +68,7 @@ python converter.py \
     --quantized \
     --source /Path/To/hunyuan/lightx2v_format/i2v/ \
     --output /Path/To/output \
-    --output_ext .pth\
+    --output_ext .safetensors \
     --output_name hunyuan_fp8 \
     --dtype torch.float8_e4m3fn \
     --model_type hunyuan_dit

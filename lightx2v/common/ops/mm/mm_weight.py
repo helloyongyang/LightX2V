@@ -79,7 +79,6 @@ class MMWeight(MMWeightTemplate):
         self.pinned_bias = torch.empty(self.bias.shape, pin_memory=True, dtype=self.bias.dtype) if self.bias is not None else None
 
     def apply(self, input_tensor):
-        # if input_tensor.dtype != torch.float
         shape = (input_tensor.shape[0], self.weight.shape[1])
         dtype = input_tensor.dtype
         device = input_tensor.device
@@ -143,6 +142,7 @@ class MMWeightQuantTemplate(MMWeightTemplate):
             self.load_func(weight_dict)
             if self.weight_need_transpose:
                 self.weight = self.weight.t()
+                self.pinned_weight = self.pinned_weight.t()
 
     def clear(self):
         attrs = ["weight", "weight_scale", "bias"]
