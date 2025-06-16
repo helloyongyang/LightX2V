@@ -49,9 +49,30 @@ class WanTransformerAttentionBlock(WeightModule):
 
         self.compute_phases = WeightModuleList(
             [
-                WanSelfAttention(block_index, task, mm_type, config, self.lazy_load, self.lazy_load_file),
-                WanCrossAttention(block_index, task, mm_type, config, self.lazy_load, self.lazy_load_file),
-                WanFFN(block_index, task, mm_type, config, self.lazy_load, self.lazy_load_file),
+                WanSelfAttention(
+                    block_index,
+                    task,
+                    mm_type,
+                    config,
+                    self.lazy_load,
+                    self.lazy_load_file,
+                ),
+                WanCrossAttention(
+                    block_index,
+                    task,
+                    mm_type,
+                    config,
+                    self.lazy_load,
+                    self.lazy_load_file,
+                ),
+                WanFFN(
+                    block_index,
+                    task,
+                    mm_type,
+                    config,
+                    self.lazy_load,
+                    self.lazy_load_file,
+                ),
             ]
         )
 
@@ -70,6 +91,11 @@ class WanSelfAttention(WeightModule):
 
         self.lazy_load = lazy_load
         self.lazy_load_file = lazy_load_file
+
+        self.register_parameter(
+            "norm1",
+            LN_WEIGHT_REGISTER["Default"](),
+        )
 
         self.add_module(
             "self_attn_q",
@@ -169,7 +195,6 @@ class WanCrossAttention(WeightModule):
                 f"blocks.{self.block_index}.norm3.bias",
                 self.lazy_load,
                 self.lazy_load_file,
-                eps=1e-6,
             ),
         )
         self.add_module(
@@ -266,6 +291,11 @@ class WanFFN(WeightModule):
         self.quant_method = config["mm_config"].get("quant_method", None)
         self.lazy_load = lazy_load
         self.lazy_load_file = lazy_load_file
+
+        self.register_parameter(
+            "norm2",
+            LN_WEIGHT_REGISTER["Default"](),
+        )
 
         self.add_module(
             "ffn_0",

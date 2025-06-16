@@ -1,6 +1,6 @@
 import torch
-import math
 from .utils import rope_params, sinusoidal_embedding_1d
+from lightx2v.utils.envs import *
 
 
 class WanPreInfer:
@@ -60,7 +60,10 @@ class WanPreInfer:
         x = torch.cat([torch.cat([u, u.new_zeros(1, seq_len - u.size(1), u.size(2))], dim=1) for u in x])
 
         embed = sinusoidal_embedding_1d(self.freq_dim, t.flatten())
-        embed = weights.time_embedding_0.apply(embed)
+        if GET_DTYPE() != "BF16":
+            embed = weights.time_embedding_0.apply(embed.float())
+        else:
+            embed = weights.time_embedding_0.apply(embed)
         embed = torch.nn.functional.silu(embed)
         embed = weights.time_embedding_2.apply(embed)
         embed0 = torch.nn.functional.silu(embed)
@@ -78,7 +81,10 @@ class WanPreInfer:
 
         # text embeddings
         stacked = torch.stack([torch.cat([u, u.new_zeros(self.text_len - u.size(0), u.size(1))]) for u in context])
-        out = weights.text_embedding_0.apply(stacked.squeeze(0))
+        if GET_DTYPE() != "BF16":
+            out = weights.text_embedding_0.apply(stacked.squeeze(0).float())
+        else:
+            out = weights.text_embedding_0.apply(stacked.squeeze(0))
         out = torch.nn.functional.gelu(out, approximate="tanh")
         context = weights.text_embedding_2.apply(out)
 
@@ -88,7 +94,6 @@ class WanPreInfer:
             context_clip = torch.nn.functional.gelu(context_clip, approximate="none")
             context_clip = weights.proj_3.apply(context_clip)
             context_clip = weights.proj_4.apply(context_clip)
-
             context = torch.concat([context_clip, context], dim=0)
 
         return (

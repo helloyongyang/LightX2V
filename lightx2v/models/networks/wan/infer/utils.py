@@ -1,5 +1,6 @@
 import torch
 import torch.distributed as dist
+from lightx2v.utils.envs import *
 
 
 def compute_freqs(c, grid_sizes, freqs):
@@ -70,8 +71,12 @@ def apply_rotary_emb(x, freqs_i):
     x_i = torch.view_as_complex(x[:seq_len].to(torch.float64).reshape(seq_len, n, -1, 2))
     # Apply rotary embedding
     x_i = torch.view_as_real(x_i * freqs_i).flatten(2)
-    x_i = torch.cat([x_i, x[seq_len:]]).to(torch.bfloat16)
-    return x_i
+    x_i = torch.cat([x_i, x[seq_len:]])
+    # if GET_DTYPE() == "BF16":
+    #     x_i = x_i.to(torch.bfloat16)
+    # else:
+    #     x_i = x_i.float()
+    return x_i.to(torch.bfloat16)
 
 
 def rope_params(max_seq_len, dim, theta=10000):
@@ -92,5 +97,7 @@ def sinusoidal_embedding_1d(dim, position):
 
     # calculation
     sinusoid = torch.outer(position, torch.pow(10000, -torch.arange(half).to(position).div(half)))
-    x = torch.cat([torch.cos(sinusoid), torch.sin(sinusoid)], dim=1).to(torch.bfloat16)
+    x = torch.cat([torch.cos(sinusoid), torch.sin(sinusoid)], dim=1)
+    if GET_DTYPE() == "BF16":
+        x = x.to(torch.bfloat16)
     return x

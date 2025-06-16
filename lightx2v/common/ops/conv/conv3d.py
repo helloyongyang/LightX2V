@@ -32,10 +32,14 @@ class Conv3dWeight(Conv3dWeightTemplate):
         super().__init__(weight_name, bias_name, stride, padding, dilation, groups)
 
     def load(self, weight_dict):
-        self.weight = weight_dict[self.weight_name].cuda()
-        self.bias = weight_dict[self.bias_name].cuda() if self.bias_name is not None else None
+        self.weight = weight_dict[self.weight_name]
+        self.bias = weight_dict[self.bias_name] if self.bias_name is not None else None
+        self.pinned_weight = torch.empty(self.weight.shape, pin_memory=True, dtype=self.weight.dtype)
+        self.pinned_bias = torch.empty(self.bias.shape, pin_memory=True, dtype=self.bias.dtype) if self.bias_name is not None else None
 
     def apply(self, input_tensor):
+        # if input_tensor.dtype == torch.float:
+        #     input_tensor = input_tensor.to(torch.bfloat16)
         input_tensor = torch.nn.functional.conv3d(input_tensor, weight=self.weight, bias=self.bias, stride=self.stride, padding=self.padding, dilation=self.dilation, groups=self.groups)
         return input_tensor
 
@@ -56,13 +60,3 @@ class Conv3dWeight(Conv3dWeightTemplate):
         if self.bias is not None:
             destination[self.bias_name] = self.bias.cpu().detach().clone()
         return destination
-
-
-@CONV3D_WEIGHT_REGISTER("Defaultt-Force-BF16")
-class Conv3dWeightForceBF16(Conv3dWeight):
-    def __init__(self, weight_name, bias_name, stride=1, padding=0, dilation=1, groups=1):
-        super().__init__(weight_name, bias_name, stride, padding, dilation, groups)
-
-    def load(self, weight_dict):
-        self.weight = weight_dict[self.weight_name].to(torch.bfloat16).cuda()
-        self.bias = weight_dict[self.bias_name].to(torch.bfloat16).cuda() if self.bias_name is not None else None

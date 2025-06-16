@@ -24,7 +24,7 @@ fi
 export TOKENIZERS_PARALLELISM=false
 
 export PYTHONPATH=${lightx2v_path}:$PYTHONPATH
-
+export DTYPE=BF16
 export ENABLE_PROFILING_DEBUG=true
 
 torchrun --nproc_per_node=4 ${lightx2v_path}/lightx2v/infer.py \

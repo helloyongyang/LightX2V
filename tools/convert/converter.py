@@ -339,7 +339,6 @@ def quantize_model(
     weights,
     w_bit=8,
     target_keys=["attn", "ffn"],
-    min_params=1e6,
     key_idx=2,
     ignore_key=None,
     dtype=torch.int8,
@@ -351,7 +350,6 @@ def quantize_model(
         weights: Model state dictionary
         w_bit: Quantization bit width
         target_keys: List of module names to quantize
-        min_params: Minimum parameter count to process tensor
 
     Returns:
         Modified state dictionary with quantized weights and scales
@@ -371,7 +369,7 @@ def quantize_model(
             tensor = weights[key]
 
             # Skip non-tensors, small tensors, and non-2D tensors
-            if not isinstance(tensor, torch.Tensor) or tensor.numel() < min_params or tensor.dim() != 2:
+            if not isinstance(tensor, torch.Tensor) or tensor.dim() != 2:
                 continue
 
             # Check if key matches target modules
@@ -442,7 +440,6 @@ def convert_weights(args):
             converted_weights,
             w_bit=args.bits,
             target_keys=args.target_keys,
-            min_params=args.min_params,
             key_idx=args.key_idx,
             ignore_key=args.ignore_key,
             dtype=args.dtype,
@@ -575,12 +572,6 @@ def main():
     # Quantization
     parser.add_argument("--quantized", action="store_true")
     parser.add_argument("--bits", type=int, default=8, choices=[8], help="Quantization bit width")
-    parser.add_argument(
-        "--min_params",
-        type=int,
-        default=1000000,
-        help="Minimum parameters to consider for quantization",
-    )
     parser.add_argument(
         "--device",
         type=str,

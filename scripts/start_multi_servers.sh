@@ -31,6 +31,7 @@ export TOKENIZERS_PARALLELISM=false
 export PYTHONPATH=${lightx2v_path}:$PYTHONPATH
 export ENABLE_PROFILING_DEBUG=true
 export ENABLE_GRAPH_MODE=false
+export DTYPE=BF16
 
 # Start multiple servers
 python -m lightx2v.api_multi_servers \

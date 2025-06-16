@@ -1,6 +1,6 @@
 import torch
 from lightx2v.utils.registry_factory import TENSOR_REGISTER
-from safetensors import safe_open
+from lightx2v.utils.envs import *
 
 
 @TENSOR_REGISTER("Default")
@@ -18,7 +18,7 @@ class DefaultTensor:
 
     def load(self, weight_dict):
         if not self.lazy_load:
-            self.tensor = weight_dict[self.tensor_name].to(torch.bfloat16)
+            self.tensor = weight_dict[self.tensor_name]
             self.pinned_tensor = torch.empty(self.tensor.shape, pin_memory=True, dtype=self.tensor.dtype)
 
     def clear(self):

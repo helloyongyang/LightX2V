@@ -3,6 +3,7 @@ import torch
 from safetensors import safe_open
 from loguru import logger
 import gc
+from lightx2v.utils.envs import *
 
 
 class WanLoraWrapper:
@@ -25,7 +26,7 @@ class WanLoraWrapper:
         return lora_name
 
     def _load_lora_file(self, file_path):
-        use_bfloat16 = True  # Default value
+        use_bfloat16 = GET_DTYPE() == "BF16"
         if self.model.config and hasattr(self.model.config, "get"):
             use_bfloat16 = self.model.config.get("use_bfloat16", True)
         with safe_open(file_path, framework="pt") as f:

@@ -1,6 +1,7 @@
 import math
 import torch
 import torch.cuda.amp as amp
+from lightx2v.utils.envs import *
 
 
 class WanPostInfer:
@@ -20,8 +21,14 @@ class WanPostInfer:
             e = (modulation + e.unsqueeze(1)).chunk(2, dim=1)
             e = [ei.squeeze(1) for ei in e]
 
-        norm_out = torch.nn.functional.layer_norm(x, (x.shape[1],), None, None, 1e-6).type_as(x)
+        norm_out = weights.norm.apply(x)
+
+        if GET_DTYPE() != "BF16":
+            norm_out = norm_out.float()
         out = norm_out * (1 + e[1].squeeze(0)) + e[0].squeeze(0)
+        if GET_DTYPE() != "BF16":
+            out = out.to(torch.bfloat16)
+
         x = weights.head.apply(out)
         x = self.unpatchify(x, grid_sizes)
         return [u.float() for u in x]

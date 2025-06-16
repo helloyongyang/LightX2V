@@ -37,6 +37,7 @@ class WanModel:
         self.weight_auto_quant = self.config.mm_config.get("weight_auto_quant", False)
         if self.dit_quantized:
             assert self.weight_auto_quant or self.dit_quantized_ckpt is not None
+            assert GET_DTYPE() == "BF16"
 
         self.device = device
         self._init_infer_class()
@@ -63,13 +64,10 @@ class WanModel:
             raise NotImplementedError(f"Unsupported feature_caching type: {self.config['feature_caching']}")
 
     def _load_safetensor_to_dict(self, file_path):
-        use_bfloat16 = self.config.get("use_bfloat16", True)
         with safe_open(file_path, framework="pt") as f:
-            if use_bfloat16:
-                tensor_dict = {key: f.get_tensor(key).pin_memory().to(torch.bfloat16).to(self.device) for key in f.keys()}
-            else:
-                tensor_dict = {key: f.get_tensor(key).pin_memory().to(self.device) for key in f.keys()}
-        return tensor_dict
+            use_bf16 = GET_DTYPE() == "BF16"
+            skip_bf16 = {"norm", "embedding", "modulation", "time"}
+            return {key: (f.get_tensor(key).to(torch.bfloat16) if use_bf16 or all(s not in key for s in skip_bf16) else f.get_tensor(key)).pin_memory().to(self.device) for key in f.keys()}
 
     def _load_ckpt(self):
         safetensors_pattern = os.path.join(self.model_path, "*.safetensors")
@@ -119,7 +117,7 @@ class WanModel:
         pre_post_weight_dict, transformer_weight_dict = {}, {}
 
         safetensor_path = os.path.join(lazy_load_model_path, "non_block.safetensors")
-        with safe_open(safetensor_path, framework="pt", device=str(self.device)) as f:
+        with safe_open(safetensor_path, framework="pt", device="cpu") as f:
             for k in f.keys():
                 pre_post_weight_dict[k] = f.get_tensor(k).pin_memory()
                 if pre_post_weight_dict[k].dtype == torch.float:
@@ -154,7 +152,6 @@ class WanModel:
                     ) = self._load_quant_split_ckpt()
         else:
             self.original_weight_dict = weight_dict
-
         # init weights
         self.pre_weight = self.pre_weight_class(self.config)
         self.post_weight = self.post_weight_class(self.config)
