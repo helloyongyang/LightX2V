@@ -1,6 +1,7 @@
 import numpy as np
 from ..transformer_infer import WanTransformerInfer
 import torch
+import gc
 
 
 class WanTransformerInferTeaCaching(WanTransformerInfer):
@@ -10,7 +11,6 @@ class WanTransformerInferTeaCaching(WanTransformerInfer):
     def infer(self, weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context):
         modulated_inp = embed0 if self.scheduler.use_ret_steps else embed
 
-        # teacache
         if self.scheduler.cnt % 2 == 0:  # even -> conditon
             self.scheduler.is_even = True
             if self.scheduler.cnt < self.scheduler.ret_steps or self.scheduler.cnt >= self.scheduler.cutoff_steps:
@@ -32,6 +32,7 @@ class WanTransformerInferTeaCaching(WanTransformerInfer):
                 modulated_inp = modulated_inp.cpu()
                 del modulated_inp
                 torch.cuda.empty_cache()
+                gc.collect()
 
         else:  # odd -> unconditon
             self.scheduler.is_even = False
@@ -54,6 +55,7 @@ class WanTransformerInferTeaCaching(WanTransformerInfer):
                 modulated_inp = modulated_inp.cpu()
                 del modulated_inp
                 torch.cuda.empty_cache()
+                gc.collect()
 
         if self.scheduler.is_even:
             if not should_calc_even:
@@ -76,6 +78,7 @@ class WanTransformerInferTeaCaching(WanTransformerInfer):
                     ori_x = ori_x.to("cpu")
                     del ori_x
                     torch.cuda.empty_cache()
+                    gc.collect()
         else:
             if not should_calc_odd:
                 x += self.scheduler.previous_residual_odd.cuda()
@@ -97,4 +100,6 @@ class WanTransformerInferTeaCaching(WanTransformerInfer):
                     ori_x = ori_x.to("cpu")
                     del ori_x
                     torch.cuda.empty_cache()
+                    gc.collect()
+
         return x

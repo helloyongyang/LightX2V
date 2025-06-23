@@ -48,7 +48,7 @@ def run_inference(
 
     if torch_compile:
         os.environ["ENABLE_GRAPH_MODE"] = "true"
-
+    os.environ["DTYPE"] = "BF16"
     config = {
         "infer_steps": infer_steps,
         "target_video_length": num_frames,
@@ -136,8 +136,8 @@ def run_inference(
     asyncio.run(runner.run_pipeline())
 
     del runner
-    gc.collect()
     torch.cuda.empty_cache()
+    gc.collect()
 
     return save_video_path
 
@@ -185,6 +185,7 @@ with gr.Blocks(
                             lines=3,
                             placeholder="Unwanted content...",
                             max_lines=5,
+                            value="镜头晃动，色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走",
                         )
                     with gr.Column():
                         tiny_vae_path = gr.Textbox(
