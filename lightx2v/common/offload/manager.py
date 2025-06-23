@@ -2,6 +2,7 @@ import torch
 import threading
 import queue
 import time
+import gc
 from loguru import logger
 from collections import OrderedDict
 
@@ -182,6 +183,10 @@ class LazyWeightAsyncStreamManager(WeightAsyncStreamManager):
 
         logger.info("All worker threads have been closed")
 
+    def clear(self):
+        self.pin_memory_buffer.clear()
+        self.shutdown()
+
 
 class MemoryBuffer:
     def __init__(self, max_memory_bytes=8 * (1024**3)):
@@ -245,3 +250,14 @@ class MemoryBuffer:
             if not self.cache:
                 return -1
             return (list(self.cache.keys())[-1][0] + 1) % 40
+
+    def clear(self):
+        with self.lock:
+            for key in list(self.cache.keys()):
+                self._remove_key(key)
+
+            self.insertion_order = []
+            self.insertion_index = 0
+            self.used_mem = 0
+            torch.cuda.empty_cache()
+            gc.collect()

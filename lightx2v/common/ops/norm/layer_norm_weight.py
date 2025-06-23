@@ -94,7 +94,7 @@ class LNWeight(LNWeightTemplate):
             self.bias = None
 
     def apply(self, input_tensor):
-        if self.weight is not None and self.weight.dtype == torch.bfloat16:
+        if self.weight is None or self.weight.dtype == torch.bfloat16:
             input_tensor = torch.nn.functional.layer_norm(input_tensor, (input_tensor.shape[-1],), self.weight, self.bias, self.eps)
         else:
             input_tensor = torch.nn.functional.layer_norm(

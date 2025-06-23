@@ -129,6 +129,7 @@ class DefaultRunner:
         self.model.scheduler.clear()
         del self.inputs, self.model.scheduler
         if self.config.get("lazy_load", False):
+            self.model.transformer_infer.weights_stream_mgr.clear()
             del self.model
         torch.cuda.empty_cache()
         gc.collect()
