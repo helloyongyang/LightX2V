@@ -6,6 +6,7 @@ BLOCK_SIZE = 16
 FLOAT4_E2M1_MAX = 6.0
 FLOAT8_E4M3_MAX = torch.finfo(torch.float8_e4m3fn).max
 
+
 def cast_to_fp4(x):
     sign = torch.sign(x)
     x = torch.abs(x)

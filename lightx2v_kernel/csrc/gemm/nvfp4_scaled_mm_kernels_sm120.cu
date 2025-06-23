@@ -61,7 +61,7 @@ struct Fp4GemmSm120 {
     using ClusterShape        = Shape<_1,_1,_1>;                                // Shape of the threadblocks in a cluster
 
     using CollectiveEpilogue = typename cutlass::epilogue::collective::CollectiveBuilder<
-        ArchTag, OperatorClass,                      
+        ArchTag, OperatorClass,
         ThreadBlockShape, ClusterShape,
         cutlass::epilogue::collective::EpilogueTileAuto,
         ElementAccumulator, ElementAccumulator,
