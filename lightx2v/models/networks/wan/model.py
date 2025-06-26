@@ -143,9 +143,8 @@ class WanModel:
 
     def _init_weights(self, weight_dict=None):
         use_bf16 = GET_DTYPE() == "BF16"
-
         # Some layers run with float32 to achieve high accuracy
-        skip_bf16 = {"norm", "embedding", "modulation", "time"}
+        skip_bf16 = {"norm", "embedding", "modulation", "time", "img_emb.proj.0", "img_emb.proj.4"}
         if weight_dict is None:
             if not self.dit_quantized or self.weight_auto_quant:
                 self.original_weight_dict = self._load_ckpt(use_bf16, skip_bf16)
