@@ -27,6 +27,8 @@ class LNWeightTemplate(metaclass=ABCMeta):
                 self.bias = None
 
     def _calculate_size(self):
+        if self.weight is None:
+            return 0
         if self.bias is not None:
             return self.weight.numel() * self.weight.element_size() + self.bias.numel() * self.bias.element_size()
         return self.weight.numel() * self.weight.element_size()
