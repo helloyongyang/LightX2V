@@ -116,7 +116,7 @@ class WanTransformerInfer(BaseTransformerInfer):
                             scale_msa,
                         )
                     elif cur_phase_idx == 2:
-                        attn_out = self.infer_cross_attn(cur_phase, x, context, y_out, gate_msa)
+                        x, attn_out = self.infer_cross_attn(cur_phase, x, context, y_out, gate_msa)
                     elif cur_phase_idx == 3:
                         y = self.infer_ffn(cur_phase, x, attn_out, c_shift_msa, c_scale_msa)
                         x = self.post_process(x, y, c_gate_msa)
@@ -169,7 +169,7 @@ class WanTransformerInfer(BaseTransformerInfer):
                             scale_msa,
                         )
                     elif cur_phase_idx == 2:
-                        attn_out = self.infer_cross_attn(cur_phase, x, context, y_out, gate_msa)
+                        x, attn_out = self.infer_cross_attn(cur_phase, x, context, y_out, gate_msa)
                     elif cur_phase_idx == 3:
                         y = self.infer_ffn(cur_phase, x, attn_out, c_shift_msa, c_scale_msa)
                         x = self.post_process(x, y, c_gate_msa)
@@ -222,7 +222,7 @@ class WanTransformerInfer(BaseTransformerInfer):
             shift_msa,
             scale_msa,
         )
-        attn_out = self.infer_cross_attn(weights.compute_phases[2], x, context, y_out, gate_msa)
+        x, attn_out = self.infer_cross_attn(weights.compute_phases[2], x, context, y_out, gate_msa)
         y = self.infer_ffn(weights.compute_phases[3], x, attn_out, c_shift_msa, c_scale_msa)
         x = self.post_process(x, y, c_gate_msa)
         return x
@@ -371,7 +371,7 @@ class WanTransformerInfer(BaseTransformerInfer):
         if self.clean_cuda_cache:
             del q, k, v, norm3_out, context, context_img
             torch.cuda.empty_cache()
-        return attn_out
+        return x, attn_out
 
     def infer_ffn(self, weights, x, attn_out, c_shift_msa, c_scale_msa):
         x.add_(attn_out)
@@ -387,22 +387,23 @@ class WanTransformerInfer(BaseTransformerInfer):
             norm2_weight = 1 + c_scale_msa.squeeze(0)
             norm2_bias = c_shift_msa.squeeze(0)
 
-        x = weights.norm2.apply(x)
+        norm2_out = weights.norm2.apply(x)
         if GET_DTYPE() != "BF16":
-            x = x.float()
-        x.mul_(norm2_weight).add_(norm2_bias)
+            norm2_out = norm2_out.float()
+        norm2_out.mul_(norm2_weight).add_(norm2_bias)
         if GET_DTYPE() != "BF16":
-            x = x.to(torch.bfloat16)
+            norm2_out = norm2_out.to(torch.bfloat16)
 
-        x = weights.ffn_0.apply(x)
+        y = weights.ffn_0.apply(norm2_out)
+        if self.clean_cuda_cache:
+            del norm2_out, x, norm2_weight, norm2_bias
+            torch.cuda.empty_cache()
+        y = torch.nn.functional.gelu(y, approximate="tanh")
         if self.clean_cuda_cache:
             torch.cuda.empty_cache()
-        x = torch.nn.functional.gelu(x, approximate="tanh")
-        if self.clean_cuda_cache:
-            torch.cuda.empty_cache()
-        x = weights.ffn_2.apply(x)
+        y = weights.ffn_2.apply(y)
 
-        return x
+        return y
 
     def post_process(self, x, y, c_gate_msa):
         if GET_DTYPE() != "BF16":

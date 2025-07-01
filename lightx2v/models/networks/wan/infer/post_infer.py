@@ -1,6 +1,5 @@
 import math
 import torch
-import torch.cuda.amp as amp
 from lightx2v.utils.envs import *
 
 
