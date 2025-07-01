@@ -50,6 +50,21 @@ python converter.py \
     --model_type wan_dit
 ```
 
+### Wan DiT + LoRA
+
+```bash
+python converter.py \
+    --quantized \
+    --source /Path/To/Wan-AI/Wan2.1-T2V-14B/ \
+    --output /Path/To/output \
+    --output_ext .safetensors \
+    --output_name wan_int8 \
+    --dtype torch.int8 \
+    --model_type wan_dit \
+    --lora_path /Path/To/LoRA1/ /Path/To/LoRA2/ \
+    --lora_alpha 1.0 1.0
+```
+
 ### Hunyuan DIT
 
 ```bash

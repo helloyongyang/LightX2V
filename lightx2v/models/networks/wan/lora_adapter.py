@@ -96,7 +96,7 @@ class WanLoraWrapper:
 
                 name_diff = lora_diffs[name]
                 lora_diff = lora_weights[name_diff].to(param.device, param.dtype)
-                param += lora_diff
+                param += lora_diff * alpha
                 applied_count += 1
 
         logger.info(f"Applied {applied_count} LoRA weight adjustments")
