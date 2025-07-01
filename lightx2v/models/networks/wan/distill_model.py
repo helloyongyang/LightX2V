@@ -23,7 +23,6 @@ class WanDistillModel(WanModel):
     def _load_ckpt(self, use_bf16, skip_bf16):
         ckpt_path = os.path.join(self.model_path, "distill_model.pt")
         if not os.path.exists(ckpt_path):
-            # 文件不存在，调用父类的 _load_ckpt 方法
             return super()._load_ckpt(use_bf16, skip_bf16)
 
         weight_dict = torch.load(ckpt_path, map_location="cpu", weights_only=True)

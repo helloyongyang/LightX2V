@@ -46,7 +46,6 @@ class WanModel:
         self._init_infer_class()
         self._init_weights()
         self._init_infer()
-        self.current_lora = None
 
         if config["parallel_attn_type"]:
             if config["parallel_attn_type"] == "ulysses":

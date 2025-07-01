@@ -12,6 +12,7 @@ from lightx2v.models.schedulers.wan.step_distill.scheduler import WanStepDistill
 from lightx2v.utils.profiler import ProfilingContext4Debug, ProfilingContext
 from lightx2v.models.input_encoders.hf.t5.model import T5EncoderModel
 from lightx2v.models.input_encoders.hf.xlm_roberta.model import CLIPModel
+from lightx2v.models.networks.wan.model import WanModel
 from lightx2v.models.networks.wan.causvid_model import WanCausVidModel
 from lightx2v.models.networks.wan.lora_adapter import WanLoraWrapper
 from lightx2v.models.video_encoders.hf.wan.vae import WanVAE
@@ -30,7 +31,20 @@ class WanCausVidRunner(WanRunner):
         self.num_fragments = self.model.config.num_fragments
 
     def load_transformer(self):
-        return WanCausVidModel(self.config.model_path, self.config, self.init_device)
+        if self.config.lora_path:
+            model = WanModel(
+                self.config.model_path,
+                self.config,
+                self.init_device,
+            )
+            lora_wrapper = WanLoraWrapper(model)
+            for lora_path in self.config.lora_path:
+                lora_name = lora_wrapper.load_lora(lora_path)
+                lora_wrapper.apply_lora(lora_name, self.config.strength_model)
+                logger.info(f"Loaded LoRA: {lora_name}")
+        else:
+            model = WanCausVidModel(self.config.model_path, self.config, self.init_device)
+        return model
 
     def set_inputs(self, inputs):
         super().set_inputs(inputs)
