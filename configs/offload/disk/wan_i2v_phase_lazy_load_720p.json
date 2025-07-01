@@ -32,5 +32,7 @@
         [-114.36346466, 65.26524496, -18.82220707, 4.91518089, -0.23412683]
     ],
     "use_ret_steps": true,
-    "teacache_thresh": 0.26
+    "teacache_thresh": 0.26,
+    "rotary_chunk": true,
+    "clean_cuda_cache": true
 }
