@@ -3,36 +3,37 @@ import torch.nn as nn
 from abc import ABCMeta, abstractmethod
 from lightx2v.utils.registry_factory import ATTN_WEIGHT_REGISTER
 import torch.nn.functional as F
+from loguru import logger
 
 try:
     from spas_sage_attn.autotune import SparseAttentionMeansim
 except ImportError:
-    print("SparseAttentionMeansim not found, please install sparge first")
+    logger.info("SparseAttentionMeansim not found, please install sparge first")
     SparseAttentionMeansim = None
 
 try:
     from flash_attn.flash_attn_interface import flash_attn_varlen_func
 except ImportError:
-    print("flash_attn_varlen_func not found, please install flash_attn2 first")
+    logger.info("flash_attn_varlen_func not found, please install flash_attn2 first")
     flash_attn_varlen_func = None
 
 try:
     from flash_attn_interface import flash_attn_varlen_func as flash_attn_varlen_func_v3
 except ImportError:
-    print("flash_attn_varlen_func_v3 not found, please install flash_attn3 first")
+    logger.info("flash_attn_varlen_func_v3 not found, please install flash_attn3 first")
     flash_attn_varlen_func_v3 = None
 
-if torch.cuda.get_device_capability(0) == (8, 9):
+if torch.cuda.get_device_capability(0)[0] <= 8 and torch.cuda.get_device_capability(0)[1] <= 9:
     try:
         from sageattention import sageattn_qk_int8_pv_fp16_triton as sageattn
     except ImportError:
-        print("sageattn not found, please install sageattention first")
+        logger.info("sageattn not found, please install sageattention first")
         sageattn = None
 else:
     try:
         from sageattention import sageattn
     except ImportError:
-        print("sageattn not found, please install sageattention first")
+        logger.info("sageattn not found, please install sageattention first")
         sageattn = None
 
 
