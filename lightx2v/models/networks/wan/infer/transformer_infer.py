@@ -274,6 +274,10 @@ class WanTransformerInfer(BaseTransformerInfer):
 
         cu_seqlens_q, cu_seqlens_k = self._calculate_q_k_len(q, k_lens=seq_lens)
 
+        if self.clean_cuda_cache:
+            del freqs_i, norm1_out, norm1_weight, norm1_bias
+            torch.cuda.empty_cache()
+
         if not self.parallel_attention:
             attn_out = weights.self_attn_1.apply(
                 q=q,
@@ -298,7 +302,7 @@ class WanTransformerInfer(BaseTransformerInfer):
         y = weights.self_attn_o.apply(attn_out)
 
         if self.clean_cuda_cache:
-            del q, k, v, attn_out, freqs_i, norm1_out, norm1_weight, norm1_bias
+            del q, k, v, attn_out
             torch.cuda.empty_cache()
 
         return y

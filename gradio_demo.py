@@ -49,6 +49,8 @@ def run_inference(
     if torch_compile:
         os.environ["ENABLE_GRAPH_MODE"] = "true"
     os.environ["DTYPE"] = "BF16"
+    os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:true"
+
     config = {
         "infer_steps": infer_steps,
         "target_video_length": num_frames,
@@ -87,11 +89,11 @@ def run_inference(
         "use_ret_steps": True,
         "teacache_thresh": 0.26,
         "t5_quantized": True,
-        "t5_quantized_ckpt": os.path.join(model_path, "models_t5_umt5-xxl-enc-int8.pth"),
-        "t5_quant_scheme": "int8",
+        "t5_quantized_ckpt": os.path.join(model_path, "models_t5_umt5-xxl-enc-fp8.pth"),
+        "t5_quant_scheme": "fp8",
         "clip_quantized": True,
-        "clip_quantized_ckpt": os.path.join(model_path, "clip-int8.pth"),
-        "clip_quant_scheme": "int8",
+        "clip_quantized_ckpt": os.path.join(model_path, "clip-fp8.pth"),
+        "clip_quant_scheme": "fp8",
         "use_tiling_vae": True,
         "tiny_vae": use_tiny_vae,
         "tiny_vae_path": tiny_vae_path if use_tiny_vae else None,
@@ -348,4 +350,4 @@ with gr.Blocks(
     )
 
 if __name__ == "__main__":
-    demo.launch(share=False, server_port=7860, server_name="0.0.0.0")
+    demo.launch(share=True, server_port=7862, server_name="0.0.0.0")
