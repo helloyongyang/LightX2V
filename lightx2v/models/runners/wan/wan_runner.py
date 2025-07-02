@@ -38,9 +38,10 @@ class WanRunner(DefaultRunner):
         if self.config.lora_path:
             assert not self.config.get("dit_quantized", False) or self.config.mm_config.get("weight_auto_quant", False)
             lora_wrapper = WanLoraWrapper(model)
-            lora_name = lora_wrapper.load_lora(self.config.lora_path)
-            lora_wrapper.apply_lora(lora_name, self.config.strength_model)
-            logger.info(f"Loaded LoRA: {lora_name}")
+            for lora_path in self.config.lora_path:
+                lora_name = lora_wrapper.load_lora(lora_path)
+                lora_wrapper.apply_lora(lora_name, self.config.strength_model)
+                logger.info(f"Loaded LoRA: {lora_name}")
         return model
 
     def load_image_encoder(self):
