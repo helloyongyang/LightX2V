@@ -31,7 +31,7 @@ else()
     FetchContent_Declare(
         repo-cutlass
         GIT_REPOSITORY https://github.com/NVIDIA/cutlass
-        GIT_TAG        b244379d9b15574e07b73b814b88bd2233f0b3ce
+        GIT_TAG        b995f933179c22d3fe0d871c3a53d11e4681950f
         GIT_SHALLOW    OFF
     )
     FetchContent_MakeAvailable(repo-cutlass)
