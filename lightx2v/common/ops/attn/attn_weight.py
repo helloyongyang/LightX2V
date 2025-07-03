@@ -37,6 +37,9 @@ else:
         sageattn = None
 
 
+from lightx2v.attentions.common.radial_attn import radial_attn
+
+
 class AttnWeightTemplate(metaclass=ABCMeta):
     def __init__(self, weight_name):
         self.weight_name = weight_name
@@ -70,7 +73,7 @@ class FlashAttn2Weight(AttnWeightTemplate):
     def __init__(self):
         self.config = {}
 
-    def apply(self, q, k, v, cu_seqlens_q=None, cu_seqlens_kv=None, max_seqlen_q=None, max_seqlen_kv=None, model_cls=None):
+    def apply(self, q, k, v, cu_seqlens_q=None, cu_seqlens_kv=None, max_seqlen_q=None, max_seqlen_kv=None, model_cls=None, mask_map=None):
         x = flash_attn_varlen_func(
             q,
             k,
@@ -88,7 +91,7 @@ class FlashAttn3Weight(AttnWeightTemplate):
     def __init__(self):
         self.config = {}
 
-    def apply(self, q, k, v, cu_seqlens_q=None, cu_seqlens_kv=None, max_seqlen_q=None, max_seqlen_kv=None, model_cls=None):
+    def apply(self, q, k, v, cu_seqlens_q=None, cu_seqlens_kv=None, max_seqlen_q=None, max_seqlen_kv=None, model_cls=None, mask_map=None):
         x = flash_attn_varlen_func_v3(
             q,
             k,
@@ -98,6 +101,28 @@ class FlashAttn3Weight(AttnWeightTemplate):
             max_seqlen_q,
             max_seqlen_kv,
         )[0].reshape(max_seqlen_q, -1)
+        return x
+
+
+@ATTN_WEIGHT_REGISTER("radial_attn")
+class RadialAttnWeight(AttnWeightTemplate):
+    def __init__(self):
+        self.config = {}
+
+    def apply(self, q, k, v, cu_seqlens_q=None, cu_seqlens_kv=None, max_seqlen_q=None, max_seqlen_kv=None, mask_map=None, sparsity_type="radial", block_size=128, decay_factor=1, model_cls="wan"):
+        assert len(q.shape) == 3
+
+        x = radial_attn(
+            q,
+            k,
+            v,
+            mask_map=mask_map,
+            sparsity_type=sparsity_type,
+            block_size=block_size,
+            model_cls=model_cls[:3],  # Use first 3 characters to match "wan", "wan2", etc.
+            decay_factor=decay_factor,
+        )
+        x = x.view(max_seqlen_q, -1)
         return x
 
 
