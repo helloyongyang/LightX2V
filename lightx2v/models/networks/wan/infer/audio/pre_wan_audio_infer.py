@@ -1,6 +1,6 @@
 import torch
 import math
-from .utils import rope_params, sinusoidal_embedding_1d
+from ..utils import rope_params, sinusoidal_embedding_1d
 from lightx2v.models.networks.wan.infer.pre_infer import WanPreInfer
 from loguru import logger
 

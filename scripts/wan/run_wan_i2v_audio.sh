@@ -29,6 +29,10 @@ export ENABLE_PROFILING_DEBUG=true
 export ENABLE_GRAPH_MODE=false
 export DTYPE=BF16
 
+
+export TORCH_CUDA_ARCH_LIST="9.0"
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
 python -m lightx2v.infer \
 --model_cls wan2.1_audio \
 --task i2v \

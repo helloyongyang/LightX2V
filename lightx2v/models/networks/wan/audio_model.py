@@ -12,8 +12,8 @@ from lightx2v.models.networks.wan.infer.pre_infer import WanPreInfer
 from lightx2v.models.networks.wan.infer.post_infer import WanPostInfer
 
 from lightx2v.models.networks.wan.infer.pre_infer import WanPreInfer
-from lightx2v.models.networks.wan.infer.pre_wan_audio_infer import WanAudioPreInfer
-from lightx2v.models.networks.wan.infer.post_wan_audio_infer import WanAudioPostInfer
+from lightx2v.models.networks.wan.infer.audio.pre_wan_audio_infer import WanAudioPreInfer
+from lightx2v.models.networks.wan.infer.audio.post_wan_audio_infer import WanAudioPostInfer
 from lightx2v.models.networks.wan.infer.feature_caching.transformer_infer import WanTransformerInferTeaCaching
 from safetensors import safe_open
 import lightx2v.attentions.distributed.ulysses.wrap as ulysses_dist_wrap
@@ -57,9 +57,6 @@ class WanAudioModel(WanModel):
             _, c, h, w = self.scheduler.latents.shape
             num_frame = c + 1  # for r2v
             video_token_num = num_frame * (h // 2) * (w // 2)
-            from loguru import logger
-
-            logger.info(f"video_token_num: {video_token_num}, num_frame: {num_frame}")
             self.transformer_infer.mask_map = MaskMap(video_token_num, num_frame)
 
         embed, grid_sizes, pre_infer_out, valid_patch_length = self.pre_infer.infer(self.pre_weight, inputs, positive=True)
