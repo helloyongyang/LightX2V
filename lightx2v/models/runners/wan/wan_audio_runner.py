@@ -31,7 +31,6 @@ from torchvision.transforms.functional import resize
 import subprocess
 import warnings
 from typing import Optional, Tuple, Union
-import pdb
 
 
 def get_crop_bbox(ori_h, ori_w, tgt_h, tgt_w):
@@ -210,7 +209,6 @@ def generate_unique_path(path):
 
 
 def save_to_video(gen_lvideo, out_path, target_fps):
-    print(gen_lvideo.shape)
     gen_lvideo = rearrange(gen_lvideo, "B C T H W -> B T H W C")
     gen_lvideo = (gen_lvideo[0].cpu().numpy() * 127.5 + 127.5).astype(np.uint8)
     gen_lvideo = gen_lvideo[..., ::-1].copy()
@@ -219,21 +217,29 @@ def save_to_video(gen_lvideo, out_path, target_fps):
 
 
 def save_audio(
-    audio_array: str,
+    audio_array,
     audio_name: str,
     video_name: str = None,
     sr: int = 16000,
 ):
     logger.info(f"Saving audio to {audio_name} type: {type(audio_array)}")
-    if not os.path.exists(audio_name):
-        ta.save(
-            audio_name,
-            torch.tensor(audio_array[None]),
-            sample_rate=sr,
-        )
+
+    ta.save(
+        audio_name,
+        torch.tensor(audio_array[None]),
+        sample_rate=sr,
+    )
 
     out_video = f"{video_name[:-4]}_with_audio.mp4"
-    # generate_unique_path(out_path)
+    # 确保父目录存在
+    parent_dir = os.path.dirname(out_video)
+    if parent_dir and not os.path.exists(parent_dir):
+        os.makedirs(parent_dir, exist_ok=True)
+
+    # 如果输出视频已存在，先删除
+    if os.path.exists(out_video):
+        os.remove(out_video)
+
     cmd = f"/usr/bin/ffmpeg -i {video_name} -i {audio_name} {out_video}"
     subprocess.call(cmd, shell=True)
 
@@ -246,6 +252,9 @@ class WanAudioRunner(WanRunner):
     def load_audio_models(self):
         ##音频特征提取器
         self.audio_preprocess = AutoFeatureExtractor.from_pretrained(self.config["model_path"], subfolder="audio_encoder")
+
+        ##音频驱动视频生成adapter
+        audio_adapter_path = self.config["model_path"] + "/audio_adapter.safetensors"
         audio_adaper = AudioAdapter.from_transformer(
             self.model,
             audio_feature_dim=1024,
@@ -253,11 +262,11 @@ class WanAudioRunner(WanRunner):
             time_freq_dim=256,
             projection_transformer_layers=4,
         )
-        load_path = "/mnt/aigc/zoemodels/Zoetrained/vigendit/audio_driven/audio_adapter/audio_adapter_V1_0507_bf16.safetensors"
-        audio_adapter = rank0_load_state_dict_from_path(audio_adaper, load_path, strict=False)
+        audio_adapter = rank0_load_state_dict_from_path(audio_adaper, audio_adapter_path, strict=False)
 
+        ##音频特征编码器
         device = self.model.device
-        audio_encoder_repo = "/mnt/aigc/zoemodels/models--TencentGameMate--chinese-hubert-large/snapshots/90cb660492214f687e60f5ca509b20edae6e75bd"
+        audio_encoder_repo = self.config["model_path"] + "/audio_encoder"
         audio_adapter_pipe = AudioAdapterPipe(audio_adapter, audio_encoder_repo=audio_encoder_repo, dtype=torch.bfloat16, device=device, generator=torch.Generator(device), weight=1.0)
 
         return audio_adapter_pipe
@@ -275,9 +284,8 @@ class WanAudioRunner(WanRunner):
         return base_model
 
     def load_image_encoder(self):
-        image_encoder = WanVideoIPHandler(
-            "CLIPModel", repo_or_path="/mnt/aigc/zoemodels/Wan21/Wan2.1-I2V-14B-720P-Diffusers", require_grad=False, mode="eval", device=self.init_device, dtype=torch.float16
-        )
+        clip_model_dir = self.config["model_path"] + "/image_encoder"
+        image_encoder = WanVideoIPHandler("CLIPModel", repo_or_path=clip_model_dir, require_grad=False, mode="eval", device=self.init_device, dtype=torch.float16)
 
         return image_encoder
 
@@ -325,6 +333,7 @@ class WanAudioRunner(WanRunner):
         self.set_target_shape()
         self.inputs = {"text_encoder_output": text_encoder_output, "image_encoder_output": image_encoder_output}
 
+        del self.image_encoder  # 删除ref的clip模型，只使用一次
         gc.collect()
         torch.cuda.empty_cache()
 
@@ -360,15 +369,15 @@ class WanAudioRunner(WanRunner):
         self.inputs["audio_adapter_pipe"] = self.load_audio_models()
 
         # process audio
-        audio_sr = 16000
-        max_num_frames = 81  # wan2.1一段最多81帧，5秒，16fps
+        audio_sr = self.config.get("audio_sr", 16000)
+        max_num_frames = self.config.get("target_video_length", 81)  # wan2.1一段最多81帧，5秒，16fps
         target_fps = self.config.get("target_fps", 16)  # 音视频同步帧率
-        video_duration = self.config.get("video_duration", 8)  # 期望视频输出时长
+        video_duration = self.config.get("video_duration", 5)  # 期望视频输出时长
         audio_array = load_audio(self.config["audio_path"], sr=audio_sr)
         audio_len = int(audio_array.shape[0] / audio_sr * target_fps)
         prev_frame_length = 5
         prev_token_length = (prev_frame_length - 1) // 4 + 1
-        max_num_audio_length = int((max_num_frames + 1) / target_fps * 16000)
+        max_num_audio_length = int((max_num_frames + 1) / target_fps * audio_sr)
 
         interval_num = 1
         # expected_frames
@@ -463,13 +472,10 @@ class WanAudioRunner(WanRunner):
             latents = self.model.scheduler.latents
             generator = self.model.scheduler.generator
             gen_video = self.vae_decoder.decode(latents, generator=generator, config=self.config)
-
-            # gen_img = vae_handler.decode(xt.to(vae_dtype))
-            # B, C, T, H, W
             gen_video = torch.clamp(gen_video, -1, 1)
             start_frame = 0 if idx == 0 else prev_frame_length
             start_audio_frame = 0 if idx == 0 else int((prev_frame_length + 1) * audio_sr / target_fps)
-            print(f"---- {idx}, {gen_video[:, :, start_frame:].shape}")
+
             if res_frame_num > 5 and idx == interval_num - 1:
                 gen_video_list.append(gen_video[:, :, start_frame:res_frame_num])
                 cut_audio_list.append(audio_array[start_audio_frame:useful_length])
@@ -482,7 +488,7 @@ class WanAudioRunner(WanRunner):
 
         gen_lvideo = torch.cat(gen_video_list, dim=2).float()
         merge_audio = np.concatenate(cut_audio_list, axis=0).astype(np.float32)
-        out_path = os.path.join("./", "video_merge.mp4")
+        out_path = self.config.save_video_path
         audio_file = os.path.join("./", "audio_merge.wav")
         save_to_video(gen_lvideo, out_path, target_fps)
         save_audio(merge_audio, audio_file, out_path)
@@ -501,5 +507,5 @@ class WanAudioRunner(WanRunner):
         self.run()
         self.end_run()
 
-        torch.cuda.empty_cache()
         gc.collect()
+        torch.cuda.empty_cache()

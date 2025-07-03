@@ -7,7 +7,6 @@ from lightx2v.common.offload.manager import (
 from lightx2v.common.transformer_infer.transformer_infer import BaseTransformerInfer
 from lightx2v.utils.envs import *
 from loguru import logger
-import pdb
 import os
 
 
@@ -24,6 +23,8 @@ class WanTransformerInfer(BaseTransformerInfer):
         self.parallel_attention = None
         self.apply_rotary_emb_func = apply_rotary_emb_chunk if config.get("rotary_chunk", False) else apply_rotary_emb
         self.clean_cuda_cache = self.config.get("clean_cuda_cache", False)
+        self.mask_map = None
+
         if self.config["cpu_offload"]:
             if "offload_ratio" in self.config:
                 offload_ratio = self.config["offload_ratio"]
@@ -290,7 +291,7 @@ class WanTransformerInfer(BaseTransformerInfer):
 
         if not self.parallel_attention:
             if self.config.get("audio_sr", False):
-                freqs_i = compute_freqs_audio(q.size(0), q.size(2) // 2, grid_sizes, freqs)
+                freqs_i = compute_freqs_audio(q.size(2) // 2, grid_sizes, freqs)
             else:
                 freqs_i = compute_freqs(q.size(2) // 2, grid_sizes, freqs)
         else:
@@ -321,6 +322,7 @@ class WanTransformerInfer(BaseTransformerInfer):
                 max_seqlen_q=q.size(0),
                 max_seqlen_kv=k.size(0),
                 model_cls=self.config["model_cls"],
+                mask_map=self.mask_map,
             )
         else:
             attn_out = self.parallel_attention(

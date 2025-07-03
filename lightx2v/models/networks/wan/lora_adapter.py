@@ -50,6 +50,7 @@ class WanLoraWrapper:
         self.model._init_weights(weight_dict)
 
         logger.info(f"Applied LoRA: {lora_name} with alpha={alpha}")
+        del lora_weights  # 删除节约显存
         return True
 
     @torch.no_grad()

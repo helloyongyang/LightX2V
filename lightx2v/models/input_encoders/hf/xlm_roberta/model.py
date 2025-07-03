@@ -449,7 +449,7 @@ class WanVideoIPHandler:
         but Wan2.1 official use no_crop resize by default
         so I don't use CLIPImageProcessor
         """
-        image_encoder = CLIPVisionModel.from_pretrained(repo_or_path, subfolder="image_encoder", torch_dtype=dtype)
+        image_encoder = CLIPVisionModel.from_pretrained(repo_or_path, torch_dtype=dtype)
         logger.info(f"Using image encoder {model_name} from {repo_or_path}")
         image_encoder.requires_grad_(require_grad)
         if mode == "eval":

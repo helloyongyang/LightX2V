@@ -19,6 +19,8 @@ from safetensors import safe_open
 import lightx2v.attentions.distributed.ulysses.wrap as ulysses_dist_wrap
 import lightx2v.attentions.distributed.ring.wrap as ring_dist_wrap
 
+from lightx2v.attentions.common.radial_attn import MaskMap
+
 from lightx2v.models.networks.wan.infer.transformer_infer import (
     WanTransformerInfer,
 )
@@ -50,6 +52,15 @@ class WanAudioModel(WanModel):
         if self.config["cpu_offload"]:
             self.pre_weight.to_cuda()
             self.post_weight.to_cuda()
+
+        if self.transformer_infer.mask_map is None:
+            _, c, h, w = self.scheduler.latents.shape
+            num_frame = c + 1  # for r2v
+            video_token_num = num_frame * (h // 2) * (w // 2)
+            from loguru import logger
+
+            logger.info(f"video_token_num: {video_token_num}, num_frame: {num_frame}")
+            self.transformer_infer.mask_map = MaskMap(video_token_num, num_frame)
 
         embed, grid_sizes, pre_infer_out, valid_patch_length = self.pre_infer.infer(self.pre_weight, inputs, positive=True)
         x = self.transformer_infer.infer(self.transformer_weights, grid_sizes, embed, *pre_infer_out)
