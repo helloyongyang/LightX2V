@@ -85,8 +85,6 @@ class WanLoraWrapper:
             if name in lora_pairs:
                 if name not in self.override_dict:
                     self.override_dict[name] = param.clone().cpu()
-                # import pdb
-                # pdb.set_trace()
                 name_lora_A, name_lora_B = lora_pairs[name]
                 lora_A = lora_weights[name_lora_A].to(param.device, param.dtype)
                 lora_B = lora_weights[name_lora_B].to(param.device, param.dtype)
