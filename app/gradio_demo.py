@@ -14,8 +14,8 @@ from pathlib import Path
 module_path = str(Path(__file__).resolve().parent.parent)
 sys.path.append(module_path)
 
-from lightx2v.infer import init_runner
-from lightx2v.utils.envs import *
+from lightx2v.infer import init_runner  # noqa: E402
+from lightx2v.utils.envs import *  # noqa: E402
 
 # advance_ptq
 logger.add(
