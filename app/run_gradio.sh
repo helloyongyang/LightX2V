@@ -1,7 +1,7 @@
 #!/bin/bash
 
 lightx2v_path=/mtc/gushiqiao/llmc_workspace/lightx2v_new/lightx2v
-model_path=/data/nvme0/gushiqiao/models/Wan2.1-I2V-14B-480P-Lightx2v
+model_path=/data/nvme0/gushiqiao/models/I2V/Wan2.1-I2V-14B-720P-Lightx2v-Step-Distill
 
 export CUDA_VISIBLE_DEVICES=7
 export CUDA_LAUNCH_BLOCKING=1
