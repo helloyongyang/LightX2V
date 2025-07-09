@@ -44,7 +44,7 @@
    comfyui部署 <deploy_guides/deploy_comfyui.md>
    本地windows电脑部署 <deploy_guides/deploy_local_windows.md>
 
-   
+
 .. Indices and tables
 .. ==================
 
