@@ -10,7 +10,7 @@ formats:
     - epub
 
 sphinx:
-  configuration: docs/ZH_CN/source/conf.py
+  configuration: docs/EN/source/conf.py
 
 python:
   install:

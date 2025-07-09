@@ -70,7 +70,7 @@ html_theme = "sphinx_book_theme"
 # html_theme = 'sphinx_rtd_theme'
 html_logo = "../../../assets/img_lightx2v.png"
 html_theme_options = {
-    "path_to_docs": "docs/ZH_CN/source",
+    "path_to_docs": "docs/EN/source",
     "repository_url": "https://github.com/ModelTC/lightx2v",
     "use_repository_button": True,
 }
