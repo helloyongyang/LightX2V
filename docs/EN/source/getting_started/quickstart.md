@@ -1,47 +1,40 @@
-# 快速入门
+# Quick Start
 
-## 准备环境
+## Prepare Environment
 
-我们推荐使用docker环境，这是lightx2v的[dockerhub](https://hub.docker.com/r/lightx2v/lightx2v/tags)，请选择一个最新日期的tag，比如25061301
+We recommend using a docker environment. Here is the [dockerhub](https://hub.docker.com/r/lightx2v/lightx2v/tags) for lightx2v. Please select the tag with the latest date, for example, 25061301.
 
 ```shell
 docker pull lightx2v/lightx2v:25061301
-docker run --gpus all -itd --ipc=host --name [容器名] -v [挂载设置]  --entrypoint /bin/bash [镜像id]
+docker run --gpus all -itd --ipc=host --name [container_name] -v [mount_settings]  --entrypoint /bin/bash [image_id]
 ```
 
-对于中国大陆地区，若拉取镜像的时候，网络不稳定，可以从[渡渡鸟](https://docker.aityp.com/r/docker.io/lightx2v/lightx2v)上拉取
+If you want to set up the environment yourself using conda, you can refer to the following steps:
 
 ```shell
-docker pull swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/lightx2v/lightx2v:25061301
-```
-
-
-如果你想使用conda自己搭建环境，可以参考如下步骤：
-
-```shell
-# 下载github代码
+# clone repo and submodules
 git clone https://github.com/ModelTC/lightx2v.git lightx2v && cd lightx2v
 
 conda create -n lightx2v python=3.11 && conda activate lightx2v
 pip install -r requirements.txt
 
-# 单独重新安装transformers，避免pip的冲突检查
-# 混元模型需要在4.45.2版本的transformers下运行，如果不需要跑混元模型，可以忽略
+# Install again separately to bypass the version conflict check
+# The Hunyuan model needs to run under this version of transformers. If you do not need to run the Hunyuan model, you can ignore this step.
 pip install transformers==4.45.2
 
-# 安装 flash-attention 2
+# install flash-attention 2
 git clone https://github.com/Dao-AILab/flash-attention.git --recursive
 cd flash-attention && python setup.py install
 
-# 安装 flash-attention 3, 用于 hopper 显卡
+# install flash-attention 3, only if hopper
 cd flash-attention/hopper && python setup.py install
 ```
 
-## 推理
+## Infer
 
 ```shell
-# 修改脚本中的路径
+# Modify the path in the script
 bash scripts/run_wan_t2v.sh
 ```
 
-除了脚本中已有的输入参数，`--config_json`指向的`${lightx2v_path}/configs/wan_t2v.json`中也会存在一些必要的参数，可以根据需要，自行修改。
+In addition to the existing input arguments in the script, there are also some necessary parameters in the `${lightx2v_path}/configs/wan_t2v.json` file specified by `--config_json`. You can modify them as needed.

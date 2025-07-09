@@ -1,4 +1,4 @@
-欢迎了解 Lightx2v!
+Welcome to Lightx2v!
 ==================
 
 .. figure:: ../../../assets/img_lightx2v.png
@@ -10,39 +10,39 @@
 .. raw:: html
 
    <p style="text-align:center">
-   <strong>一个轻量级的视频生成推理框架
+   <strong>A Light Video Generation Inference Framework
    </strong>
 
 
-文档列表
+Documentation
 -------------
 
 .. toctree::
    :maxdepth: 1
-   :caption: 快速入门
+   :caption: Quick Start
 
-   快速入门 <getting_started/quickstart.md>
-
-.. toctree::
-   :maxdepth: 1
-   :caption: 方法教程
-
-   模型量化 <method_tutorials/quantization.md>
-   特征缓存 <method_tutorials/cache.md>
-   注意力机制 <method_tutorials/attention.md>
-   参数卸载 <method_tutorials/offload.md>
-   并行推理 <method_tutorials/parallel.md>
+   Quick Start <getting_started/quickstart.md>
 
 .. toctree::
    :maxdepth: 1
-   :caption: 部署指南
+   :caption: Method Tutorials
 
-   低延迟场景部署 <deploy_guides/for_low_latency.md>
-   低资源场景部署 <deploy_guides/for_low_resource.md>
-   服务化部署 <deploy_guides/deploy_server.md>
-   gradio部署 <deploy_guides/deploy_gradio.md>
-   comfyui部署 <deploy_guides/deploy_comfyui.md>
-   本地windows电脑部署 <deploy_guides/deploy_local_windows.md>
+   Model Quantization <method_tutorials/quantization.md>
+   Feature Caching <method_tutorials/cache.md>
+   Attention Module <method_tutorials/attention.md>
+   Offloading <method_tutorials/offload.md>
+   Parallel Inference <method_tutorials/parallel.md>
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Deployment Guides
+
+   Low Latency Deployment <deploy_guides/for_low_latency.md>
+   Low Resource Deployment <deploy_guides/for_low_resource.md>
+   Server Deployment <deploy_guides/deploy_service.md>
+   Gradio Deployment <deploy_guides/deploy_gradio.md>
+   ComfyUI Deployment <deploy_guides/deploy_comfyui.md>
+   Local Windows Deployment <deploy_guides/deploy_local_windows.md>
 
 
 .. Indices and tables

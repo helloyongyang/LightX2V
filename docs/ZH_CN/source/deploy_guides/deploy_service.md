@@ -1,4 +1,4 @@
-# 如何启动服务
+# 服务化部署
 
 lightx2v 提供异步服务功能。代码入口点在 [这里](https://github.com/ModelTC/lightx2v/blob/main/lightx2v/api_server.py)
 

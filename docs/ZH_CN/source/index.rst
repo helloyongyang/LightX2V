@@ -39,7 +39,7 @@
 
    低延迟场景部署 <deploy_guides/for_low_latency.md>
    低资源场景部署 <deploy_guides/for_low_resource.md>
-   服务化部署 <deploy_guides/deploy_server.md>
+   服务化部署 <deploy_guides/deploy_service.md>
    gradio部署 <deploy_guides/deploy_gradio.md>
    comfyui部署 <deploy_guides/deploy_comfyui.md>
    本地windows电脑部署 <deploy_guides/deploy_local_windows.md>
