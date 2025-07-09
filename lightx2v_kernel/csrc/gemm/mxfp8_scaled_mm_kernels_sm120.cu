@@ -223,7 +223,7 @@ void cutlass_scaled_mxfp8_mm_sm120(
 
   TORCH_CHECK(A.dim() == 2, "a must be a matrix");
   TORCH_CHECK(B.dim() == 2, "b must be a matrix");
-  
+
   TORCH_CHECK(
       A.sizes()[1] == B.sizes()[1],
       "a and b shapes cannot be multiplied (",

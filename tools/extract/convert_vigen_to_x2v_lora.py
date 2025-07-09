@@ -103,7 +103,7 @@ for k, v in state_dict.items():
         else:
             print(f"text_embedder 未知 LoRA 类型: {k}")
             continue
-    '''
+    """
     # === Time Embedding ===
     elif k.startswith("condition_embedder.time_embedder.linear_"):
         layer_id = parts[2].split("_")[1]
@@ -128,7 +128,7 @@ for k, v in state_dict.items():
         else:
             print(f"time_proj 未知 LoRA 类型: {k}")
             continue
-    '''        
+    """
     # fallback
     print(f"未识别结构 key: {k}")
 
