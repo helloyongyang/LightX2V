@@ -111,6 +111,12 @@ def is_fp8_supported_gpu():
     return (major == 8 and minor == 9) or (major >= 9)
 
 
+def update_precision_mode(dit_quant_scheme):
+    if dit_quant_scheme != "bf16":
+        return "bf16"
+    return "fp32"
+
+
 global_runner = None
 current_config = None
 
@@ -261,19 +267,15 @@ def run_inference(
     is_dit_quant = dit_quant_scheme != "bf16"
     is_t5_quant = t5_quant_scheme != "bf16"
     if is_t5_quant:
-        if t5_quant_scheme == "int8":
-            t5_quant_ckpt = os.path.join(model_path, "models_t5_umt5-xxl-enc-int8.pth")
-        else:
-            t5_quant_ckpt = os.path.join(model_path, "models_t5_umt5-xxl-enc-fp8.pth")
+        t5_path = os.path.join(model_path, t5_quant_scheme)
+        t5_quant_ckpt = os.path.join(t5_path, f"models_t5_umt5-xxl-enc-{t5_quant_scheme}.pth")
     else:
         t5_quant_ckpt = None
 
     is_clip_quant = clip_quant_scheme != "fp16"
     if is_clip_quant:
-        if clip_quant_scheme == "int8":
-            clip_quant_ckpt = os.path.join(model_path, "clip-int8.pth")
-        else:
-            clip_quant_ckpt = os.path.join(model_path, "clip-fp8.pth")
+        clip_path = os.path.join(model_path, clip_quant_scheme)
+        clip_quant_ckpt = os.path.join(clip_path, f"clip-{clip_quant_scheme}.pth")
     else:
         clip_quant_ckpt = None
 
@@ -297,16 +299,22 @@ def run_inference(
             mm_type = f"W-{dit_quant_scheme}-channel-sym-A-{dit_quant_scheme}-channel-sym-dynamic-Q8F"
 
         dit_quantized_ckpt = os.path.join(model_path, dit_quant_scheme)
+        if os.path.exists(os.path.join(dit_quantized_ckpt, "config.json")):
+            with open(os.path.join(dit_quantized_ckpt, "config.json"), "r") as f:
+                quant_model_config = json.load(f)
     else:
         mm_type = "Default"
         dit_quantized_ckpt = None
+        quant_model_config = {}
 
     config = {
         "infer_steps": infer_steps,
         "target_video_length": num_frames,
         "target_width": int(resolution.split("x")[0]),
         "target_height": int(resolution.split("x")[1]),
-        "attention_type": attention_type,
+        "self_attn_1_type": attention_type,
+        "cross_attn_1_type": attention_type,
+        "cross_attn_2_type": attention_type,
         "seed": seed,
         "enable_cfg": enable_cfg,
         "sample_guide_scale": cfg_scale,
@@ -364,6 +372,7 @@ def run_inference(
     config = EasyDict(config)
     config["mode"] = "infer"
     config.update(model_config)
+    config.update(quant_model_config)
 
     logger.info(f"Using model: {model_path}")
     logger.info(f"Inference configuration:\n{json.dumps(config, indent=4, ensure_ascii=False)}")
@@ -588,13 +597,7 @@ def auto_configure(enable_auto_config, model_type, resolution):
             (32, {"dit_quant_scheme_val": quant_type, "lazy_load_val": True}),
             (
                 16,
-                {
-                    "dit_quant_scheme_val": quant_type,
-                    "t5_quant_scheme_val": quant_type,
-                    "clip_quant_scheme_val": quant_type,
-                    "lazy_load_val": True,
-                    "dit_quant_scheme_val": quant_type,
-                },
+                {"dit_quant_scheme_val": quant_type, "t5_quant_scheme_val": quant_type, "clip_quant_scheme_val": quant_type, "lazy_load_val": True},
             ),
         ]
 
@@ -784,7 +787,7 @@ def main():
                             elem_classes=["output-video"],
                         )
 
-                infer_btn = gr.Button("Generate Video", variant="primary", size="lg")
+                        infer_btn = gr.Button("Generate Video", variant="primary", size="lg")
 
             with gr.Tab("⚙️ Advanced Options", id=2):
                 with gr.Group(elem_classes="advanced-options"):
@@ -894,10 +897,10 @@ def main():
                             info="Quantization precision for the Clip Encoder",
                         )
                         precision_mode = gr.Dropdown(
-                            label="Precision Mode",
+                            label="Precision Mode for Sensitive Layers",
                             choices=["fp32", "bf16"],
                             value="fp32",
-                            info="Select the numerical precision used for sensitive layers.",
+                            info="Select the numerical precision for critical model components like normalization and embedding layers. FP32 offers higher accuracy, while BF16 improves performance on compatible hardware.",
                         )
 
                     gr.Markdown("### Variational Autoencoder (VAE)")
@@ -959,6 +962,8 @@ def main():
                         use_ret_steps,
                     ],
                 )
+
+                dit_quant_scheme.change(fn=update_precision_mode, inputs=[dit_quant_scheme], outputs=[precision_mode])
 
         infer_btn.click(
             fn=run_inference,

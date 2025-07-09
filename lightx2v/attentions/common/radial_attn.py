@@ -1,5 +1,9 @@
 import torch
-import flashinfer
+
+try:
+    import flashinfer
+except ImportError:
+    flashinfer = None
 
 ###
 ###  Code from radial-attention

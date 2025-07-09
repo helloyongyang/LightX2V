@@ -1,9 +1,9 @@
 #!/bin/bash
 
-lightx2v_path=/path/to/lightx2v
-model_path=/path/to/wan
+lightx2v_path=/mtc/gushiqiao/llmc_workspace/lightx2v_new/lightx2v
+model_path=/data/nvme0/gushiqiao/models/Wan2.1-I2V-14B-480P-Lightx2v
 
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=7
 export CUDA_LAUNCH_BLOCKING=1
 export PYTHONPATH=${lightx2v_path}:$PYTHONPATH
 export ENABLE_PROFILING_DEBUG=true
