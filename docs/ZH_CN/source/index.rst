@@ -24,6 +24,7 @@ LightX2V 是一个轻量级的视频生成推理框架，旨在提供一个利�
    :caption: 快速入门
 
    快速入门 <getting_started/quickstart.md>
+   基准测试 <getting_started/benchmark.md>
 
 .. toctree::
    :maxdepth: 1

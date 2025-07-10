@@ -24,6 +24,7 @@ Documentation
    :caption: Quick Start
 
    Quick Start <getting_started/quickstart.md>
+   Benchmark <getting_started/benchmark.md>
 
 .. toctree::
    :maxdepth: 1
