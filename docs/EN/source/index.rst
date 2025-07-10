@@ -32,6 +32,8 @@ Documentation
    Attention Module <method_tutorials/attention.md>
    Offloading <method_tutorials/offload.md>
    Parallel Inference <method_tutorials/parallel.md>
+   Step Distill <method_tutorials/step_distill.md>
+   Autoregressive Distill <method_tutorials/autoregressive_distill.md>
 
 .. toctree::
    :maxdepth: 1
@@ -39,7 +41,8 @@ Documentation
 
    Low Latency Deployment <deploy_guides/for_low_latency.md>
    Low Resource Deployment <deploy_guides/for_low_resource.md>
-   Server Deployment <deploy_guides/deploy_service.md>
+   Lora Deployment <deploy_guides/lora_deploy.md>
+   Service Deployment <deploy_guides/deploy_service.md>
    Gradio Deployment <deploy_guides/deploy_gradio.md>
    ComfyUI Deployment <deploy_guides/deploy_comfyui.md>
    Local Windows Deployment <deploy_guides/deploy_local_windows.md>

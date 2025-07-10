@@ -32,6 +32,8 @@
    注意力机制 <method_tutorials/attention.md>
    参数卸载 <method_tutorials/offload.md>
    并行推理 <method_tutorials/parallel.md>
+   步数蒸馏 <method_tutorials/step_distill.md>
+   自回归蒸馏 <method_tutorials/autoregressive_distill.md>
 
 .. toctree::
    :maxdepth: 1
@@ -39,6 +41,7 @@
 
    低延迟场景部署 <deploy_guides/for_low_latency.md>
    低资源场景部署 <deploy_guides/for_low_resource.md>
+   Lora模型部署 <deploy_guides/lora_deploy.md>
    服务化部署 <deploy_guides/deploy_service.md>
    gradio部署 <deploy_guides/deploy_gradio.md>
    comfyui部署 <deploy_guides/deploy_comfyui.md>
