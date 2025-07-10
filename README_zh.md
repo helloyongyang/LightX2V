@@ -66,7 +66,7 @@
 @misc{lightx2v,
   author = {lightx2v contributors},
   title  = {LightX2V: Light Video Generation Inference Framework},
-  year   = {2024},
+  year   = {2025},
   publisher = {GitHub},
   howpublished = {\url{https://github.com/ModelTC/lightx2v}},
 }

@@ -76,7 +76,7 @@ If you find our framework useful to your research, please kindly cite our work:
 @misc{lightx2v,
  author = {lightx2v contributors},
  title = {LightX2V: Light Video Generation Inference Framework},
- year = {2024},
+ year = {2025},
  publisher = {GitHub},
  journal = {GitHub repository},
  howpublished = {\url{https://github.com/ModelTC/lightx2v}},
