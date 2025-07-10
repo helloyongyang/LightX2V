@@ -18,7 +18,7 @@ In actual effect, TeaCache achieves significant acceleration while ensuring gene
 | Single H200 inference time: 58s | Single H200 inference time: 17.9s |
 | ![Effect before acceleration](../../../../assets/gifs/1.gif) | ![Effect after acceleration](../../../../assets/gifs/2.gif) |
 - Speedup ratio: **3.24**
-- config：[wan_t2v_1_3b_tea_480p.json](../../../../configs/caching/teacache/wan_t2v_1_3b_tea_480p.json)
+- config：[wan_t2v_1_3b_tea_480p.json](https://github.com/ModelTC/lightx2v/tree/main/configs/caching/teacache/wan_t2v_1_3b_tea_480p.json)
 - Reference paper: [https://arxiv.org/abs/2411.19108](https://arxiv.org/abs/2411.19108)
 
 ### TaylorSeer Cache
@@ -29,7 +29,7 @@ The core of `TaylorSeer Cache` lies in using Taylor formula to recalculate cache
 | Single H200 inference time: 57.7s | Single H200 inference time: 41.3s |
 | ![Effect before acceleration](../../../../assets/gifs/3.gif) | ![Effect after acceleration](../../../../assets/gifs/4.gif) |
 - Speedup ratio: **1.39**
-- config：[wan_t2v_taylorseer](../../../../configs/caching/taylorseer/wan_t2v_taylorseer.json)
+- config：[wan_t2v_taylorseer](https://github.com/ModelTC/lightx2v/tree/main/configs/caching/taylorseer/wan_t2v_taylorseer.json)
 - Reference paper: [https://arxiv.org/abs/2503.06923](https://arxiv.org/abs/2503.06923)
 
 ### AdaCache
@@ -44,7 +44,7 @@ This allows flexible adjustment of cache strategies based on dynamic changes in 
 | Single H200 inference time: 227s | Single H200 inference time: 83s |
 | ![Effect before acceleration](../../../../assets/gifs/5.gif) | ![Effect after acceleration](../../../../assets/gifs/6.gif) |
 - Speedup ratio: **2.73**
-- config：[wan_i2v_ada](../../../../configs/caching/adacache/wan_i2v_ada.json)
+- config：[wan_i2v_ada](https://github.com/ModelTC/lightx2v/tree/main/configs/caching/adacache/wan_i2v_ada.json)
 - Reference paper: [https://arxiv.org/abs/2411.02397](https://arxiv.org/abs/2411.02397)
 
 ### CustomCache
@@ -59,7 +59,7 @@ This not only efficiently determines the timing of cache reuse, but also maximiz
 | Single H200 inference time: 57.9s | Single H200 inference time: 16.6s |
 | ![Effect before acceleration](../../../../assets/gifs/7.gif) | ![Effect after acceleration](../../../../assets/gifs/8.gif) |
 - Speedup ratio: **3.49**
-- config：[wan_t2v_custom_1_3b](../../../../configs/caching/custom/wan_t2v_custom_1_3b.json)
+- config：[wan_t2v_custom_1_3b](https://github.com/ModelTC/lightx2v/tree/main/configs/caching/custom/wan_t2v_custom_1_3b.json)
 
 
 ## How to Run
