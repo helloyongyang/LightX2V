@@ -82,6 +82,12 @@ def get_available_attn_ops():
     else:
         available_ops.append(("sage_attn2", False))
 
+    torch_installed = is_module_installed("torch")
+    if torch_installed:
+        available_ops.append(("torch_sdpa", True))
+    else:
+        available_ops.append(("torch_sdpa", False))
+
     return available_ops
 
 
@@ -468,7 +474,7 @@ def auto_configure(enable_auto_config, model_type, resolution):
     else:
         quant_type = "int8"
 
-    attn_priority = ["sage_attn2", "flash_attn3", "flash_attn2"]
+    attn_priority = ["sage_attn2", "flash_attn3", "flash_attn2", "torch_sdpa"]
     quant_op_priority = ["sgl", "vllm", "q8f"]
 
     for op in attn_priority:
