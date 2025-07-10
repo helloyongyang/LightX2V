@@ -2,6 +2,10 @@ import torch
 
 try:
     import flashinfer
+    from packaging import version
+
+    flashinfer_version = version.parse(flashinfer.__version__)
+    has_o_dtype = flashinfer_version >= version.parse("0.2.6.post1")
 except ImportError:
     flashinfer = None
 
@@ -29,7 +33,8 @@ def radial_attn(
 
     indptr = get_indptr_from_mask(mask, query)
     indices = get_indices_from_mask(mask, query)
-    bsr_wrapper.plan(
+
+    kwargs = dict(
         indptr=indptr,
         indices=indices,
         M=seqlen,
@@ -43,6 +48,10 @@ def radial_attn(
         kv_data_type=key.dtype,
         use_fp16_qk_reduction=True,
     )
+    if has_o_dtype:
+        kwargs["o_data_type"] = query.dtype
+
+    bsr_wrapper.plan(**kwargs)
 
     o = bsr_wrapper.run(query, key, value)
 
