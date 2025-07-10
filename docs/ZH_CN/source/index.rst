@@ -45,6 +45,6 @@ LightX2V 是一个轻量级的视频生成推理框架，旨在提供一个利�
    低资源场景部署 <deploy_guides/for_low_resource.md>
    Lora模型部署 <deploy_guides/lora_deploy.md>
    服务化部署 <deploy_guides/deploy_service.md>
-   gradio部署 <deploy_guides/deploy_gradio.md>
-   comfyui部署 <deploy_guides/deploy_comfyui.md>
+   Gradio部署 <deploy_guides/deploy_gradio.md>
+   ComfyUI部署 <deploy_guides/deploy_comfyui.md>
    本地windows电脑部署 <deploy_guides/deploy_local_windows.md>
