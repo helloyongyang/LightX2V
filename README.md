@@ -13,6 +13,16 @@
 
 --------------------------------------------------------------------------------
 
+LightX2V is a lightweight video generation inference framework designed to provide an inference tool that leverages multiple advanced video generation inference techniques. As a unified inference platform, this framework supports various generation tasks such as text-to-video (T2V) and image-to-video (I2V) across different models. X2V means transforming any input modality (such as text or images) to video output.
+
+
+## How to Start
+
+Please refer to our documentation:
+
+[English Docs](https://lightx2v-en.readthedocs.io/en/latest/) | [中文文档](https://lightx2v-zhcn.readthedocs.io/zh-cn/latest/)
+
+
 ## Supported Model List
 
 ✅ [HunyuanVideo-T2V](https://huggingface.co/tencent/HunyuanVideo)
@@ -31,11 +41,6 @@
 
 ✅ [CogVideoX1.5-5B-T2V](https://huggingface.co/THUDM/CogVideoX1.5-5B)
 
-## How to Run
-
-Please refer to our documentation:
-
-[English Docs](https://lightx2v-en.readthedocs.io/en/latest/) | [中文文档](https://lightx2v-zhcn.readthedocs.io/zh-cn/latest/)
 
 ## Contributing Guidelines
 

@@ -14,6 +14,8 @@ Welcome to Lightx2v!
    </strong>
 
 
+LightX2V is a lightweight video generation inference framework designed to provide an inference tool that leverages multiple advanced video generation inference techniques. As a unified inference platform, this framework supports various generation tasks such as text-to-video (T2V) and image-to-video (I2V) across different models. X2V means transforming any input modality (such as text or images) to video output.
+
 Documentation
 -------------
 
