@@ -33,7 +33,9 @@
 
 ## How to Run
 
-Please refer to the [documentation](https://github.com/ModelTC/lightx2v/tree/main/docs) in lightx2v.
+Please refer to our documentation:
+
+[English Docs](https://lightx2v-en.readthedocs.io/en/latest/) | [中文文档](https://lightx2v-zhcn.readthedocs.io/zh-cn/latest/)
 
 ## Contributing Guidelines
 
