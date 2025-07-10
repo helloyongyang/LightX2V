@@ -18,6 +18,7 @@
 | 单卡H200推理耗时：58s | 单卡H200推理耗时：17.9s |
 | ![加速前效果](../../../../assets/gifs/1.gif) | ![加速后效果](../../../../assets/gifs/2.gif) |
 - 加速比为：**3.24**
+- config：[wan_t2v_1_3b_tea_480p.json](../../../../configs/caching/teacache/wan_t2v_1_3b_tea_480p.json)
 - 参考论文：[https://arxiv.org/abs/2411.19108](https://arxiv.org/abs/2411.19108)
 
 ### TaylorSeer Cache
@@ -28,6 +29,7 @@
 | 单卡H200推理耗时：57.7s | 单卡H200推理耗时：41.3s |
 | ![加速前效果](../../../../assets/gifs/3.gif) | ![加速后效果](../../../../assets/gifs/4.gif) |
 - 加速比为：**1.39**
+- config：[wan_t2v_taylorseer](../../../../configs/caching/taylorseer/wan_t2v_taylorseer.json)
 - 参考论文：[https://arxiv.org/abs/2503.06923](https://arxiv.org/abs/2503.06923)
 
 ### AdaCache
@@ -42,6 +44,7 @@
 | 单卡H200推理耗时：227s | 单卡H200推理耗时：83s |
 | ![加速前效果](../../../../assets/gifs/5.gif) | ![加速后效果](../../../../assets/gifs/6.gif) |
 - 加速比为：**2.73**
+- config：[wan_i2v_ada](../../../../configs/caching/adacache/wan_i2v_ada.json)
 - 参考论文：[https://arxiv.org/abs/2411.02397](https://arxiv.org/abs/2411.02397)
 
 ### CustomCache
@@ -56,6 +59,7 @@
 | 单卡H200推理耗时：57.9s | 单卡H200推理耗时：16.6s |
 | ![加速前效果](../../../../assets/gifs/7.gif) | ![加速后效果](../../../../assets/gifs/8.gif) |
 - 加速比为：**3.49**
+- config：[wan_t2v_custom_1_3b](../../../../configs/caching/custom/wan_t2v_custom_1_3b.json)
 
 
 ## 使用方式
