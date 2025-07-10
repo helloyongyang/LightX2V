@@ -48,10 +48,3 @@ LightX2V 是一个轻量级的视频生成推理框架，旨在提供一个利�
    gradio部署 <deploy_guides/deploy_gradio.md>
    comfyui部署 <deploy_guides/deploy_comfyui.md>
    本地windows电脑部署 <deploy_guides/deploy_local_windows.md>
-
-
-.. Indices and tables
-.. ==================
-
-.. * :ref:`genindex`
-.. * :ref:`modindex`

@@ -48,10 +48,3 @@ Documentation
    Gradio Deployment <deploy_guides/deploy_gradio.md>
    ComfyUI Deployment <deploy_guides/deploy_comfyui.md>
    Local Windows Deployment <deploy_guides/deploy_local_windows.md>
-
-
-.. Indices and tables
-.. ==================
-
-.. * :ref:`genindex`
-.. * :ref:`modindex`
