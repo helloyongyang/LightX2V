@@ -5,8 +5,6 @@
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/ModelTC/lightx2v)
-[![GitHub Stars](https://img.shields.io/github/stars/ModelTC/lightx2v.svg?style=social&label=Star&maxAge=60)](https://github.com/ModelTC/lightx2v)
-![visitors](https://komarev.com/ghpvc/?username=lightx2v&label=visitors)
 [![Doc](https://img.shields.io/badge/docs-English-99cc2)](https://lightx2v-en.readthedocs.io/en/latest)
 [![Doc](https://img.shields.io/badge/ドキュメント-日本語-99cc2)](https://lightx2v-zhcn.readthedocs.io/zh-cn/latest)
 [![Docker](https://badgen.net/badge/icon/docker?icon=docker&label)](https://hub.docker.com/r/lightx2v/lightx2v/tags)
