@@ -45,6 +45,11 @@ class ApiServer:
         self.app.include_router(self.files_router)
         self.app.include_router(self.service_router)
 
+    def _write_file_sync(self, file_path: Path, content: bytes) -> None:
+        """同步写入文件到指定路径"""
+        with open(file_path, "wb") as buffer:
+            buffer.write(content)
+
     def _stream_file_response(self, file_path: Path, filename: str | None = None) -> StreamingResponse:
         """Common file streaming response method"""
         assert self.file_service is not None, "File service is not initialized"
@@ -130,32 +135,30 @@ class ApiServer:
             video_duration: int = Form(default=5),
         ):
             """Create video generation task via form"""
-            # Process uploaded image file
-            image_path = ""
             assert self.file_service is not None, "File service is not initialized"
 
-            if image_file and image_file.filename:
-                file_extension = Path(image_file.filename).suffix
+            async def save_file_async(file: UploadFile, target_dir: Path) -> str:
+                """异步保存文件到指定目录"""
+                if not file or not file.filename:
+                    return ""
+
+                file_extension = Path(file.filename).suffix
                 unique_filename = f"{uuid.uuid4()}{file_extension}"
-                image_path = self.file_service.input_image_dir / unique_filename
+                file_path = target_dir / unique_filename
 
-                with open(image_path, "wb") as buffer:
-                    content = await image_file.read()
-                    buffer.write(content)
+                content = await file.read()
 
-                image_path = str(image_path)
+                await asyncio.to_thread(self._write_file_sync, file_path, content)
+
+                return str(file_path)
+
+            image_path = ""
+            if image_file and image_file.filename:
+                image_path = await save_file_async(image_file, self.file_service.input_image_dir)
 
             audio_path = ""
             if audio_file and audio_file.filename:
-                file_extension = Path(audio_file.filename).suffix
-                unique_filename = f"{uuid.uuid4()}{file_extension}"
-                audio_path = self.file_service.input_audio_dir / unique_filename
-
-                with open(audio_path, "wb") as buffer:
-                    content = await audio_file.read()
-                    buffer.write(content)
-
-                audio_path = str(audio_path)
+                audio_path = await save_file_async(audio_file, self.file_service.input_audio_dir)
 
             message = TaskRequest(
                 prompt=prompt,
@@ -275,6 +278,12 @@ class ApiServer:
         async def get_service_status():
             """Get service status"""
             return ServiceStatus.get_status_service()
+
+        @self.service_router.get("/metadata", response_model=dict)
+        async def get_service_metadata():
+            """Get service metadata"""
+            assert self.inference_service is not None, "Inference service is not initialized"
+            return self.inference_service.server_metadata()
 
     def _process_video_generation(self, message: TaskRequest, stop_event: threading.Event):
         assert self.video_service is not None, "Video service is not initialized"

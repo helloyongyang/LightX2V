@@ -10,6 +10,7 @@ from safetensors import safe_open, torch as st
 from loguru import logger
 from tqdm import tqdm
 from collections import defaultdict
+from qtorch.quant import float_quantize
 
 
 def get_key_mapping_rules(direction, model_type):
@@ -314,7 +315,8 @@ def quantize_tensor(w, w_bit=8, dtype=torch.int8):
     max_val = w.abs().amax(dim=1, keepdim=True).clamp(min=1e-5)
 
     if dtype == torch.float8_e4m3fn:
-        qmin, qmax = -448, 448
+        finfo = torch.finfo(dtype)
+        qmin, qmax = finfo.min, finfo.max
     elif dtype == torch.int8:
         qmin, qmax = -128, 127
 
@@ -322,7 +324,9 @@ def quantize_tensor(w, w_bit=8, dtype=torch.int8):
     scales = max_val / qmax
 
     if dtype == torch.float8_e4m3fn:
-        w_q = torch.clamp(w / scales, qmin, qmax).to(dtype)
+        scaled_tensor = w / scales
+        scaled_tensor = torch.clip(scaled_tensor, qmin, qmax)
+        w_q = float_quantize(scaled_tensor.float(), 4, 3, rounding="nearest").to(dtype)
     else:
         w_q = torch.clamp(torch.round(w / scales), qmin, qmax).to(dtype)
 
@@ -341,7 +345,8 @@ def quantize_model(
     target_keys=["attn", "ffn"],
     key_idx=2,
     ignore_key=None,
-    dtype=torch.int8,
+    linear_dtype=torch.int8,
+    non_linear_dtype=torch.float,
 ):
     """
     Quantize model weights in-place
@@ -370,16 +375,20 @@ def quantize_model(
 
             # Skip non-tensors, small tensors, and non-2D tensors
             if not isinstance(tensor, torch.Tensor) or tensor.dim() != 2:
+                if tensor.dtype != non_linear_dtype:
+                    weights[key] = tensor.to(non_linear_dtype)
                 continue
 
             # Check if key matches target modules
             parts = key.split(".")
             if len(parts) < key_idx + 1 or parts[key_idx] not in target_keys:
+                if tensor.dtype != non_linear_dtype:
+                    weights[key] = tensor.to(non_linear_dtype)
                 continue
 
             try:
                 # Quantize tensor and store results
-                w_q, scales = quantize_tensor(tensor, w_bit, dtype)
+                w_q, scales = quantize_tensor(tensor, w_bit, linear_dtype)
 
                 # Replace original tensor and store scales
                 weights[key] = w_q
@@ -500,7 +509,8 @@ def convert_weights(args):
             target_keys=args.target_keys,
             key_idx=args.key_idx,
             ignore_key=args.ignore_key,
-            dtype=args.dtype,
+            linear_dtype=args.linear_dtype,
+            non_linear_dtype=args.non_linear_dtype,
         )
 
     os.makedirs(args.output, exist_ok=True)
@@ -637,10 +647,17 @@ def main():
         help="Device to use for quantization (cpu/cuda)",
     )
     parser.add_argument(
-        "--dtype",
+        "--linear_dtype",
         type=str,
         choices=["torch.int8", "torch.float8_e4m3fn"],
-        help="Data type for quantization",
+        help="Data type for linear",
+    )
+    parser.add_argument(
+        "--non_linear_dtype",
+        type=str,
+        default="torch.float32",
+        choices=["torch.bfloat16", "torch.float16"],
+        help="Data type for non-linear",
     )
     parser.add_argument("--lora_path", type=str, nargs="*", help="Path(s) to LoRA file(s). Can specify multiple paths separated by spaces.")
     parser.add_argument(
@@ -654,12 +671,8 @@ def main():
     args = parser.parse_args()
 
     if args.quantized:
-        if args.dtype == "torch.int8":
-            args.dtype = torch.int8
-        elif args.dtype == "torch.float8_e4m3fn":
-            args.dtype = torch.float8_e4m3fn
-        else:
-            raise ValueError(f"Not support dtype :{args.dtype}")
+        args.linear_dtype = eval(args.linear_dtype)
+        args.non_linear_dtype = eval(args.non_linear_dtype)
 
         model_type_keys_map = {
             "wan_dit": {

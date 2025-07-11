@@ -25,9 +25,8 @@ git clone https://github.com/ModelTC/lightx2v.git lightx2v && cd lightx2v
 conda create -n lightx2v python=3.11 && conda activate lightx2v
 pip install -r requirements.txt
 
-# 单独重新安装transformers，避免pip的冲突检查
 # 混元模型需要在4.45.2版本的transformers下运行，如果不需要跑混元模型，可以忽略
-pip install transformers==4.45.2
+# pip install transformers==4.45.2
 
 # 安装 flash-attention 2
 git clone https://github.com/Dao-AILab/flash-attention.git --recursive
@@ -41,7 +40,7 @@ cd flash-attention/hopper && python setup.py install
 
 ```shell
 # 修改脚本中的路径
-bash scripts/run_wan_t2v.sh
+bash scripts/wan/run_wan_t2v.sh
 ```
 
-除了脚本中已有的输入参数，`--config_json`指向的`${lightx2v_path}/configs/wan_t2v.json`中也会存在一些必要的参数，可以根据需要，自行修改。
+除了脚本中已有的输入参数，`--config_json`指向的`wan_t2v.json`中也会存在一些必要的参数，可以根据需要，自行修改。
