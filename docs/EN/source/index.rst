@@ -9,12 +9,25 @@ Welcome to Lightx2v!
 
 .. raw:: html
 
-   <p style="text-align:center">
-   <strong>A Light Video Generation Inference Framework
-   </strong>
+    <div align="center" style="font-family: charter;">
 
+    <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License"></a>
+    <a href="https://deepwiki.com/ModelTC/lightx2v"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+    <a href="https://lightx2v-en.readthedocs.io/en/latest"><img src="https://img.shields.io/badge/docs-English-99cc2" alt="Doc"></a>
+    <a href="https://lightx2v-zhcn.readthedocs.io/zh-cn/latest"><img src="https://img.shields.io/badge/文档-中文-99cc2" alt="Doc"></a>
+    <a href="https://hub.docker.com/r/lightx2v/lightx2v/tags"><img src="https://badgen.net/badge/icon/docker?icon=docker&label" alt="Docker"></a>
+
+    </div>
+
+    <div align="center" style="font-family: charter;">
+    <strong>LightX2V: Light Video Generation Inference Framework</strong>
+    </div>
 
 LightX2V is a lightweight video generation inference framework designed to provide an inference tool that leverages multiple advanced video generation inference techniques. As a unified inference platform, this framework supports various generation tasks such as text-to-video (T2V) and image-to-video (I2V) across different models. X2V means transforming different input modalities (such as text or images) to video output.
+
+GitHub: https://github.com/ModelTC/lightx2v
+
+HuggingFace: https://huggingface.co/lightx2v
 
 Documentation
 -------------
