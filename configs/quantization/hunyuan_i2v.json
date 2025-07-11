@@ -6,7 +6,7 @@
     "cross_attn_1_type": "flash_attn3",
     "cross_attn_2_type": "flash_attn3",
     "seed": 0,
-    "dit_quantized_ckpt": "/mtc/gushiqiao/llmc_workspace/x2v_models/hunyuan/hunyuan_i2v_int8.pth",
+    "dit_quantized_ckpt": "/path/to/int8/model",
     "mm_config": {
         "mm_type": "W-int8-channel-sym-A-int8-channel-sym-dynamic-Vllm"
     }
