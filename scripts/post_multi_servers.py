@@ -46,12 +46,26 @@ def generate_task_id():
 def post_all_tasks(urls, messages):
     msg_num = len(messages)
     msg_index = 0
+    available_urls = []
+    for url in urls:
+        try:
+            _ = requests.get(f"{url}/v1/service/status").json()
+        except Exception as e:
+            continue
+        available_urls.append(url)
+
+    if not available_urls:
+        logger.error("No available urls.")
+        return
+
+    logger.info(f"available_urls: {available_urls}")
+
     while True:
-        for url in urls:
-            response = requests.get(f"{url}/v1/local/video/generate/service_status").json()
+        for url in available_urls:
+            response = requests.get(f"{url}/v1/service/status").json()
             if response["service_status"] == "idle":
                 logger.info(f"{url} service is idle, start task...")
-                response = requests.post(f"{url}/v1/local/video/generate", json=messages[msg_index])
+                response = requests.post(f"{url}/v1/tasks/", json=messages[msg_index])
                 logger.info(f"response: {response.json()}")
                 msg_index += 1
                 if msg_index == msg_num:
