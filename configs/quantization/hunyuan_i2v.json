@@ -8,7 +8,6 @@
     "seed": 0,
     "dit_quantized_ckpt": "/mtc/gushiqiao/llmc_workspace/x2v_models/hunyuan/hunyuan_i2v_int8.pth",
     "mm_config": {
-        "mm_type": "W-int8-channel-sym-A-int8-channel-sym-dynamic-Vllm",
-        "weight_auto_quant": false
+        "mm_type": "W-int8-channel-sym-A-int8-channel-sym-dynamic-Vllm"
     }
 }

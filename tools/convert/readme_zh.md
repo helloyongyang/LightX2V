@@ -1,30 +1,8 @@
 # 模型转换工具
 
-一款功能强大的实用工具，可在不同格式之间转换模型权重并执行量化任务。
+该converter工具可在不同格式之间转换模型权重。
 
-## Diffusers
-支持 Diffusers 架构与 LightX2V 架构之间的相互转换
-
-### Lightx2v->Diffusers
-```bash
-python converter.py \
-       --source /Path/To/Wan-AI/Wan2.1-I2V-14B-480P \
-       --output /Path/To/Wan2.1-I2V-14B-480P-Diffusers \
-       --direction forward \
-       --save_by_block
-```
-
-### Diffusers->Lightx2v
-```bash
-python converter.py \
-       --source /Path/To/Wan-AI/Wan2.1-I2V-14B-480P-Diffusers \
-       --output /Path/To/Wan2.1-I2V-14B-480P \
-       --direction backward \
-       --save_by_block
-```
-
-
-## 量化
+## 功能1：转换量化模型
 
 该工具支持将 **FP32/FP16/BF16** 模型权重转换为 **INT8、FP8** 类型。
 
@@ -146,4 +124,26 @@ python converter.py \
   --non_linear_dtype torch.float16 \
   --model_type wan_clip \
   --quantized
+```
+
+
+## 功能2：Diffusers和Lightx2v之间的格式转换
+支持 Diffusers 架构与 LightX2V 架构之间的相互转换
+
+### Lightx2v->Diffusers
+```bash
+python converter.py \
+       --source /Path/To/Wan-AI/Wan2.1-I2V-14B-480P \
+       --output /Path/To/Wan2.1-I2V-14B-480P-Diffusers \
+       --direction forward \
+       --save_by_block
+```
+
+### Diffusers->Lightx2v
+```bash
+python converter.py \
+       --source /Path/To/Wan-AI/Wan2.1-I2V-14B-480P-Diffusers \
+       --output /Path/To/Wan2.1-I2V-14B-480P \
+       --direction backward \
+       --save_by_block
 ```

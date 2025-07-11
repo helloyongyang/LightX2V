@@ -1,32 +1,10 @@
-# 模型转换工具
+# Model Conversion Tool
 
-A powerful utility for converting model weights between different formats and performing quantization tasks.
+This converter tool can convert model weights between different formats.
 
-## Diffusers
-Facilitates mutual conversion between diffusers architecture and lightx2v architecture
+## Feature 1: Convert Quantized Models
 
-### Lightx2v->Diffusers
-```bash
-python converter.py \
-       --source /Path/To/Wan-AI/Wan2.1-I2V-14B-480P \
-       --output /Path/To/Wan2.1-I2V-14B-480P-Diffusers \
-       --direction forward \
-       --save_by_block
-```
-
-### Diffusers->Lightx2v
-```bash
-python converter.py \
-       --source /Path/To/Wan-AI/Wan2.1-I2V-14B-480P-Diffusers \
-       --output /Path/To/Wan2.1-I2V-14B-480P \
-       --direction backward \
-       --save_by_block
-```
-
-
-## Quantization
-This tool supports converting fp32/fp16/bf16 model weights to INT8、FP8 type.
-
+This tool supports converting **FP32/FP16/BF16** model weights to **INT8, FP8** types.
 
 ### Wan DIT
 
@@ -146,4 +124,26 @@ python converter.py \
   --non_linear_dtype torch.float16 \
   --model_type wan_clip \
   --quantized
+```
+
+
+## Feature 2: Format Conversion Between Diffusers and Lightx2v
+Supports mutual conversion between Diffusers architecture and LightX2V architecture
+
+### Lightx2v->Diffusers
+```bash
+python converter.py \
+       --source /Path/To/Wan-AI/Wan2.1-I2V-14B-480P \
+       --output /Path/To/Wan2.1-I2V-14B-480P-Diffusers \
+       --direction forward \
+       --save_by_block
+```
+
+### Diffusers->Lightx2v
+```bash
+python converter.py \
+       --source /Path/To/Wan-AI/Wan2.1-I2V-14B-480P-Diffusers \
+       --output /Path/To/Wan2.1-I2V-14B-480P \
+       --direction backward \
+       --save_by_block
 ```

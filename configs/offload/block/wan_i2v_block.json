@@ -13,7 +13,6 @@
     "cpu_offload": true,
     "offload_granularity": "block",
     "mm_config": {
-        "mm_type": "W-int8-channel-sym-A-int8-channel-sym-dynamic-Vllm",
-        "weight_auto_quant": true
+        "mm_type": "W-int8-channel-sym-A-int8-channel-sym-dynamic-Vllm"
     }
 }
