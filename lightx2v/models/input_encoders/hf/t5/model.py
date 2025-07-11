@@ -51,11 +51,11 @@ class GELU(nn.Module):
 
 
 class T5LayerNorm(nn.Module):
-    def __init__(self, dim, eps=1e-6):
+    def __init__(self, dim, eps=1e-6, dtype=torch.float16):
         super(T5LayerNorm, self).__init__()
         self.dim = dim
         self.eps = eps
-        self.weight = nn.Parameter(torch.ones(dim))
+        self.weight = nn.Parameter(torch.ones(dim, dtype=dtype))
 
     def forward(self, x):
         x = x * torch.rsqrt(x.float().pow(2).mean(dim=-1, keepdim=True) + self.eps)
@@ -65,7 +65,7 @@ class T5LayerNorm(nn.Module):
 
 
 class T5Attention(nn.Module):
-    def __init__(self, dim, dim_attn, num_heads, dropout=0.1, quantized=False, quant_scheme=None):
+    def __init__(self, dim, dim_attn, num_heads, dropout=0.1, quantized=False, quant_scheme=None, dtype=torch.bfloat16):
         assert dim_attn % num_heads == 0
         super(T5Attention, self).__init__()
         self.dim = dim
@@ -82,10 +82,10 @@ class T5Attention(nn.Module):
             linear_cls = nn.Linear
 
         # layers
-        self.q = linear_cls(dim, dim_attn, bias=False)
-        self.k = linear_cls(dim, dim_attn, bias=False)
-        self.v = linear_cls(dim, dim_attn, bias=False)
-        self.o = linear_cls(dim_attn, dim, bias=False)
+        self.q = linear_cls(dim, dim_attn, bias=False, dtype=dtype)
+        self.k = linear_cls(dim, dim_attn, bias=False, dtype=dtype)
+        self.v = linear_cls(dim, dim_attn, bias=False, dtype=dtype)
+        self.o = linear_cls(dim_attn, dim, bias=False, dtype=dtype)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x, context=None, mask=None, pos_bias=None):
@@ -125,7 +125,7 @@ class T5Attention(nn.Module):
 
 
 class T5FeedForward(nn.Module):
-    def __init__(self, dim, dim_ffn, dropout=0.1, quantized=False, quant_scheme=None):
+    def __init__(self, dim, dim_ffn, dropout=0.1, quantized=False, quant_scheme=None, dtype=torch.bfloat16):
         super(T5FeedForward, self).__init__()
         self.dim = dim
         self.dim_ffn = dim_ffn
@@ -138,9 +138,9 @@ class T5FeedForward(nn.Module):
         else:
             linear_cls = nn.Linear
         # layers
-        self.gate = nn.Sequential(linear_cls(dim, dim_ffn, bias=False), GELU())
-        self.fc1 = linear_cls(dim, dim_ffn, bias=False)
-        self.fc2 = linear_cls(dim_ffn, dim, bias=False)
+        self.gate = nn.Sequential(linear_cls(dim, dim_ffn, bias=False, dtype=dtype), GELU())
+        self.fc1 = linear_cls(dim, dim_ffn, bias=False, dtype=dtype)
+        self.fc2 = linear_cls(dim_ffn, dim, bias=False, dtype=dtype)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
@@ -152,7 +152,7 @@ class T5FeedForward(nn.Module):
 
 
 class T5SelfAttention(nn.Module):
-    def __init__(self, dim, dim_attn, dim_ffn, num_heads, num_buckets, shared_pos=True, dropout=0.1, quantized=False, quant_scheme=None):
+    def __init__(self, dim, dim_attn, dim_ffn, num_heads, num_buckets, shared_pos=True, dropout=0.1, quantized=False, quant_scheme=None, dtype=torch.bfloat16):
         super(T5SelfAttention, self).__init__()
         self.dim = dim
         self.dim_attn = dim_attn
@@ -162,11 +162,11 @@ class T5SelfAttention(nn.Module):
         self.shared_pos = shared_pos
 
         # layers
-        self.norm1 = T5LayerNorm(dim)
-        self.attn = T5Attention(dim, dim_attn, num_heads, dropout, quantized, quant_scheme)
-        self.norm2 = T5LayerNorm(dim)
-        self.ffn = T5FeedForward(dim, dim_ffn, dropout, quantized, quant_scheme)
-        self.pos_embedding = None if shared_pos else T5RelativeEmbedding(num_buckets, num_heads, bidirectional=True)
+        self.norm1 = T5LayerNorm(dim, dtype=dtype)
+        self.attn = T5Attention(dim, dim_attn, num_heads, dropout, quantized, quant_scheme, dtype)
+        self.norm2 = T5LayerNorm(dim, dtype=dtype)
+        self.ffn = T5FeedForward(dim, dim_ffn, dropout, quantized, quant_scheme, dtype=dtype)
+        self.pos_embedding = None if shared_pos else T5RelativeEmbedding(num_buckets, num_heads, bidirectional=True, dtype=dtype)
 
     def forward(self, x, mask=None, pos_bias=None):
         e = pos_bias if self.shared_pos else self.pos_embedding(x.size(1), x.size(1))
@@ -212,7 +212,7 @@ class T5CrossAttention(nn.Module):
 
 
 class T5RelativeEmbedding(nn.Module):
-    def __init__(self, num_buckets, num_heads, bidirectional, max_dist=128):
+    def __init__(self, num_buckets, num_heads, bidirectional, dtype=torch.bfloat16, max_dist=128):
         super(T5RelativeEmbedding, self).__init__()
         self.num_buckets = num_buckets
         self.num_heads = num_heads
@@ -220,7 +220,7 @@ class T5RelativeEmbedding(nn.Module):
         self.max_dist = max_dist
 
         # layers
-        self.embedding = nn.Embedding(num_buckets, num_heads)
+        self.embedding = nn.Embedding(num_buckets, num_heads, dtype=dtype)
 
     def forward(self, lq, lk):
         device = self.embedding.weight.device
@@ -252,7 +252,7 @@ class T5RelativeEmbedding(nn.Module):
 
 
 class T5Encoder(nn.Module):
-    def __init__(self, vocab, dim, dim_attn, dim_ffn, num_heads, num_layers, num_buckets, shared_pos=True, dropout=0.1, cpu_offload=False, quantized=False, quant_scheme=None):
+    def __init__(self, dtype, vocab, dim, dim_attn, dim_ffn, num_heads, num_layers, num_buckets, shared_pos=True, dropout=0.1, cpu_offload=False, quantized=False, quant_scheme=None):
         super(T5Encoder, self).__init__()
 
         self.cpu_offload = cpu_offload
@@ -266,11 +266,11 @@ class T5Encoder(nn.Module):
         self.quant_scheme = quant_scheme
 
         # layers
-        self.token_embedding = vocab if isinstance(vocab, nn.Embedding) else nn.Embedding(vocab, dim)
-        self.pos_embedding = T5RelativeEmbedding(num_buckets, num_heads, bidirectional=True) if shared_pos else None
+        self.token_embedding = vocab.to(dtype) if isinstance(vocab, nn.Embedding) else nn.Embedding(vocab, dim, dtype=dtype)
+        self.pos_embedding = T5RelativeEmbedding(num_buckets, num_heads, bidirectional=True, dtype=dtype) if shared_pos else None
         self.dropout = nn.Dropout(dropout)
-        self.blocks = nn.ModuleList([T5SelfAttention(dim, dim_attn, dim_ffn, num_heads, num_buckets, shared_pos, dropout, quantized, quant_scheme) for _ in range(num_layers)])
-        self.norm = T5LayerNorm(dim)
+        self.blocks = nn.ModuleList([T5SelfAttention(dim, dim_attn, dim_ffn, num_heads, num_buckets, shared_pos, dropout, quantized, quant_scheme, dtype) for _ in range(num_layers)])
+        self.norm = T5LayerNorm(dim, dtype=dtype)
 
         # initialize weights
         # self.apply(init_weights)
@@ -443,10 +443,10 @@ def _t5(
 
     # init model
     with torch.device(device):
-        model = model_cls(**kwargs)
+        model = model_cls(dtype=dtype, **kwargs)
 
     # set device
-    model = model.to(dtype=dtype, device=device)
+    model = model.to(device=device)
     return model
 
 
@@ -511,9 +511,10 @@ class T5EncoderModel:
             .requires_grad_(False)
         )
 
-        logger.info(f"Loading weights from {self.checkpoint_path}")
-
+        logger.info(f"Start Loading weights from {self.checkpoint_path}")
         model.load_state_dict(torch.load(self.checkpoint_path, map_location="cpu", weights_only=True))
+        logger.info(f"End Loading weights from {self.checkpoint_path}")
+
         self.model = model
         if shard_fn is not None:
             self.model = shard_fn(self.model, sync_module_states=False)

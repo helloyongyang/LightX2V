@@ -13,7 +13,6 @@ import importlib.util
 import psutil
 import random
 
-
 logger.add(
     "inference_logs.log",
     rotation="100 MB",
@@ -98,7 +97,7 @@ def get_gpu_memory(gpu_idx=0):
     try:
         with torch.cuda.device(gpu_idx):
             memory_info = torch.cuda.mem_get_info()
-            total_memory = memory_info[1] / (1024**3)
+            total_memory = memory_info[1] / (1024**3)  # Convert bytes to GB
             return total_memory
     except Exception as e:
         logger.warning(f"获取GPU内存失败: {e}")
@@ -149,10 +148,8 @@ for op_name, is_installed in available_attn_ops:
 
 def run_inference(
     model_type,
-    task,
     prompt,
     negative_prompt,
-    image_path,
     save_video_path,
     torch_compile,
     infer_steps,
@@ -182,21 +179,17 @@ def run_inference(
     rotary_chunk,
     rotary_chunk_size,
     clean_cuda_cache,
+    image_path=None,
 ):
     quant_op = quant_op.split("(")[0].strip()
     attention_type = attention_type.split("(")[0].strip()
 
-    global global_runner, current_config, model_path
+    global global_runner, current_config, model_path, task
     global cur_dit_quant_scheme, cur_clip_quant_scheme, cur_t5_quant_scheme, cur_precision_mode, cur_enable_teacache
 
     if os.path.exists(os.path.join(model_path, "config.json")):
         with open(os.path.join(model_path, "config.json"), "r") as f:
             model_config = json.load(f)
-
-    if task == "图像生成视频":
-        task = "i2v"
-    elif task == "文本生成视频":
-        task = "t2v"
 
     if task == "t2v":
         if model_type == "Wan2.1 1.3B":
@@ -407,6 +400,7 @@ def run_inference(
     logger.info(f"使用模型: {model_path}")
     logger.info(f"推理配置:\n{json.dumps(config, indent=4, ensure_ascii=False)}")
 
+    # Initialize or reuse the runner
     runner = global_runner
     if needs_reinit:
         if runner is not None:
@@ -551,6 +545,7 @@ def auto_configure(enable_auto_config, model_type, resolution):
                     "rotary_chunk_val": True,
                     "rotary_chunk_size_val": 100,
                     "clean_cuda_cache_val": True,
+                    "use_tiny_vae_val": True,
                 },
             ),
             (
@@ -569,6 +564,7 @@ def auto_configure(enable_auto_config, model_type, resolution):
                     "clip_quant_scheme_val": quant_type,
                     "dit_quant_scheme_val": quant_type,
                     "lazy_load_val": True,
+                    "use_tiny_vae_val": True,
                 },
             ),
         ]
@@ -606,6 +602,7 @@ def auto_configure(enable_auto_config, model_type, resolution):
                         "lazy_load_val": True,
                         "rotary_chunk_val": True,
                         "rotary_chunk_size_val": 10000,
+                        "use_tiny_vae_val": True,
                     }
                     if res == "540p"
                     else {
@@ -619,10 +616,14 @@ def auto_configure(enable_auto_config, model_type, resolution):
                         "clip_quant_scheme_val": quant_type,
                         "dit_quant_scheme_val": quant_type,
                         "lazy_load_val": True,
+                        "use_tiny_vae_val": True,
                     }
                 ),
             ),
         ]
+
+    else:
+        gpu_rules = {}
 
     if is_14b:
         cpu_rules = [
@@ -639,6 +640,8 @@ def auto_configure(enable_auto_config, model_type, resolution):
                 },
             ),
         ]
+    else:
+        cpu_rules = {}
 
     for threshold, updates in gpu_rules:
         if gpu_memory >= threshold:
@@ -654,17 +657,11 @@ def auto_configure(enable_auto_config, model_type, resolution):
 
 
 def main():
-    def update_model_type(task_type):
-        if task_type == "图像生成视频":
-            return gr.update(choices=["Wan2.1 14B"], value="Wan2.1 14B")
-        elif task_type == "文本生成视频":
-            return gr.update(choices=["Wan2.1 14B", "Wan2.1 1.3B"], value="Wan2.1 14B")
-
     def toggle_image_input(task):
-        return gr.update(visible=(task == "图像生成视频"))
+        return gr.update(visible=(task == "i2v"))
 
     with gr.Blocks(
-        title="Lightx2v (轻量级视频生成推理引擎)",
+        title="Lightx2v (轻量级视频推理和生成引擎)",
         css="""
         .main-content { max-width: 1400px; margin: auto; }
         .output-video { max-height: 650px; }
@@ -684,36 +681,28 @@ def main():
                             gr.Markdown("## 📥 输入参数")
 
                             with gr.Row():
-                                task = gr.Dropdown(
-                                    choices=["图像生成视频", "文本生成视频"],
-                                    value="图像生成视频",
-                                    label="任务类型",
-                                )
-                                model_type = gr.Dropdown(
-                                    choices=["Wan2.1 14B"],
-                                    value="Wan2.1 14B",
-                                    label="模型类型",
-                                )
-                                task.change(
-                                    fn=update_model_type,
-                                    inputs=task,
-                                    outputs=model_type,
-                                )
+                                if task == "i2v":
+                                    model_type = gr.Dropdown(
+                                        choices=["Wan2.1 14B"],
+                                        value="Wan2.1 14B",
+                                        label="模型类型",
+                                    )
+                                else:
+                                    model_type = gr.Dropdown(
+                                        choices=["Wan2.1 14B", "Wan2.1 1.3B"],
+                                        value="Wan2.1 14B",
+                                        label="模型类型",
+                                    )
 
-                            with gr.Row():
-                                image_path = gr.Image(
-                                    label="输入图像",
-                                    type="filepath",
-                                    height=300,
-                                    interactive=True,
-                                    visible=True,
-                                )
-
-                                task.change(
-                                    fn=toggle_image_input,
-                                    inputs=task,
-                                    outputs=image_path,
-                                )
+                            if task == "i2v":
+                                with gr.Row():
+                                    image_path = gr.Image(
+                                        label="输入图像",
+                                        type="filepath",
+                                        height=300,
+                                        interactive=True,
+                                        visible=True,
+                                    )
 
                             with gr.Row():
                                 with gr.Column():
@@ -755,6 +744,11 @@ def main():
                                         value="832x480",
                                         label="最大分辨率",
                                     )
+
+                                with gr.Column():
+                                    enable_auto_config = gr.Checkbox(
+                                        label="自动配置推理选项", value=False, info="自动优化GPU设置以匹配当前分辨率。修改分辨率后，请重新勾选此选项，否则可能导致性能下降或运行失败。"
+                                    )
                                 with gr.Column(scale=9):
                                     seed = gr.Slider(
                                         label="随机种子",
@@ -764,9 +758,10 @@ def main():
                                         value=generate_random_seed(),
                                     )
                                 with gr.Column(scale=1):
-                                    randomize_btn = gr.Button("🎲 生成随机种子", variant="secondary")
+                                    randomize_btn = gr.Button("🎲 随机化", variant="secondary")
 
                                 randomize_btn.click(fn=generate_random_seed, inputs=None, outputs=seed)
+
                                 with gr.Column():
                                     infer_steps = gr.Slider(
                                         label="推理步数",
@@ -774,7 +769,7 @@ def main():
                                         maximum=100,
                                         step=1,
                                         value=40,
-                                        info="视频生成的推理步数。增加步数可能提高质量但降低速度",
+                                        info="视频生成的推理步数。增加步数可能提高质量但降低速度。",
                                     )
 
                             enable_cfg = gr.Checkbox(
@@ -788,7 +783,7 @@ def main():
                                 maximum=10,
                                 step=1,
                                 value=5,
-                                info="控制提示词的影响强度。值越高，提示词的影响越大",
+                                info="控制提示词的影响强度。值越高，提示词的影响越大。",
                             )
                             sample_shift = gr.Slider(
                                 label="分布偏移",
@@ -796,7 +791,7 @@ def main():
                                 minimum=0,
                                 maximum=10,
                                 step=1,
-                                info="控制样本分布偏移的程度。值越大表示偏移越明显",
+                                info="控制样本分布偏移的程度。值越大表示偏移越明显。",
                             )
 
                             fps = gr.Slider(
@@ -805,7 +800,7 @@ def main():
                                 maximum=30,
                                 step=1,
                                 value=16,
-                                info="视频的每秒帧数。较高的FPS会产生更流畅的视频",
+                                info="视频的每秒帧数。较高的FPS会产生更流畅的视频。",
                             )
                             num_frames = gr.Slider(
                                 label="总帧数",
@@ -813,7 +808,7 @@ def main():
                                 maximum=120,
                                 step=1,
                                 value=81,
-                                info="视频中的总帧数。更多帧数会产生更长的视频",
+                                info="视频中的总帧数。更多帧数会产生更长的视频。",
                             )
 
                         save_video_path = gr.Textbox(
@@ -835,14 +830,6 @@ def main():
 
             with gr.Tab("⚙️ 高级选项", id=2):
                 with gr.Group(elem_classes="advanced-options"):
-                    gr.Markdown("### 自动配置")
-                    with gr.Row():
-                        enable_auto_config = gr.Checkbox(
-                            label="自动配置",
-                            value=False,
-                            info="自动调整优化设置以适应您的GPU",
-                        )
-
                     gr.Markdown("### GPU内存优化")
                     with gr.Row():
                         rotary_chunk = gr.Checkbox(
@@ -857,13 +844,13 @@ def main():
                             minimum=100,
                             maximum=10000,
                             step=100,
-                            info="控制应用旋转编码的块大小, 较大的值可能提高性能但增加内存使用, 仅在'rotary_chunk'勾选时有效",
+                            info="控制应用旋转编码的块大小。较大的值可能提高性能但增加内存使用。仅在'rotary_chunk'勾选时有效。",
                         )
 
                         clean_cuda_cache = gr.Checkbox(
                             label="清理CUDA内存缓存",
                             value=False,
-                            info="及时释放GPU内存, 但会减慢推理速度。",
+                            info="启用时，及时释放GPU内存但会减慢推理速度。",
                         )
 
                     gr.Markdown("### 异步卸载")
@@ -877,14 +864,14 @@ def main():
                         lazy_load = gr.Checkbox(
                             label="启用延迟加载",
                             value=False,
-                            info="在推理过程中延迟加载模型组件, 仅在'cpu_offload'勾选和使用量化Dit模型时有效",
+                            info="在推理过程中延迟加载模型组件。需要CPU加载和DIT量化。",
                         )
 
                         offload_granularity = gr.Dropdown(
                             label="Dit卸载粒度",
                             choices=["block", "phase"],
                             value="phase",
-                            info="设置Dit模型卸载粒度: 块或计算阶段",
+                            info="设置Dit模型卸载粒度：块或计算阶段",
                         )
                         offload_ratio = gr.Slider(
                             label="Dit模型卸载比例",
@@ -926,25 +913,25 @@ def main():
                             label="Dit",
                             choices=["fp8", "int8", "bf16"],
                             value="bf16",
-                            info="Dit模型的推理精度",
+                            info="Dit模型的量化精度",
                         )
                         t5_quant_scheme = gr.Dropdown(
                             label="T5编码器",
                             choices=["fp8", "int8", "bf16"],
                             value="bf16",
-                            info="T5编码器模型的推理精度",
+                            info="T5编码器模型的量化精度",
                         )
                         clip_quant_scheme = gr.Dropdown(
                             label="Clip编码器",
                             choices=["fp8", "int8", "fp16"],
                             value="fp16",
-                            info="Clip编码器的推理精度",
+                            info="Clip编码器的量化精度",
                         )
                         precision_mode = gr.Dropdown(
-                            label="敏感层精度",
+                            label="敏感层精度模式",
                             choices=["fp32", "bf16"],
                             value="fp32",
-                            info="选择用于敏感层（如norm层和embedding层）的数值精度",
+                            info="选择用于关键模型组件（如归一化和嵌入层）的数值精度。FP32提供更高精度，而BF16在兼容硬件上提高性能。",
                         )
 
                     gr.Markdown("### 变分自编码器(VAE)")
@@ -1006,47 +993,85 @@ def main():
                         use_ret_steps,
                     ],
                 )
-
-        infer_btn.click(
-            fn=run_inference,
-            inputs=[
-                model_type,
-                task,
-                prompt,
-                negative_prompt,
-                image_path,
-                save_video_path,
-                torch_compile,
-                infer_steps,
-                num_frames,
-                resolution,
-                seed,
-                sample_shift,
-                enable_teacache,
-                teacache_thresh,
-                use_ret_steps,
-                enable_cfg,
-                cfg_scale,
-                dit_quant_scheme,
-                t5_quant_scheme,
-                clip_quant_scheme,
-                fps,
-                use_tiny_vae,
-                use_tiling_vae,
-                lazy_load,
-                precision_mode,
-                cpu_offload,
-                offload_granularity,
-                offload_ratio,
-                t5_offload_granularity,
-                attention_type,
-                quant_op,
-                rotary_chunk,
-                rotary_chunk_size,
-                clean_cuda_cache,
-            ],
-            outputs=output_video,
-        )
+        if task == "i2v":
+            infer_btn.click(
+                fn=run_inference,
+                inputs=[
+                    model_type,
+                    prompt,
+                    negative_prompt,
+                    save_video_path,
+                    torch_compile,
+                    infer_steps,
+                    num_frames,
+                    resolution,
+                    seed,
+                    sample_shift,
+                    enable_teacache,
+                    teacache_thresh,
+                    use_ret_steps,
+                    enable_cfg,
+                    cfg_scale,
+                    dit_quant_scheme,
+                    t5_quant_scheme,
+                    clip_quant_scheme,
+                    fps,
+                    use_tiny_vae,
+                    use_tiling_vae,
+                    lazy_load,
+                    precision_mode,
+                    cpu_offload,
+                    offload_granularity,
+                    offload_ratio,
+                    t5_offload_granularity,
+                    attention_type,
+                    quant_op,
+                    rotary_chunk,
+                    rotary_chunk_size,
+                    clean_cuda_cache,
+                    image_path,
+                ],
+                outputs=output_video,
+            )
+        else:
+            infer_btn.click(
+                fn=run_inference,
+                inputs=[
+                    model_type,
+                    prompt,
+                    negative_prompt,
+                    save_video_path,
+                    torch_compile,
+                    infer_steps,
+                    num_frames,
+                    resolution,
+                    seed,
+                    sample_shift,
+                    enable_teacache,
+                    teacache_thresh,
+                    use_ret_steps,
+                    enable_cfg,
+                    cfg_scale,
+                    dit_quant_scheme,
+                    t5_quant_scheme,
+                    clip_quant_scheme,
+                    fps,
+                    use_tiny_vae,
+                    use_tiling_vae,
+                    lazy_load,
+                    precision_mode,
+                    cpu_offload,
+                    offload_granularity,
+                    offload_ratio,
+                    t5_offload_granularity,
+                    attention_type,
+                    quant_op,
+                    rotary_chunk,
+                    rotary_chunk_size,
+                    clean_cuda_cache,
+                ],
+                outputs=output_video,
+            )
 
     demo.launch(share=True, server_port=args.server_port, server_name=args.server_name)
 
@@ -1061,6 +1086,7 @@ if __name__ == "__main__":
         default="wan2.1",
         help="要使用的模型类别",
     )
+    parser.add_argument("--task", type=str, required=True, choices=["i2v", "t2v"], help="指定任务类型。'i2v'用于图像到视频转换，'t2v'用于文本到视频生成。")
     parser.add_argument("--server_port", type=int, default=7862, help="服务器端口")
     parser.add_argument("--server_name", type=str, default="0.0.0.0", help="服务器IP")
     args = parser.parse_args()
@@ -1068,5 +1094,6 @@ if __name__ == "__main__":
     global model_path, model_cls
     model_path = args.model_path
     model_cls = args.model_cls
+    task = args.task
 
     main()

@@ -121,8 +121,9 @@ class LazyWeightAsyncStreamManager(WeightAsyncStreamManager):
             except Exception as e:
                 logger.error(f"Disk worker thread error: {e}")
 
-    def _async_prefetch_block(self, weights):
-        next_block_idx = self.pin_memory_buffer.get_max_block_index()
+    def _async_prefetch_block(self, blocks, next_block_idx=None):
+        if next_block_idx is None:
+            next_block_idx = self.pin_memory_buffer.get_max_block_index()
 
         if next_block_idx < 0:
             next_block_idx = 0
@@ -137,7 +138,7 @@ class LazyWeightAsyncStreamManager(WeightAsyncStreamManager):
                 with self.task_lock:
                     self.pending_tasks[obj_key] = True
 
-                phase = weights.blocks[next_block_idx].compute_phases[phase_idx]
+                phase = blocks[next_block_idx].compute_phases[phase_idx]
 
                 priority_key = (next_block_idx, phase_idx)
                 self.disk_task_queue.put((priority_key, (next_block_idx, phase_idx, phase)))
@@ -149,20 +150,20 @@ class LazyWeightAsyncStreamManager(WeightAsyncStreamManager):
             with self.task_lock:
                 self.pending_tasks[obj_key] = True
 
-            block = weights.blocks[next_block_idx]
+            block = blocks[next_block_idx]
             self.disk_task_queue.put((obj_key, (next_block_idx, block)))
 
-    def _sync_prefetch_block(self, weights):
+    def _sync_prefetch_block(self, blocks):
         block_idx = 0
         while not self.pin_memory_buffer.is_nearly_full():
             if self.offload_gra == "phase":
                 for phase_idx in range(self.phases_num):
-                    phase = weights.blocks[block_idx].compute_phases[phase_idx]
+                    phase = blocks[block_idx].compute_phases[phase_idx]
                     logger.info(f"Synchronous loading: block={block_idx}, phase={phase_idx}")
                     phase.load_from_disk()
                     self.pin_memory_buffer.push((block_idx, phase_idx), phase)
             else:
-                block = weights.blocks[block_idx]
+                block = blocks[block_idx]
                 logger.info(f"Synchronous loading: block={block_idx}")
                 for phase in block.compute_phases:
                     phase.load_from_disk()
@@ -170,11 +171,11 @@ class LazyWeightAsyncStreamManager(WeightAsyncStreamManager):
 
             block_idx += 1
 
-    def prefetch_weights_from_disk(self, weights):
+    def prefetch_weights_from_disk(self, blocks):
         if self.initial_prefetch_done:
             return
 
-        self._sync_prefetch_block(weights)
+        self._sync_prefetch_block(blocks)
         self.initial_prefetch_done = True
 
     def prefetch_weights(self, block_idx, blocks):
@@ -193,7 +194,15 @@ class LazyWeightAsyncStreamManager(WeightAsyncStreamManager):
                     if time.time() - start_time > 5:
                         raise TimeoutError(f"Load timeout: block={block_idx}")
             else:
-                logger.info("Not find prefetch block={block_idx} task. This is a bug.")
+                logger.info("Not find prefetch block={block_idx} task.")
+                logger.info("Sync prefetch block={block_idx}.")
+                self._async_prefetch_block(blocks, block_idx)
+                start_time = time.time()
+                for phase_idx in self.phases_num:
+                    while not self.pin_memory_buffer.exists((block_idx, phase_idx)):
+                        time.sleep(0.001)
+                        if time.time() - start_time > 15:
+                            raise TimeoutError(f"Load timeout: block={block_idx}, phase={phase_idx}")
 
         with torch.cuda.stream(self.cuda_load_stream):
             block = self.pin_memory_buffer.get(obj_key)
@@ -224,7 +233,14 @@ class LazyWeightAsyncStreamManager(WeightAsyncStreamManager):
                     if time.time() - start_time > 5:
                         raise TimeoutError(f"Load timeout: block={block_idx}, phase={phase_idx}")
             else:
-                logger.info("Not find prefetch block={block_idx}, phase={phase_idx} task. This is a bug.")
+                logger.info(f"Not find block={block_idx}, phase={phase_idx} task.")
+                logger.info(f"Sync prefetch block={block_idx}, phase={phase_idx}.")
+                self._async_prefetch_block(blocks, block_idx)
+                start_time = time.time()
+                while not self.pin_memory_buffer.exists((block_idx, phase_idx)):
+                    time.sleep(0.001)
+                    if time.time() - start_time > 5:
+                        raise TimeoutError(f"Load timeout: block={block_idx}, phase={phase_idx}")
 
         with torch.cuda.stream(self.cuda_load_stream):
             phase = self.pin_memory_buffer.get(obj_key)
