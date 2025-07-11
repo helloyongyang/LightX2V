@@ -36,6 +36,7 @@ def main():
         choices=[
             "wan2.1",
             "hunyuan",
+            "wan2.1_distill",
             "wan2.1_causvid",
             "wan2.1_skyreels_v2_df",
             "wan2.1_audio",
@@ -55,7 +56,7 @@ def main():
     args = parser.parse_args()
     logger.info(f"args: {args}")
 
-    cache_dir = Path(__file__).parent.parent / ".cache"
+    cache_dir = Path(__file__).parent.parent / "server_cache"
     inference_service = DistributedInferenceService()
 
     api_server = ApiServer()

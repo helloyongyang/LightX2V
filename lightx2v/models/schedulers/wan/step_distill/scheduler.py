@@ -9,7 +9,7 @@ class WanStepDistillScheduler(WanScheduler):
     def __init__(self, config):
         super().__init__(config)
         self.denoising_step_list = config.denoising_step_list
-        self.infer_steps = self.config.infer_steps
+        self.infer_steps = len(self.denoising_step_list)
         self.sample_shift = self.config.sample_shift
 
     def prepare(self, image_encoder_output):
@@ -40,10 +40,7 @@ class WanStepDistillScheduler(WanScheduler):
         self.sigma_min = self.sigmas[-1].item()
         self.sigma_max = self.sigmas[0].item()
 
-        if len(self.denoising_step_list) == self.infer_steps:  # 如果denoising_step_list有效既使用
-            self.set_denoising_timesteps(device=self.device)
-        else:
-            self.set_timesteps(self.infer_steps, device=self.device, shift=self.sample_shift)
+        self.set_denoising_timesteps(device=self.device)
 
     def set_denoising_timesteps(self, device: Union[str, torch.device] = None):
         self.timesteps = torch.tensor(self.denoising_step_list, device=device, dtype=torch.int64)
