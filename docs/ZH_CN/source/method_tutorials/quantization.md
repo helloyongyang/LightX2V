@@ -1,15 +1,9 @@
 # 模型量化
 
-lightx2v支持对`Dit`中的线性层进行量化推理，支持`w8a8-int8`和`w8a8-fp8`的矩阵乘法。
+lightx2v支持对`Dit`中的线性层进行量化推理，支持`w8a8-int8`, `w8a8-fp8`, `w8a8-fp8block`, `w8a8-mxfp8` 和 `w4a4-nvfp4`的矩阵乘法。
 
 
 ## 生产量化模型
-
-### 自动量化
-
-lightx2v支持推理时自动对模型权重进行量化，具体可参考[配置文件](https://github.com/ModelTC/lightx2v/tree/main/configs/quantization/wan_i2v_quant_auto.json)。
-值得注意的是，需要将配置文件的**mm_config**进行设置：**"mm_config": {"mm_type": "W-int8-channel-sym-A-int8-channel-sym-dynamic-Vllm","weight_auto_quant": true }**， **mm_type**代表希望使用的量化算子，**weight_auto_quant：true**代表自动转量化模型。
-
 
 ### 离线量化
 

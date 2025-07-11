@@ -9,7 +9,7 @@
 ### TeaCache
 The core idea of `TeaCache` is to accumulate the **relative L1** distance between adjacent time step inputs, and when the cumulative distance reaches a set threshold, determine that the current time step can perform cache reuse.
 - Specifically, the algorithm calculates the relative L1 distance between the current input and the previous step input at each inference step, and accumulates it.
-- When the cumulative distance exceeds the threshold, indicating that the model state has changed sufficiently, it directly reuses the most recently cached content, skipping some redundant computations. This can significantly reduce the number of forward computations of the model and improve inference speed.
+- When the cumulative distance exceeds the threshold, indicating that the model state changes are not significant, it directly reuses the most recently cached content, skipping some redundant computations. This can significantly reduce the number of forward computations of the model and improve inference speed.
 
 In actual effect, TeaCache achieves significant acceleration while ensuring generation quality. The video comparison before and after acceleration is as follows:
 

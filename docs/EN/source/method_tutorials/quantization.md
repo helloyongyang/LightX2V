@@ -1,16 +1,9 @@
 # Model Quantization
 
-lightx2v supports quantized inference for linear layers in **Dit**, enabling `w8a8-int8` and `w8a8-fp8` matrix multiplication.
+lightx2v supports quantized inference for linear layers in **Dit**, enabling `w8a8-int8`, `w8a8-fp8`, `w8a8-fp8block`, `w8a8-mxfp8` and `w4a4-nvfp4` matrix multiplication.
+
 
 ## Generating Quantized Models
-
-### Automatic Quantization
-
-lightx2v supports automatic weight quantization during inference. Refer to the [configuration file](https://github.com/ModelTC/lightx2v/tree/main/configs/quantization/wan_i2v_quant_auto.json).
-**Key configuration**:
-Set `"mm_config": {"mm_type": "W-int8-channel-sym-A-int8-channel-sym-dynamic-Vllm", "weight_auto_quant": true}`.
-- `mm_type`: Specifies the quantized operator
-- `weight_auto_quant: true`: Enables automatic model quantization
 
 ### Offline Quantization
 
