@@ -2,7 +2,7 @@
 ==================
 
 .. figure:: ../../../assets/img_lightx2v.png
-  :width: 100%
+  :width: 80%
   :align: center
   :alt: Lightx2v
   :class: no-scaled-link
