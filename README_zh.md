@@ -9,8 +9,11 @@
 [![Doc](https://img.shields.io/badge/文档-中文-99cc2)](https://lightx2v-zhcn.readthedocs.io/zh-cn/latest)
 [![Docker](https://badgen.net/badge/icon/docker?icon=docker&label)](https://hub.docker.com/r/lightx2v/lightx2v/tags)
 
-**\[ [English](README.md) | 中文 | [日本語](README_ja.md) \]**
+**\[ [English](README.md) | 中文 \]**
+
 </div>
+
+--------------------------------------------------------------------------------
 
 **LightX2V** 是一个轻量级的视频生成推理框架，集成多种先进的视频生成推理技术，统一支持 文本生成视频 (T2V)、图像生成视频 (I2V) 等多种生成任务及模型。**X2V 表示将不同的输入模态（X，如文本或图像）转换（to）为视频输出（V）。**
 
