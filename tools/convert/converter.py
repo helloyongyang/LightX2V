@@ -449,9 +449,11 @@ def load_loras(lora_path, weight_dict, alpha):
         elif name in lora_diffs:
             name_diff = lora_diffs[name]
             lora_diff = lora_weights[name_diff].to(param.device, param.dtype)
-            param += lora_diff * alpha
-            applied_count += 1
-
+            try:
+                param += lora_diff * alpha
+                applied_count += 1
+            except Exception as e:
+                continue
     logger.info(f"Applied {applied_count} LoRA weight adjustments")
 
 
