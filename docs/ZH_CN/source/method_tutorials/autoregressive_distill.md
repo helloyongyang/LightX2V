@@ -9,7 +9,7 @@
 自回归蒸馏通过 [CausVid](https://github.com/tianweiy/CausVid) 技术实现。CausVid 针对 1.3B 的自回归模型进行步数蒸馏、CFG蒸馏。LightX2V 在其基础上，进行了一系列扩展：
 
 1. **更大的模型**：支持 14B 模型的自回归蒸馏训练；
-2. **更完整的数据处理流程**：生成50000个提示词-视频对的训练数据集；
+2. **更完整的数据处理流程**：生成 50,000 个提示词-视频对的训练数据集；
 
 具体实现可参考 [CausVid-Plus](https://github.com/GoatWu/CausVid-Plus)。
 
