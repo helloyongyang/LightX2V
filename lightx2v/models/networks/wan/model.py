@@ -80,7 +80,12 @@ class WanModel:
         safetensors_files = glob.glob(safetensors_pattern)
 
         if not safetensors_files:
-            raise FileNotFoundError(f"No .safetensors files found in directory: {self.model_path}")
+            original_pattern = os.path.join(self.model_path, "original", "*.safetensors")
+            safetensors_files = glob.glob(original_pattern)
+
+            if not safetensors_files:
+                raise FileNotFoundError(f"No .safetensors files found in directory: {self.model_path}")
+
         weight_dict = {}
         for file_path in safetensors_files:
             file_weights = self._load_safetensor_to_dict(file_path, use_bf16, skip_bf16)
