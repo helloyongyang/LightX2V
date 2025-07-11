@@ -1,4 +1,4 @@
-# Lightx2v Gradio Demo Interface
+# Gradio Deployment
 
 ## 📖 Overview
 
