@@ -9,7 +9,7 @@
 [![Doc](https://img.shields.io/badge/文档-中文-99cc2)](https://lightx2v-zhcn.readthedocs.io/zh-cn/latest)
 [![Docker](https://badgen.net/badge/icon/docker?icon=docker&label)](https://hub.docker.com/r/lightx2v/lightx2v/tags)
 
-**\[ English | [中文](README_zh.md) | [日本語](README_ja.md) \]**
+**\[ English | [中文](README_zh.md) \]**
 
 </div>
 
