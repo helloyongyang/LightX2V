@@ -148,10 +148,8 @@ for op_name, is_installed in available_attn_ops:
 
 def run_inference(
     model_type,
-    task,
     prompt,
     negative_prompt,
-    image_path,
     save_video_path,
     torch_compile,
     infer_steps,
@@ -181,21 +179,17 @@ def run_inference(
     rotary_chunk,
     rotary_chunk_size,
     clean_cuda_cache,
+    image_path=None,
 ):
     quant_op = quant_op.split("(")[0].strip()
     attention_type = attention_type.split("(")[0].strip()
 
-    global global_runner, current_config, model_path
+    global global_runner, current_config, model_path, task
     global cur_dit_quant_scheme, cur_clip_quant_scheme, cur_t5_quant_scheme, cur_precision_mode, cur_enable_teacache
 
     if os.path.exists(os.path.join(model_path, "config.json")):
         with open(os.path.join(model_path, "config.json"), "r") as f:
             model_config = json.load(f)
-
-    if task == "Image to Video":
-        task = "i2v"
-    elif task == "Text to Video":
-        task = "t2v"
 
     if task == "t2v":
         if model_type == "Wan2.1 1.3B":
@@ -551,6 +545,7 @@ def auto_configure(enable_auto_config, model_type, resolution):
                     "rotary_chunk_val": True,
                     "rotary_chunk_size_val": 100,
                     "clean_cuda_cache_val": True,
+                    "use_tiny_vae_val": True,
                 },
             ),
             (
@@ -569,6 +564,7 @@ def auto_configure(enable_auto_config, model_type, resolution):
                     "clip_quant_scheme_val": quant_type,
                     "dit_quant_scheme_val": quant_type,
                     "lazy_load_val": True,
+                    "use_tiny_vae_val": True,
                 },
             ),
         ]
@@ -606,6 +602,7 @@ def auto_configure(enable_auto_config, model_type, resolution):
                         "lazy_load_val": True,
                         "rotary_chunk_val": True,
                         "rotary_chunk_size_val": 10000,
+                        "use_tiny_vae_val": True,
                     }
                     if res == "540p"
                     else {
@@ -619,10 +616,14 @@ def auto_configure(enable_auto_config, model_type, resolution):
                         "clip_quant_scheme_val": quant_type,
                         "dit_quant_scheme_val": quant_type,
                         "lazy_load_val": True,
+                        "use_tiny_vae_val": True,
                     }
                 ),
             ),
         ]
+
+    else:
+        gpu_rules = {}
 
     if is_14b:
         cpu_rules = [
@@ -639,6 +640,8 @@ def auto_configure(enable_auto_config, model_type, resolution):
                 },
             ),
         ]
+    else:
+        cpu_rules = {}
 
     for threshold, updates in gpu_rules:
         if gpu_memory >= threshold:
@@ -654,12 +657,6 @@ def auto_configure(enable_auto_config, model_type, resolution):
 
 
 def main():
-    def update_model_type(task_type):
-        if task_type == "Image to Video":
-            return gr.update(choices=["Wan2.1 14B"], value="Wan2.1 14B")
-        elif task_type == "Text to Video":
-            return gr.update(choices=["Wan2.1 14B", "Wan2.1 1.3B"], value="Wan2.1 14B")
-
     def toggle_image_input(task):
         return gr.update(visible=(task == "Image to Video"))
 
@@ -684,36 +681,28 @@ def main():
                             gr.Markdown("## 📥 Input Parameters")
 
                             with gr.Row():
-                                task = gr.Dropdown(
-                                    choices=["Image to Video", "Text to Video"],
-                                    value="Image to Video",
-                                    label="Task Type",
-                                )
-                                model_type = gr.Dropdown(
-                                    choices=["Wan2.1 14B"],
-                                    value="Wan2.1 14B",
-                                    label="Model Type",
-                                )
-                                task.change(
-                                    fn=update_model_type,
-                                    inputs=task,
-                                    outputs=model_type,
-                                )
+                                if task == "i2v":
+                                    model_type = gr.Dropdown(
+                                        choices=["Wan2.1 14B"],
+                                        value="Wan2.1 14B",
+                                        label="Model Type",
+                                    )
+                                else:
+                                    model_type = gr.Dropdown(
+                                        choices=["Wan2.1 14B", "Wan2.1 1.3B"],
+                                        value="Wan2.1 14B",
+                                        label="Model Type",
+                                    )
 
-                            with gr.Row():
-                                image_path = gr.Image(
-                                    label="Input Image",
-                                    type="filepath",
-                                    height=300,
-                                    interactive=True,
-                                    visible=True,  # Initially visible
-                                )
-
-                                task.change(
-                                    fn=toggle_image_input,
-                                    inputs=task,
-                                    outputs=image_path,
-                                )
+                            if task == "i2v":
+                                with gr.Row():
+                                    image_path = gr.Image(
+                                        label="Input Image",
+                                        type="filepath",
+                                        height=300,
+                                        interactive=True,
+                                        visible=True,
+                                    )
 
                             with gr.Row():
                                 with gr.Column():
@@ -754,6 +743,13 @@ def main():
                                         ],
                                         value="832x480",
                                         label="Maximum Resolution",
+                                    )
+
+                                with gr.Column():
+                                    enable_auto_config = gr.Checkbox(
+                                        label="Auto-configure Inference Options",
+                                        value=False,
+                                        info="Automatically optimize GPU settings to match the current resolution. After changing the resolution, please re-check this option to prevent potential performance degradation or runtime errors.",
                                     )
                                 with gr.Column(scale=9):
                                     seed = gr.Slider(
@@ -836,14 +832,6 @@ def main():
 
             with gr.Tab("⚙️ Advanced Options", id=2):
                 with gr.Group(elem_classes="advanced-options"):
-                    gr.Markdown("### Auto configuration")
-                    with gr.Row():
-                        enable_auto_config = gr.Checkbox(
-                            label="Auto configuration",
-                            value=False,
-                            info="Auto-tune optimization settings for your GPU",
-                        )
-
                     gr.Markdown("### GPU Memory Optimization")
                     with gr.Row():
                         rotary_chunk = gr.Checkbox(
@@ -1007,47 +995,85 @@ def main():
                         use_ret_steps,
                     ],
                 )
-
-        infer_btn.click(
-            fn=run_inference,
-            inputs=[
-                model_type,
-                task,
-                prompt,
-                negative_prompt,
-                image_path,
-                save_video_path,
-                torch_compile,
-                infer_steps,
-                num_frames,
-                resolution,
-                seed,
-                sample_shift,
-                enable_teacache,
-                teacache_thresh,
-                use_ret_steps,
-                enable_cfg,
-                cfg_scale,
-                dit_quant_scheme,
-                t5_quant_scheme,
-                clip_quant_scheme,
-                fps,
-                use_tiny_vae,
-                use_tiling_vae,
-                lazy_load,
-                precision_mode,
-                cpu_offload,
-                offload_granularity,
-                offload_ratio,
-                t5_offload_granularity,
-                attention_type,
-                quant_op,
-                rotary_chunk,
-                rotary_chunk_size,
-                clean_cuda_cache,
-            ],
-            outputs=output_video,
-        )
+        if task == "i2v":
+            infer_btn.click(
+                fn=run_inference,
+                inputs=[
+                    model_type,
+                    prompt,
+                    negative_prompt,
+                    save_video_path,
+                    torch_compile,
+                    infer_steps,
+                    num_frames,
+                    resolution,
+                    seed,
+                    sample_shift,
+                    enable_teacache,
+                    teacache_thresh,
+                    use_ret_steps,
+                    enable_cfg,
+                    cfg_scale,
+                    dit_quant_scheme,
+                    t5_quant_scheme,
+                    clip_quant_scheme,
+                    fps,
+                    use_tiny_vae,
+                    use_tiling_vae,
+                    lazy_load,
+                    precision_mode,
+                    cpu_offload,
+                    offload_granularity,
+                    offload_ratio,
+                    t5_offload_granularity,
+                    attention_type,
+                    quant_op,
+                    rotary_chunk,
+                    rotary_chunk_size,
+                    clean_cuda_cache,
+                    image_path,
+                ],
+                outputs=output_video,
+            )
+        else:
+            infer_btn.click(
+                fn=run_inference,
+                inputs=[
+                    model_type,
+                    prompt,
+                    negative_prompt,
+                    save_video_path,
+                    torch_compile,
+                    infer_steps,
+                    num_frames,
+                    resolution,
+                    seed,
+                    sample_shift,
+                    enable_teacache,
+                    teacache_thresh,
+                    use_ret_steps,
+                    enable_cfg,
+                    cfg_scale,
+                    dit_quant_scheme,
+                    t5_quant_scheme,
+                    clip_quant_scheme,
+                    fps,
+                    use_tiny_vae,
+                    use_tiling_vae,
+                    lazy_load,
+                    precision_mode,
+                    cpu_offload,
+                    offload_granularity,
+                    offload_ratio,
+                    t5_offload_granularity,
+                    attention_type,
+                    quant_op,
+                    rotary_chunk,
+                    rotary_chunk_size,
+                    clean_cuda_cache,
+                ],
+                outputs=output_video,
+            )
 
     demo.launch(share=True, server_port=args.server_port, server_name=args.server_name)
 
@@ -1062,6 +1088,7 @@ if __name__ == "__main__":
         default="wan2.1",
         help="Model class to use",
     )
+    parser.add_argument("--task", type=str, required=True, choices=["i2v", "t2v"], help="Specify the task type. 'i2v' for image-to-video translation, 't2v' for text-to-video generation.")
     parser.add_argument("--server_port", type=int, default=7862, help="Server port")
     parser.add_argument("--server_name", type=str, default="0.0.0.0", help="Server ip")
     args = parser.parse_args()
@@ -1069,5 +1096,6 @@ if __name__ == "__main__":
     global model_path, model_cls
     model_path = args.model_path
     model_cls = args.model_cls
+    task = args.task
 
     main()

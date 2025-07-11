@@ -1,4 +1,7 @@
-import flash_attn
+try:
+    import flash_attn
+except ModuleNotFoundError:
+    flash_attn = None
 import math
 import torch
 import torch.nn as nn

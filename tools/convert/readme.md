@@ -36,7 +36,7 @@ python converter.py \
     --output /Path/To/output \
     --output_ext .safetensors \
     --output_name wan_int8 \
-    --dtype torch.int8 \
+    --linear_dtype torch.int8 \
     --model_type wan_dit \
     --quantized \
     --save_by_block
@@ -48,7 +48,7 @@ python converter.py \
     --output /Path/To/output \
     --output_ext .safetensors \
     --output_name wan_fp8 \
-    --dtype torch.float8_e4m3fn \
+    --linear_dtype torch.float8_e4m3fn \
     --model_type wan_dit \
     --quantized \
     --save_by_block
@@ -62,7 +62,7 @@ python converter.py \
     --output /Path/To/output \
     --output_ext .safetensors \
     --output_name wan_int8 \
-    --dtype torch.int8 \
+    --linear_dtype torch.int8 \
     --model_type wan_dit \
     --lora_path /Path/To/LoRA1/ /Path/To/LoRA2/ \
     --lora_alpha 1.0 1.0 \
@@ -78,7 +78,7 @@ python converter.py \
     --output /Path/To/output \
     --output_ext ..safetensors \
     --output_name hunyuan_int8 \
-    --dtype torch.int8 \
+    --linear_dtype torch.int8 \
     --model_type hunyuan_dit \
     --quantized
 ```
@@ -89,7 +89,7 @@ python converter.py \
     --output /Path/To/output \
     --output_ext .safetensors \
     --output_name hunyuan_fp8 \
-    --dtype torch.float8_e4m3fn \
+    --linear_dtype torch.float8_e4m3fn \
     --model_type hunyuan_dit \
     --quantized
 ```
@@ -103,7 +103,8 @@ python converter.py \
     --output /Path/To/output \
     --output_ext .pth\
     --output_name models_t5_umt5-xxl-enc-int8 \
-    --dtype torch.int8 \
+    --linear_dtype torch.int8 \
+    --non_linear_dtype torch.bfloat16 \
     --model_type wan_t5 \
     --quantized
 ```
@@ -111,10 +112,11 @@ python converter.py \
 ```bash
 python converter.py \
     --source /Path/To/Wan-AI/Wan2.1-I2V-14B-480P/models_t5_umt5-xxl-enc-bf16.pth \
-    --output /Path/To/output \
+    --output /Path/To/Wan-AI/Wan2.1-I2V-14B-480P/fp8 \
     --output_ext .pth\
     --output_name models_t5_umt5-xxl-enc-fp8 \
-    --dtype torch.float8_e4m3fn \
+    --linear_dtype torch.float8_e4m3fn \
+    --non_linear_dtype torch.bfloat16 \
     --model_type wan_t5 \
     --quantized
 ```
@@ -128,7 +130,8 @@ python converter.py \
   --output /Path/To/output \
   --output_ext .pth \
   --output_name clip-int8 \
-  --dtype torch.int8 \
+  --linear_dtype torch.int8 \
+  --non_linear_dtype torch.float16 \
   --model_type wan_clip \
   --quantized
 
@@ -136,10 +139,11 @@ python converter.py \
 ```bash
 python converter.py \
   --source /Path/To/Wan-AI/Wan2.1-I2V-14B-480P/models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth \
-  --output /Path/To/output \
+  --output ./output \
   --output_ext .pth \
   --output_name clip-fp8 \
-  --dtype torch.float8_e4m3fn \
+  --linear_dtype torch.float8_e4m3fn \
+  --non_linear_dtype torch.float16 \
   --model_type wan_clip \
   --quantized
 ```
