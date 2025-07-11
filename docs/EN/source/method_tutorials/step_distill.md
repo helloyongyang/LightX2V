@@ -1,4 +1,4 @@
-# 🚀 Step Distillation
+# Step Distillation
 
 Step distillation is an important optimization technique in LightX2V. By training distilled models, it significantly reduces inference steps from the original 40-50 steps to **4 steps**, dramatically improving inference speed while maintaining video quality. LightX2V implements step distillation along with CFG distillation to further enhance inference speed.
 
