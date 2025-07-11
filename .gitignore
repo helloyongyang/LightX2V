@@ -26,3 +26,4 @@ build/
 dist/
 .cache/
 server_cache/
+app/.gradio/

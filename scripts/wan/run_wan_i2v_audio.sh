@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # set path and first
-lightx2v_path="/mnt/Text2Video/wangshankun/lightx2v"
-model_path="/mnt/Text2Video/wangshankun/HF_Cache/Wan2.1-I2V-Audio-14B-720P/"
-lora_path="/mnt/Text2Video/wangshankun/HF_Cache/Wan21_T2V_14B_lightx2v_cfg_step_distill_lora_rank32.safetensors"
+lightx2v_path=
+model_path=
+lora_path=
 # check section
 if [ -z "${CUDA_VISIBLE_DEVICES}" ]; then
     cuda_devices=0
