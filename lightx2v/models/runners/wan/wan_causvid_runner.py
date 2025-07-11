@@ -24,11 +24,11 @@ import torch.distributed as dist
 class WanCausVidRunner(WanRunner):
     def __init__(self, config):
         super().__init__(config)
-        self.num_frame_per_block = self.model.config.num_frame_per_block
-        self.num_frames = self.model.config.num_frames
-        self.frame_seq_length = self.model.config.frame_seq_length
-        self.infer_blocks = self.model.config.num_blocks
-        self.num_fragments = self.model.config.num_fragments
+        self.num_frame_per_block = self.config.num_frame_per_block
+        self.num_frames = self.config.num_frames
+        self.frame_seq_length = self.config.frame_seq_length
+        self.infer_blocks = self.config.num_blocks
+        self.num_fragments = self.config.num_fragments
 
     def load_transformer(self):
         if self.config.lora_path:
