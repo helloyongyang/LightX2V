@@ -21,15 +21,15 @@ Lightx2v 实现了先进的参数卸载机制，专为在有限硬件资源下�
 **工作原理**：在 GPU 和 CPU 内存之间以block或phase为单位管理模型权重，利用 CUDA 流实现计算和数据传输的重叠。Block包含完整的Transformer层，而Phase则是Block内部的单个计算组件。
 
 <div align="center">
-<img alt="GPU-CPU block/phase卸载流程图" src="https://github.com/ModelTC/LightX2V/tree/main/assets/figs/offload/fig1_zh.png" width="75%">
+<img alt="GPU-CPU block/phase卸载流程图" src="https://raw.githubusercontent.com/ModelTC/LightX2V/main/assets/figs/offload/fig1_zh.png" width="75%">
 </div>
 
 <div align="center">
-<img alt="Swap操作" src="https://github.com/ModelTC/LightX2V/tree/main/assets/figs/offload/fig2_zh.png" width="75%">
+<img alt="Swap操作" src="https://raw.githubusercontent.com/ModelTC/LightX2V/main/assets/figs/offload/fig2_zh.png" width="75%">
 </div>
 
 <div align="center">
-<img alt="Swap思想" src="https://github.com/ModelTC/LightX2V/tree/main/assets/figs/offload/fig3_zh.png" width="75%">
+<img alt="Swap思想" src="https://raw.githubusercontent.com/ModelTC/LightX2V/main/assets/figs/offload/fig3_zh.png" width="75%">
 </div>
 
 
@@ -58,12 +58,12 @@ Lightx2v 实现了先进的参数卸载机制，专为在有限硬件资源下�
 
 
 <div align="center">
-<img alt="磁盘-CPU-GPU 分block/phase卸载工作流程" src="https://github.com/ModelTC/LightX2V/tree/main/assets/figs/offload/fig4_zh.png" width="75%">
+<img alt="磁盘-CPU-GPU 分block/phase卸载工作流程" src="https://raw.githubusercontent.com/ModelTC/LightX2V/main/assets/figs/offload/fig4_zh.png" width="75%">
 </div>
 
 
 <div align="center">
-<img alt="工作步骤" src="https://github.com/ModelTC/LightX2V/tree/main/assets/figs/offload/fig5_zh.png" width="75%">
+<img alt="工作步骤" src="https://raw.githubusercontent.com/ModelTC/LightX2V/main/assets/figs/offload/fig5_zh.png" width="75%">
 </div>
 
 **关键特性：**
