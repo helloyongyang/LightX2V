@@ -49,7 +49,7 @@ class DefaultRunner:
             else:
                 self.run_input_encoder = self.run_input_encoder_server_t2v
         else:
-            if not self.config.get("lazy_load", False):
+            if not self.config.get("lazy_load", False) and not self.config.get("unload_modules", False):
                 self.load_model()
             self.run_dit = self.run_dit_local
             self.run_vae_decoder = self.run_vae_decoder_local
@@ -136,8 +136,13 @@ class DefaultRunner:
     def end_run(self):
         self.model.scheduler.clear()
         del self.inputs, self.model.scheduler
-        if self.config.get("lazy_load", False):
-            self.model.transformer_infer.weights_stream_mgr.clear()
+        if self.config.get("lazy_load", False) or self.config.get("unload_modules", False):
+            if hasattr(self.model.transformer_infer, "weights_stream_mgr"):
+                self.model.transformer_infer.weights_stream_mgr.clear()
+            if hasattr(self.model.transformer_weights, "clear"):
+                self.model.transformer_weights.clear()
+            self.model.pre_weight.clear()
+            self.model.post_weight.clear()
             del self.model
         torch.cuda.empty_cache()
         gc.collect()
@@ -163,7 +168,7 @@ class DefaultRunner:
 
     @ProfilingContext("Run DiT")
     async def run_dit_local(self, kwargs):
-        if self.config.get("lazy_load", False):
+        if self.config.get("lazy_load", False) or self.config.get("unload_modules", False):
             self.model = self.load_transformer()
         self.init_scheduler()
         self.model.scheduler.prepare(self.inputs["image_encoder_output"])
@@ -173,10 +178,10 @@ class DefaultRunner:
 
     @ProfilingContext("Run VAE Decoder")
     async def run_vae_decoder_local(self, latents, generator):
-        if self.config.get("lazy_load", False):
+        if self.config.get("lazy_load", False) or self.config.get("unload_modules", False):
             self.vae_decoder = self.load_vae_decoder()
         images = self.vae_decoder.decode(latents, generator=generator, config=self.config)
-        if self.config.get("lazy_load", False):
+        if self.config.get("lazy_load", False) or self.config.get("unload_modules", False):
             del self.vae_decoder
             torch.cuda.empty_cache()
             gc.collect()

@@ -34,9 +34,11 @@ class LNWeightTemplate(metaclass=ABCMeta):
         return self.weight.numel() * self.weight.element_size()
 
     def clear(self):
-        del self.weight
-        if self.bias is not None:
-            del self.bias
+        attrs = ["weight", "bias", "pinned_weight", "pinned_bias"]
+        for attr in attrs:
+            if hasattr(self, attr):
+                delattr(self, attr)
+                setattr(self, attr, None)
 
     @abstractmethod
     def apply(self, input_tensor):

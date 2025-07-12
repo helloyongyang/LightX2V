@@ -61,14 +61,19 @@ class WanRunner(DefaultRunner):
         return image_encoder
 
     def load_text_encoder(self):
+        t5_offload = self.config.get("t5_cpu_offload", False)
+        if t5_offload:
+            t5_device = torch.device("cpu")
+        else:
+            t5_device = torch.device("cuda")
         text_encoder = T5EncoderModel(
             text_len=self.config["text_len"],
             dtype=torch.bfloat16,
-            device=self.init_device,
+            device=t5_device,
             checkpoint_path=os.path.join(self.config.model_path, "models_t5_umt5-xxl-enc-bf16.pth"),
             tokenizer_path=os.path.join(self.config.model_path, "google/umt5-xxl"),
             shard_fn=None,
-            cpu_offload=self.config.cpu_offload,
+            cpu_offload=t5_offload,
             offload_granularity=self.config.get("t5_offload_granularity", "model"),
             t5_quantized=self.config.get("t5_quantized", False),
             t5_quantized_ckpt=self.config.get("t5_quantized_ckpt", None),
@@ -129,13 +134,13 @@ class WanRunner(DefaultRunner):
         self.model.set_scheduler(scheduler)
 
     def run_text_encoder(self, text, img):
-        if self.config.get("lazy_load", False):
+        if self.config.get("lazy_load", False) or self.config.get("unload_modules", False):
             self.text_encoders = self.load_text_encoder()
         text_encoder_output = {}
         n_prompt = self.config.get("negative_prompt", "")
         context = self.text_encoders[0].infer([text])
         context_null = self.text_encoders[0].infer([n_prompt if n_prompt else ""])
-        if self.config.get("lazy_load", False):
+        if self.config.get("lazy_load", False) or self.config.get("unload_modules", False):
             del self.text_encoders[0]
             torch.cuda.empty_cache()
             gc.collect()
@@ -144,11 +149,11 @@ class WanRunner(DefaultRunner):
         return text_encoder_output
 
     def run_image_encoder(self, img):
-        if self.config.get("lazy_load", False):
+        if self.config.get("lazy_load", False) or self.config.get("unload_modules", False):
             self.image_encoder = self.load_image_encoder()
         img = TF.to_tensor(img).sub_(0.5).div_(0.5).cuda()
         clip_encoder_out = self.image_encoder.visual([img[:, None, :, :]], self.config).squeeze(0).to(torch.bfloat16)
-        if self.config.get("lazy_load", False):
+        if self.config.get("lazy_load", False) or self.config.get("unload_modules", False):
             del self.image_encoder
             torch.cuda.empty_cache()
             gc.collect()
@@ -179,7 +184,7 @@ class WanRunner(DefaultRunner):
         msk = torch.concat([torch.repeat_interleave(msk[:, 0:1], repeats=4, dim=1), msk[:, 1:]], dim=1)
         msk = msk.view(1, msk.shape[1] // 4, 4, lat_h, lat_w)
         msk = msk.transpose(1, 2)[0]
-        if self.config.get("lazy_load", False):
+        if self.config.get("lazy_load", False) or self.config.get("unload_modules", False):
             self.vae_encoder = self.load_vae_encoder()
         vae_encode_out = self.vae_encoder.encode(
             [
@@ -193,7 +198,7 @@ class WanRunner(DefaultRunner):
             ],
             self.config,
         )[0]
-        if self.config.get("lazy_load", False):
+        if self.config.get("lazy_load", False) or self.config.get("unload_modules", False):
             del self.vae_encoder
             torch.cuda.empty_cache()
             gc.collect()

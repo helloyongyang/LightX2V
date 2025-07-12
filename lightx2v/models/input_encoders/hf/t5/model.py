@@ -27,6 +27,14 @@ def fp16_clamp(x):
     return x
 
 
+def optimize_memory_usage():
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    import gc
+
+    gc.collect()
+
+
 def init_weights(m):
     if isinstance(m, T5LayerNorm):
         nn.init.ones_(m.weight)
@@ -114,10 +122,14 @@ class T5Attention(nn.Module):
 
         # compute attention (T5 does not use scaling)
         attn = torch.einsum("binc,bjnc->bnij", q, k) + attn_bias
+
+        if hasattr(self, "cpu_offload") and self.cpu_offload:
+            del attn_bias
         attn = F.softmax(attn.float(), dim=-1).to(torch.bfloat16)
         x = torch.einsum("bnij,bjnc->binc", attn, v)
 
-        # output
+        if hasattr(self, "cpu_offload") and self.cpu_offload:
+            del attn
         x = x.reshape(b, -1, n * c)
         x = self.o(x)
         x = self.dropout(x)
@@ -144,7 +156,14 @@ class T5FeedForward(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
-        x = self.fc1(x) * self.gate(x)
+        if hasattr(self, "cpu_offload") and self.cpu_offload:
+            gate_out = self.gate(x)
+            fc1_out = self.fc1(x)
+            x = fc1_out * gate_out
+            del gate_out, fc1_out
+        else:
+            x = self.fc1(x) * self.gate(x)
+
         x = self.dropout(x)
         x = self.fc2(x)
         x = self.dropout(x)
@@ -170,8 +189,19 @@ class T5SelfAttention(nn.Module):
 
     def forward(self, x, mask=None, pos_bias=None):
         e = pos_bias if self.shared_pos else self.pos_embedding(x.size(1), x.size(1))
-        x = fp16_clamp(x + self.attn(self.norm1(x), mask=mask, pos_bias=e))
-        x = fp16_clamp(x + self.ffn(self.norm2(x)))
+
+        if hasattr(self, "cpu_offload") and self.cpu_offload:
+            attn_out = self.attn(self.norm1(x), mask=mask, pos_bias=e)
+            x = fp16_clamp(x + attn_out)
+            del attn_out
+
+            ffn_out = self.ffn(self.norm2(x))
+            x = fp16_clamp(x + ffn_out)
+            del ffn_out
+        else:
+            x = fp16_clamp(x + self.attn(self.norm1(x), mask=mask, pos_bias=e))
+            x = fp16_clamp(x + self.ffn(self.norm2(x)))
+
         return x
 
 
@@ -270,6 +300,12 @@ class T5Encoder(nn.Module):
         self.pos_embedding = T5RelativeEmbedding(num_buckets, num_heads, bidirectional=True, dtype=dtype) if shared_pos else None
         self.dropout = nn.Dropout(dropout)
         self.blocks = nn.ModuleList([T5SelfAttention(dim, dim_attn, dim_ffn, num_heads, num_buckets, shared_pos, dropout, quantized, quant_scheme, dtype) for _ in range(num_layers)])
+
+        if cpu_offload:
+            for block in self.blocks:
+                block.cpu_offload = cpu_offload
+                block.attn.cpu_offload = cpu_offload
+                block.ffn.cpu_offload = cpu_offload
         self.norm = T5LayerNorm(dim, dtype=dtype)
 
         # initialize weights
@@ -281,23 +317,32 @@ class T5Encoder(nn.Module):
         x = self.token_embedding(ids)
         if self.cpu_offload:
             self.token_embedding = self.token_embedding.cpu()
+            optimize_memory_usage()
         x = self.dropout(x)
+
         if self.cpu_offload and self.pos_embedding is not None:
             self.pos_embedding = self.pos_embedding.cuda()
         e = self.pos_embedding(x.size(1), x.size(1)) if self.shared_pos else None
         if self.cpu_offload and self.pos_embedding is not None:
             self.pos_embedding = self.pos_embedding.cpu()
-        for block in self.blocks:
+            optimize_memory_usage()
+
+        for i, block in enumerate(self.blocks):
             if self.cpu_offload:
                 block = block.cuda()
             x = block(x, mask, pos_bias=e)
             if self.cpu_offload:
                 block = block.cpu()
+                del block
+                optimize_memory_usage()
+
         if self.cpu_offload:
             self.norm = self.norm.cuda()
         x = self.norm(x)
         if self.cpu_offload:
             self.norm = self.norm.cpu()
+            optimize_memory_usage()
+
         x = self.dropout(x)
         return x.to(torch.bfloat16)
 
@@ -529,6 +574,10 @@ class T5EncoderModel:
     def to_cuda(self):
         self.model = self.model.to("cuda")
 
+    def optimize_memory(self):
+        """优化内存使用"""
+        optimize_memory_usage()
+
     def infer(self, texts):
         if self.cpu_offload and self.offload_granularity == "model":
             self.to_cuda()
@@ -537,10 +586,17 @@ class T5EncoderModel:
         ids = ids.cuda()
         mask = mask.cuda()
         seq_lens = mask.gt(0).sum(dim=1).long()
-        context = self.model(ids, mask)
+
+        with torch.no_grad():
+            context = self.model(ids, mask)
 
         if self.cpu_offload and self.offload_granularity == "model":
             self.to_cpu()
+            optimize_memory_usage()
+
+        del ids, mask
+        if self.cpu_offload:
+            optimize_memory_usage()
 
         return [u[:v] for u, v in zip(context, seq_lens)]
 

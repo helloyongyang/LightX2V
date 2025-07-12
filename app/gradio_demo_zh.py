@@ -109,6 +109,26 @@ def get_cpu_memory():
     return available_bytes / 1024**3
 
 
+def cleanup_memory():
+    gc.collect()
+
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.synchronize()
+
+    try:
+        import psutil
+
+        if hasattr(psutil, "virtual_memory"):
+            if os.name == "posix":
+                try:
+                    os.system("sync")
+                except:  # noqa
+                    pass
+    except:  # noqa
+        pass
+
+
 def generate_unique_filename(base_dir="./saved_videos"):
     os.makedirs(base_dir, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -147,7 +167,6 @@ for op_name, is_installed in available_attn_ops:
 
 
 def run_inference(
-    model_type,
     prompt,
     negative_prompt,
     save_video_path,
@@ -173,6 +192,8 @@ def run_inference(
     cpu_offload,
     offload_granularity,
     offload_ratio,
+    t5_cpu_offload,
+    unload_modules,
     t5_offload_granularity,
     attention_type,
     quant_op,
@@ -181,6 +202,8 @@ def run_inference(
     clean_cuda_cache,
     image_path=None,
 ):
+    cleanup_memory()
+
     quant_op = quant_op.split("(")[0].strip()
     attention_type = attention_type.split("(")[0].strip()
 
@@ -192,7 +215,7 @@ def run_inference(
             model_config = json.load(f)
 
     if task == "t2v":
-        if model_type == "Wan2.1 1.3B":
+        if model_size == "1.3b":
             # 1.3B
             coefficient = [
                 [
@@ -287,6 +310,7 @@ def run_inference(
 
     needs_reinit = (
         lazy_load
+        or unload_modules
         or global_runner is None
         or current_config is None
         or cur_dit_quant_scheme is None
@@ -325,6 +349,8 @@ def run_inference(
         if os.path.exists(os.path.join(dit_quantized_ckpt, "config.json")):
             with open(os.path.join(dit_quantized_ckpt, "config.json"), "r") as f:
                 quant_model_config = json.load(f)
+        else:
+            quant_model_config = {}
     else:
         mm_type = "Default"
         dit_quantized_ckpt = None
@@ -355,6 +381,8 @@ def run_inference(
         "coefficients": coefficient[0] if use_ret_steps else coefficient[1],
         "use_ret_steps": use_ret_steps,
         "teacache_thresh": teacache_thresh,
+        "t5_cpu_offload": t5_cpu_offload,
+        "unload_modules": unload_modules,
         "t5_quantized": is_t5_quant,
         "t5_quantized_ckpt": t5_quant_ckpt,
         "t5_quant_scheme": t5_quant_scheme,
@@ -425,15 +453,25 @@ def run_inference(
 
     asyncio.run(runner.run_pipeline())
 
-    if lazy_load:
-        del runner
-        torch.cuda.empty_cache()
-        gc.collect()
+    del config, args, model_config, quant_model_config
+    if "dit_quantized_ckpt" in locals():
+        del dit_quantized_ckpt
+    if "t5_quant_ckpt" in locals():
+        del t5_quant_ckpt
+    if "clip_quant_ckpt" in locals():
+        del clip_quant_ckpt
+
+    cleanup_memory()
 
     return save_video_path
 
 
-def auto_configure(enable_auto_config, model_type, resolution):
+def handle_lazy_load_change(lazy_load_enabled):
+    """Handle lazy_load checkbox change to automatically enable unload_modules"""
+    return gr.update(value=lazy_load_enabled)
+
+
+def auto_configure(enable_auto_config, resolution):
     default_config = {
         "torch_compile_val": False,
         "lazy_load_val": False,
@@ -443,6 +481,8 @@ def auto_configure(enable_auto_config, model_type, resolution):
         "cpu_offload_val": False,
         "offload_granularity_val": "block",
         "offload_ratio_val": 1,
+        "t5_cpu_offload_val": False,
+        "unload_modules_val": False,
         "t5_offload_granularity_val": "model",
         "attention_type_val": attn_op_choices[0][1],
         "quant_op_val": quant_op_choices[0][1],
@@ -499,7 +539,7 @@ def auto_configure(enable_auto_config, model_type, resolution):
     else:
         res = "480p"
 
-    if model_type in ["Wan2.1 14B"]:
+    if model_size == "14b":
         is_14b = True
     else:
         is_14b = False
@@ -507,13 +547,14 @@ def auto_configure(enable_auto_config, model_type, resolution):
     if res == "720p" and is_14b:
         gpu_rules = [
             (80, {}),
-            (48, {"cpu_offload_val": True, "offload_ratio_val": 0.5}),
-            (40, {"cpu_offload_val": True, "offload_ratio_val": 0.8}),
-            (32, {"cpu_offload_val": True, "offload_ratio_val": 1}),
+            (48, {"cpu_offload_val": True, "offload_ratio_val": 0.5, "t5_cpu_offload_val": True}),
+            (40, {"cpu_offload_val": True, "offload_ratio_val": 0.8, "t5_cpu_offload_val": True}),
+            (32, {"cpu_offload_val": True, "offload_ratio_val": 1, "t5_cpu_offload_val": True}),
             (
                 24,
                 {
                     "cpu_offload_val": True,
+                    "t5_cpu_offload_val": True,
                     "offload_ratio_val": 1,
                     "t5_offload_granularity_val": "block",
                     "precision_mode_val": "bf16",
@@ -524,6 +565,7 @@ def auto_configure(enable_auto_config, model_type, resolution):
                 16,
                 {
                     "cpu_offload_val": True,
+                    "t5_cpu_offload_val": True,
                     "offload_ratio_val": 1,
                     "t5_offload_granularity_val": "block",
                     "precision_mode_val": "bf16",
@@ -537,6 +579,7 @@ def auto_configure(enable_auto_config, model_type, resolution):
                 12,
                 {
                     "cpu_offload_val": True,
+                    "t5_cpu_offload_val": True,
                     "offload_ratio_val": 1,
                     "t5_offload_granularity_val": "block",
                     "precision_mode_val": "bf16",
@@ -552,6 +595,7 @@ def auto_configure(enable_auto_config, model_type, resolution):
                 8,
                 {
                     "cpu_offload_val": True,
+                    "t5_cpu_offload_val": True,
                     "offload_ratio_val": 1,
                     "t5_offload_granularity_val": "block",
                     "precision_mode_val": "bf16",
@@ -564,6 +608,7 @@ def auto_configure(enable_auto_config, model_type, resolution):
                     "clip_quant_scheme_val": quant_type,
                     "dit_quant_scheme_val": quant_type,
                     "lazy_load_val": True,
+                    "unload_modules_val": True,
                     "use_tiny_vae_val": True,
                 },
             ),
@@ -572,13 +617,14 @@ def auto_configure(enable_auto_config, model_type, resolution):
     elif is_14b:
         gpu_rules = [
             (80, {}),
-            (48, {"cpu_offload_val": True, "offload_ratio_val": 0.2}),
-            (40, {"cpu_offload_val": True, "offload_ratio_val": 0.5}),
-            (24, {"cpu_offload_val": True, "offload_ratio_val": 0.8}),
+            (48, {"cpu_offload_val": True, "offload_ratio_val": 0.2, "t5_cpu_offload_val": True}),
+            (40, {"cpu_offload_val": True, "offload_ratio_val": 0.5, "t5_cpu_offload_val": True}),
+            (24, {"cpu_offload_val": True, "offload_ratio_val": 0.8, "t5_cpu_offload_val": True}),
             (
                 16,
                 {
                     "cpu_offload_val": True,
+                    "t5_cpu_offload_val": True,
                     "offload_ratio_val": 1,
                     "t5_offload_granularity_val": "block",
                     "precision_mode_val": "bf16",
@@ -591,6 +637,7 @@ def auto_configure(enable_auto_config, model_type, resolution):
                 (
                     {
                         "cpu_offload_val": True,
+                        "t5_cpu_offload_val": True,
                         "offload_ratio_val": 1,
                         "t5_offload_granularity_val": "block",
                         "precision_mode_val": "bf16",
@@ -600,6 +647,7 @@ def auto_configure(enable_auto_config, model_type, resolution):
                         "clip_quant_scheme_val": quant_type,
                         "dit_quant_scheme_val": quant_type,
                         "lazy_load_val": True,
+                        "unload_modules_val": True,
                         "rotary_chunk_val": True,
                         "rotary_chunk_size_val": 10000,
                         "use_tiny_vae_val": True,
@@ -607,6 +655,7 @@ def auto_configure(enable_auto_config, model_type, resolution):
                     if res == "540p"
                     else {
                         "cpu_offload_val": True,
+                        "t5_cpu_offload_val": True,
                         "offload_ratio_val": 1,
                         "t5_offload_granularity_val": "block",
                         "precision_mode_val": "bf16",
@@ -616,6 +665,7 @@ def auto_configure(enable_auto_config, model_type, resolution):
                         "clip_quant_scheme_val": quant_type,
                         "dit_quant_scheme_val": quant_type,
                         "lazy_load_val": True,
+                        "unload_modules_val": True,
                         "use_tiny_vae_val": True,
                     }
                 ),
@@ -623,7 +673,17 @@ def auto_configure(enable_auto_config, model_type, resolution):
         ]
 
     else:
-        gpu_rules = {}
+        gpu_rules = [
+            (24, {}),
+            (
+                8,
+                {
+                    "t5_cpu_offload_val": True,
+                    "t5_offload_granularity_val": "block",
+                    "t5_quant_scheme_val": quant_type,
+                },
+            ),
+        ]
 
     if is_14b:
         cpu_rules = [
@@ -637,11 +697,22 @@ def auto_configure(enable_auto_config, model_type, resolution):
                     "t5_quant_scheme_val": quant_type,
                     "clip_quant_scheme_val": quant_type,
                     "lazy_load_val": True,
+                    "unload_modules_val": True,
                 },
             ),
         ]
     else:
-        cpu_rules = {}
+        cpu_rules = [
+            (64, {}),
+            (
+                16,
+                {
+                    "t5_quant_scheme_val": quant_type,
+                    "unload_modules_val": True,
+                    "use_tiny_vae_val": True,
+                },
+            ),
+        ]
 
     for threshold, updates in gpu_rules:
         if gpu_memory >= threshold:
@@ -679,20 +750,6 @@ def main():
                     with gr.Column(scale=4):
                         with gr.Group():
                             gr.Markdown("## 📥 输入参数")
-
-                            with gr.Row():
-                                if task == "i2v":
-                                    model_type = gr.Dropdown(
-                                        choices=["Wan2.1 14B"],
-                                        value="Wan2.1 14B",
-                                        label="模型类型",
-                                    )
-                                else:
-                                    model_type = gr.Dropdown(
-                                        choices=["Wan2.1 14B", "Wan2.1 1.3B"],
-                                        value="Wan2.1 14B",
-                                        label="模型类型",
-                                    )
 
                             if task == "i2v":
                                 with gr.Row():
@@ -846,7 +903,11 @@ def main():
                             step=100,
                             info="控制应用旋转编码的块大小。较大的值可能提高性能但增加内存使用。仅在'rotary_chunk'勾选时有效。",
                         )
-
+                        unload_modules = gr.Checkbox(
+                            label="卸载模块",
+                            value=False,
+                            info="推理后卸载模块（T5、CLIP、DIT等）以减少GPU/CPU内存使用",
+                        )
                         clean_cuda_cache = gr.Checkbox(
                             label="清理CUDA内存缓存",
                             value=False,
@@ -880,6 +941,11 @@ def main():
                             step=0.1,
                             value=1.0,
                             info="控制将多少Dit模型卸载到CPU",
+                        )
+                        t5_cpu_offload = gr.Checkbox(
+                            label="T5 CPU卸载",
+                            value=False,
+                            info="将T5编码器模型卸载到CPU以减少GPU内存使用",
                         )
                         t5_offload_granularity = gr.Dropdown(
                             label="T5编码器卸载粒度",
@@ -969,7 +1035,7 @@ def main():
 
                 enable_auto_config.change(
                     fn=auto_configure,
-                    inputs=[enable_auto_config, model_type, resolution],
+                    inputs=[enable_auto_config, resolution],
                     outputs=[
                         torch_compile,
                         lazy_load,
@@ -979,6 +1045,8 @@ def main():
                         cpu_offload,
                         offload_granularity,
                         offload_ratio,
+                        t5_cpu_offload,
+                        unload_modules,
                         t5_offload_granularity,
                         attention_type,
                         quant_op,
@@ -993,11 +1061,16 @@ def main():
                         use_ret_steps,
                     ],
                 )
+
+                lazy_load.change(
+                    fn=handle_lazy_load_change,
+                    inputs=[lazy_load],
+                    outputs=[unload_modules],
+                )
         if task == "i2v":
             infer_btn.click(
                 fn=run_inference,
                 inputs=[
-                    model_type,
                     prompt,
                     negative_prompt,
                     save_video_path,
@@ -1023,6 +1096,8 @@ def main():
                     cpu_offload,
                     offload_granularity,
                     offload_ratio,
+                    t5_cpu_offload,
+                    unload_modules,
                     t5_offload_granularity,
                     attention_type,
                     quant_op,
@@ -1037,7 +1112,6 @@ def main():
             infer_btn.click(
                 fn=run_inference,
                 inputs=[
-                    model_type,
                     prompt,
                     negative_prompt,
                     save_video_path,
@@ -1063,6 +1137,8 @@ def main():
                     cpu_offload,
                     offload_granularity,
                     offload_ratio,
+                    t5_cpu_offload,
+                    unload_modules,
                     t5_offload_granularity,
                     attention_type,
                     quant_op,
@@ -1086,14 +1162,16 @@ if __name__ == "__main__":
         default="wan2.1",
         help="要使用的模型类别",
     )
+    parser.add_argument("--model_size", type=str, required=True, choices=["14b", "1.3b"], help="模型大小：14b 或 1.3b")
     parser.add_argument("--task", type=str, required=True, choices=["i2v", "t2v"], help="指定任务类型。'i2v'用于图像到视频转换，'t2v'用于文本到视频生成。")
     parser.add_argument("--server_port", type=int, default=7862, help="服务器端口")
     parser.add_argument("--server_name", type=str, default="0.0.0.0", help="服务器IP")
     args = parser.parse_args()
 
-    global model_path, model_cls
+    global model_path, model_cls, model_size
     model_path = args.model_path
     model_cls = args.model_cls
+    model_size = args.model_size
     task = args.task
 
     main()
