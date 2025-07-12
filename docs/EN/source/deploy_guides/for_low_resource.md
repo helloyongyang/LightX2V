@@ -123,7 +123,7 @@ num_disk_workers = 2         # Disk I/O worker threads
 **Disk Storage Optimization**:
 - Use high-speed SSD to store model parameters
 - Store model files grouped by blocks
-- Refer to conversion script [documentation](https://github.com/ModelTC/lightx2v/tree/main/tools/convert/readme_zh.md), specify `--save_by_block` parameter during conversion
+- Refer to conversion script [documentation](https://github.com/ModelTC/lightx2v/tree/main/tools/convert/readme.md), specify `--save_by_block` parameter during conversion
 
 ### 5. VRAM Optimization Techniques
 
