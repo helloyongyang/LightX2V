@@ -25,15 +25,15 @@ Lightx2v implements a state-of-the-art parameter offloading mechanism specifical
 - **Phase Granularity**: Suitable for memory-constrained environments, provides more flexible memory control and optimizes resource utilization
 
 <div align="center">
-<img alt="GPU-CPU Block/Phase Offloading Workflow" src="../../../../assets/figs/offload/fig1_en.png" width="75%">
+<img alt="GPU-CPU Block/Phase Offloading Workflow" src="https://github.com/ModelTC/LightX2V/tree/main/assets/figs/offload/fig1_en.png" width="75%">
 </div>
 
 <div align="center">
-<img alt="Swap Mechanism Core Concept" src="../../../../assets/figs/offload/fig2_en.png" width="75%">
+<img alt="Swap Mechanism Core Concept" src="https://github.com/ModelTC/LightX2V/tree/main/assets/figs/offload/fig2_en.png" width="75%">
 </div>
 
 <div align="center">
-<img alt="Asynchronous Execution Flow" src="../../../../assets/figs/offload/fig3_en.png" width="75%">
+<img alt="Asynchronous Execution Flow" src="https://github.com/ModelTC/LightX2V/tree/main/assets/figs/offload/fig3_en.png" width="75%">
 </div>
 
 **Technical Features:**
@@ -53,11 +53,11 @@ Lightx2v implements a state-of-the-art parameter offloading mechanism specifical
 **Technical Principle**: Introduces disk storage layer on top of Strategy 1, constructing a Disk→CPU→GPU three-level storage architecture. CPU serves as a configurable intelligent cache pool, suitable for various memory-constrained deployment environments.
 
 <div align="center">
-<img alt="Disk-CPU-GPU Three-Level Offloading Architecture" src="../../../../assets/figs/offload/fig4_en.png" width="75%">
+<img alt="Disk-CPU-GPU Three-Level Offloading Architecture" src="https://github.com/ModelTC/LightX2V/tree/main/assets/figs/offload/fig4_en.png" width="75%">
 </div>
 
 <div align="center">
-<img alt="Complete Workflow" src="../../../../assets/figs/offload/fig5_en.png" width="75%">
+<img alt="Complete Workflow" src="https://github.com/ModelTC/LightX2V/tree/main/assets/figs/offload/fig5_en.png" width="75%">
 </div>
 
 **Execution Steps Details:**
