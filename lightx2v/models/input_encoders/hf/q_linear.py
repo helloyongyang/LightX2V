@@ -59,7 +59,8 @@ class QuantLinearFp8(nn.Module):
         super().__init__()
         self.in_features = in_features
         self.out_features = out_features
-
+        self.register_buffer("weight", torch.empty((out_features, in_features), dtype=torch.float8_e4m3fn))
+        self.register_buffer("weight_scale", torch.empty((out_features, 1), dtype=torch.float32))
         if bias:
             self.register_buffer("bias", torch.empty(out_features, dtype=dtype))
         else:
