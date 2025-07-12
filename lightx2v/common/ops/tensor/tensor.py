@@ -22,7 +22,7 @@ class DefaultTensor:
             self.pinned_tensor = torch.empty(self.tensor.shape, pin_memory=True, dtype=self.tensor.dtype)
 
     def clear(self):
-        attrs = ["tensor"]
+        attrs = ["tensor", "pinned_tensor"]
         for attr in attrs:
             if hasattr(self, attr):
                 delattr(self, attr)

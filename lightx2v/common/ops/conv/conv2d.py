@@ -58,7 +58,7 @@ class Conv2dWeight(Conv2dWeightTemplate):
         return destination
 
     def clear(self):
-        attrs = ["weight", "bias"]
+        attrs = ["weight", "bias", "pinned_weight", "pinned_bias"]
         for attr in attrs:
             if hasattr(self, attr):
                 delattr(self, attr)
