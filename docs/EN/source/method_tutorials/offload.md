@@ -1,273 +1,93 @@
-# Lightx2v Parameter Offloading Mechanism Documentation
+# Lightx2v Parameter Offloading Mechanism Technical Documentation
 
 ## 📖 Overview
 
-Lightx2v implements an advanced parameter offloading mechanism designed for large model inference under limited hardware resources. This system provides excellent speed-memory balance through intelligent management of model weights across different memory hierarchies.
+Lightx2v implements a state-of-the-art parameter offloading mechanism specifically designed for efficient large model inference under limited hardware resources. This system provides excellent speed-memory balance through intelligent management of model weights across different memory hierarchies, enabling dynamic scheduling between GPU, CPU, and disk storage.
 
 **Core Features:**
-- **Block/Phase Offloading**: Efficiently manages model weights in block/phase units for optimal memory usage
-  - **Block**: Basic computational unit of Transformer models, containing complete Transformer layers (self-attention, cross-attention, feed-forward networks, etc.), serving as larger memory management units
-  - **Phase**: Finer-grained computational stages within blocks, containing individual computational components (such as self-attention, cross-attention, feed-forward networks, etc.), providing more precise memory control
-- **Multi-level Storage Support**: GPU → CPU → Disk hierarchy with intelligent caching
-- **Asynchronous Operations**: Uses CUDA streams to overlap computation and data transfer
-- **Disk/NVMe Serialization**: Supports secondary storage when memory is insufficient
+- **Intelligent Granularity Management**: Supports both Block and Phase offloading granularities for flexible memory control
+  - **Block Granularity**: Complete Transformer layers as management units, containing self-attention, cross-attention, feed-forward networks, etc., suitable for memory-sufficient environments
+  - **Phase Granularity**: Individual computational components as management units, providing finer-grained memory control for memory-constrained deployment scenarios
+- **Multi-level Storage Architecture**: GPU → CPU → Disk three-tier storage hierarchy with intelligent caching strategies
+- **Asynchronous Parallel Processing**: CUDA stream-based asynchronous computation and data transfer for maximum hardware utilization
+- **Persistent Storage Support**: SSD/NVMe disk storage support for ultra-large model inference deployment
 
-## 🎯 Offloading Strategies
+## 🎯 Offloading Strategy Details
 
-### Strategy 1: GPU-CPU Block/Phase Offloading
+### Strategy 1: GPU-CPU Granularity Offloading
 
-**Applicable Scenarios**: GPU VRAM insufficient but system memory adequate
+**Applicable Scenarios**: GPU VRAM insufficient but system memory resources adequate
 
-**Working Principle**: Manages model weights in block or phase units between GPU and CPU memory, utilizing CUDA streams to overlap computation and data transfer. Blocks contain complete Transformer layers, while phases are individual computational components within blocks.
+**Technical Principle**: Establishes efficient weight scheduling mechanism between GPU and CPU memory, managing model weights in Block or Phase units. Leverages CUDA stream asynchronous capabilities to achieve parallel execution of computation and data transfer. Blocks contain complete Transformer layer structures, while Phases correspond to individual computational components within layers.
 
-**Block vs Phase Explanation**:
-- **Block Granularity**: Larger memory management units containing complete Transformer layers (self-attention, cross-attention, feed-forward networks, etc.), suitable for memory-sufficient scenarios, reducing management overhead
-- **Phase Granularity**: Finer-grained memory management containing individual computational components (such as self-attention, cross-attention, feed-forward networks, etc.), suitable for memory-constrained scenarios, providing more flexible memory control
+**Granularity Selection Guide**:
+- **Block Granularity**: Suitable for memory-sufficient environments, reduces management overhead and improves overall performance
+- **Phase Granularity**: Suitable for memory-constrained environments, provides more flexible memory control and optimizes resource utilization
 
-```
-GPU-CPU Block/Phase Offloading Workflow:
+<div align="center">
+<img alt="GPU-CPU Block/Phase Offloading Workflow" src="../../../../assets/figs/offload/fig1_en.png" width="75%">
+</div>
 
-╔═════════════════════════════════════════════════════════════════╗
-║                        🎯 GPU Memory                            ║
-╠═════════════════════════════════════════════════════════════════╣
-║                                                               ║
-║  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐ ║
-║  │ 🔄 Current      │    │ ⏳ Prefetch     │    │ 📤 To Offload   │ ║
-║  │ block/phase N   │◄──►│ block/phase N+1 │◄──►│ block/phase N-1 │ ║
-║  └─────────────────┘    └─────────────────┘    └─────────────────┘ ║
-║         │                       │                       │         ║
-║         ▼                       ▼                       ▼         ║
-║  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐         ║
-║  │ Compute     │    │ GPU Load    │    │ CPU Load    │         ║
-║  │ Stream      │    │ Stream      │    │ Stream      │         ║
-║  │(priority=-1)│   │ (priority=0) │   │ (priority=0) │         ║
-║  └─────────────┘    └─────────────┘    └─────────────┘         ║
-╚═════════════════════════════════════════════════════════════════╝
-                              ↕
-╔═════════════════════════════════════════════════════════════════╗
-║                        💾 CPU Memory                            ║
-╠═════════════════════════════════════════════════════════════════╣
-║                                                               ║
-║  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ║
-║  │ 📥 Cache    │ │ 📥 Cache    │ │ 📥 Cache    │ │ 📥 Cache    │ ║
-║  │ block/phase │ │ block/phase │ │ block/phase │ │ block/phase │ ║
-║  │    N-2      │ │    N-1      │ │     N       │ │    N+1      │ ║
-║  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘ ║
-║         ▲               ▲               ▲               ▲         ║
-║         │               │               │               │         ║
-║  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ║
-║  │ CPU Load    │ │ CPU Load    │ │ CPU Load    │ │ CPU Load    │ ║
-║  │ Stream      │ │ Stream      │ │ Stream      │ │ Stream      │ ║
-║  │(priority=0) │ │(priority=0) │ │(priority=0) │ │(priority=0) │ ║
-║  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘ ║
-║                                                               ║
-║  💡 CPU memory stores multiple blocks/phases, forming cache pool ║
-║  🔄 GPU load stream prefetches from CPU cache, CPU load stream  ║
-║     offloads to CPU cache                                        ║
-╚═════════════════════════════════════════════════════════════════╝
+<div align="center">
+<img alt="Swap Mechanism Core Concept" src="../../../../assets/figs/offload/fig2_en.png" width="75%">
+</div>
 
+<div align="center">
+<img alt="Asynchronous Execution Flow" src="../../../../assets/figs/offload/fig3_en.png" width="75%">
+</div>
 
-╔═════════════════════════════════════════════════════════════════╗
-║                        🔄 Swap Operation Flow                   ║
-╠═════════════════════════════════════════════════════════════════╣
-║                                                               ║
-║  Step 1: Parallel Execution Phase                              ║
-║  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐ ║
-║  │ 🔄 Compute      │    │ ⏳ Prefetch     │    │ 📤 Offload      │ ║
-║  │ block/phase N   │    │ block/phase N+1 │    │ block/phase N-1 │ ║
-║  │ (Compute Stream)│    │ (GPU Load Stream)│   │ (CPU Load Stream)│ ║
-║  └─────────────────┘    └─────────────────┘    └─────────────────┘ ║
-║                                                               ║
-║  Step 2: Swap Rotation Phase                                   ║
-║  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐ ║
-║  │ 🔄 Compute      │    │ ⏳ Prefetch     │    │ 📤 Offload      │ ║
-║  │ block/phase N+1 │    │ block/phase N+2 │    │ block/phase N   │ ║
-║  │ (Compute Stream)│    │ (GPU Load Stream)│   │ (CPU Load Stream)│ ║
-║  └─────────────────┘    └─────────────────┘    └─────────────────┘ ║
-║                                                               ║
-║  Swap Concept: Achieves continuous computation through position ║
-║  rotation, avoiding repeated loading/unloading                  ║
-╚═════════════════════════════════════════════════════════════════╝
+**Technical Features:**
+- **Multi-stream Parallel Architecture**: Employs three CUDA streams with different priorities to parallelize computation and transfer
+  - Compute Stream (priority=-1): High priority, responsible for current computation tasks
+  - GPU Load Stream (priority=0): Medium priority, responsible for weight prefetching from CPU to GPU
+  - CPU Load Stream (priority=0): Medium priority, responsible for weight offloading from GPU to CPU
+- **Intelligent Prefetching Mechanism**: Predictively loads next Block/Phase based on computation progress
+- **Efficient Cache Management**: Maintains weight cache pool in CPU memory for improved access efficiency
+- **Stream Synchronization Guarantee**: Ensures temporal correctness of data transfer and computation
+- **Position Rotation Optimization**: Achieves continuous computation through Swap operations, avoiding repeated loading/unloading
 
-╔═════════════════════════════════════════════════════════════════╗
-║                        💡 Swap Core Concept                     ║
-╠═════════════════════════════════════════════════════════════════╣
-║                                                               ║
-║  🔄 Traditional vs Swap Method Comparison:                     ║
-║                                                               ║
-║  Traditional Method:                                            ║
-║  ┌─────────────┐    ┌──────────┐    ┌─────────┐    ┌────────┐ ║
-║  │ Compute N   │───►│ Offload N│───►│ Load N+1│───►│Compute │ ║
-║  │             │    │          │    │         │    │N+1     │ ║
-║  └─────────────┘    └──────────┘    └─────────┘    └────────┘ ║
-║       ❌ Serial execution, waiting time, low efficiency        ║
-║                                                               ║
-║  Swap Method:                                                  ║
-║  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐         ║
-║  │ Compute N   │    │ Prefetch    │    │ Offload     │         ║
-║  │(Compute     │    │N+1          │    │N-1          │         ║
-║  │ Stream)     │    │(GPU Load    │    │(CPU Load    │         ║
-║  └─────────────┘    │ Stream)     │    │ Stream)     │         ║
-║                     └─────────────┘    └─────────────┘         ║
-║       ✅ Parallel execution, no waiting time, high efficiency  ║
-║                                                               ║
-║  🎯 Swap Advantages:                                           ║
-║  • Avoids repeated loading/unloading of same data              ║
-║  • Achieves continuous computation through position rotation   ║
-║  • Maximizes GPU utilization                                   ║
-║  • Reduces memory fragmentation                                ║
-╚════════════════════════════════════════════════════════════════╝
-```
+### Strategy 2: Disk-CPU-GPU Three-Level Offloading (Lazy Loading)
 
-**Key Features:**
-- **Asynchronous Transfer**: Uses three CUDA streams with different priorities to parallelize computation and transfer
-  - Compute Stream (priority=-1): High priority, responsible for current computation
-  - GPU Load Stream (priority=0): Medium priority, responsible for prefetching from CPU to GPU
-  - CPU Load Stream (priority=0): Medium priority, responsible for offloading from GPU to CPU
-- **Prefetch Mechanism**: Preloads the next block/phase to GPU
-- **Intelligent Caching**: Maintains weight cache in CPU memory
-- **Stream Synchronization**: Ensures correctness of data transfer and computation
-- **Swap Operation**: Rotates block/phase positions after computation completion for continuous processing
+**Applicable Scenarios**: Both GPU VRAM and system memory resources insufficient in constrained environments
 
+**Technical Principle**: Introduces disk storage layer on top of Strategy 1, constructing a Disk→CPU→GPU three-level storage architecture. CPU serves as a configurable intelligent cache pool, suitable for various memory-constrained deployment environments.
 
-### Strategy 2: Disk-CPU-GPU Block/Phase Offloading (Lazy Loading)
+<div align="center">
+<img alt="Disk-CPU-GPU Three-Level Offloading Architecture" src="../../../../assets/figs/offload/fig4_en.png" width="75%">
+</div>
 
-**Applicable Scenarios**: Both GPU VRAM and system memory insufficient
+<div align="center">
+<img alt="Complete Workflow" src="../../../../assets/figs/offload/fig5_en.png" width="75%">
+</div>
 
-**Working Principle**: Introduces disk storage on top of Strategy 1, implementing a three-level storage hierarchy (Disk → CPU → GPU). CPU continues as a cache pool but with configurable size, suitable for CPU memory-constrained devices.
+**Execution Steps Details:**
+1. **Disk Storage Layer**: Model weights organized by Block on SSD/NVMe, each Block corresponding to one .safetensors file
+2. **Task Scheduling Layer**: Priority queue-based intelligent scheduling system for disk loading task assignment
+3. **Asynchronous Loading Layer**: Multi-threaded parallel reading of weight files from disk to CPU memory buffer
+4. **Intelligent Cache Layer**: CPU memory buffer using FIFO strategy for cache management with dynamic size configuration
+5. **Cache Hit Optimization**: Direct transfer to GPU when weights are already in cache, avoiding disk I/O overhead
+6. **Prefetch Transfer Layer**: Weights in cache asynchronously transferred to GPU memory via GPU load stream
+7. **Compute Execution Layer**: Weights on GPU perform computation (compute stream) while background continues prefetching next Block/Phase
+8. **Position Rotation Layer**: Swap rotation after computation completion for continuous computation flow
+9. **Memory Management Layer**: Automatic eviction of earliest used weight Blocks/Phases when CPU cache is full
 
-```
-Disk-CPU-GPU Block/Phase Offloading Workflow:
+**Technical Features:**
+- **On-demand Loading Mechanism**: Model weights loaded from disk only when needed, avoiding loading entire model at once
+- **Configurable Cache Strategy**: CPU memory buffer supports FIFO strategy with dynamically adjustable size
+- **Multi-threaded Parallel Loading**: Leverages multiple disk worker threads for parallel data loading
+- **Asynchronous Transfer Optimization**: CUDA stream-based asynchronous data transfer for maximum hardware utilization
+- **Continuous Computation Guarantee**: Achieves continuous computation through position rotation mechanism, avoiding repeated loading/unloading operations
 
-╔═════════════════════════════════════════════════════════════════╗
-║                        💿 SSD/NVMe Storage                     ║
-╠═════════════════════════════════════════════════════════════════╣
-║                                                                 ║
-║  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ║
-║  │ 📁 block_0  │ │ 📁 block_1  │ │ 📁 block_2  │ │ 📁 block_N  │ ║
-║  │ .safetensors│ │ .safetensors│ │ .safetensors│ │ .safetensors│ ║
-║  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘ ║
-║         │               │               │               │         ║
-║         ▼               ▼               ▼               ▼         ║
-║  ┌─────────────────────────────────────────────────────────────┐ ║
-║  │                    🎯 Disk Worker Thread Pool               │ ║
-║  │                                                             │ ║
-║  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐            │ ║
-║  │  │ Disk Thread │ │ Disk Thread │ │ Disk Thread │            │ ║
-║  │  │     1       │ │     2       │ │     N       │            │ ║
-║  │  │(Async Load) │ │(Async Load) │ │(Async Load) │            │ ║
-║  │  └─────────────┘ └─────────────┘ └─────────────┘            │ ║
-║  │         │               │               │                   │ ║
-║  │         └───────────────┼───────────────┘                   │ ║
-║  │                         ▼                                   │ ║
-║  │  ┌─────────────────────────────────────────────────────────┐ │ ║
-║  │  │                 📋 Priority Task Queue                  │ │ ║
-║  │  │              (Manages disk loading task scheduling)     │ │ ║
-║  │  └─────────────────────────────────────────────────────────┘ │ ║
-║  └─────────────────────────────────────────────────────────────┘ ║
-╚═════════════════════════════════════════════════════════════════╝
-                             ↓
-╔═════════════════════════════════════════════════════════════════╗
-║                        💾 CPU Memory Buffer                     ║
-╠═════════════════════════════════════════════════════════════════╣
-║                                                               ║
-║  ┌─────────────────────────────────────────────────────────────┐ ║
-║  │                    🎯 FIFO Intelligent Cache                │ ║
-║  │                                                             │ ║
-║  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ║
-║  │  │ 📥 Cache    │ │ 📥 Cache    │ │ 📥 Cache    │ │ 📥 Cache    │ ║
-║  │  │ block/phase │ │ block/phase │ │ block/phase │ │ block/phase │ ║
-║  │  │    N-2      │ │    N-1      │ │     N       │ │    N+1      │ ║
-║  │  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘ ║
-║  │         ▲               ▲               ▲               ▲         ║
-║  │         │               │               │               │         ║
-║  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ║
-║  │  │ CPU Load    │ │ CPU Load    │ │ CPU Load    │ │ CPU Load    │ ║
-║  │  │ Stream      │ │ Stream      │ │ Stream      │ │ Stream      │ ║
-║  │  │(priority=0) │ │(priority=0) │ │(priority=0) │ │(priority=0) │ ║
-║  │  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘ ║
-║  │                                                             │ ║
-║  │  💡 Configurable Size 🎯 FIFO Eviction 🔄 Cache Hit/Miss    │ ║
-║  └─────────────────────────────────────────────────────────────┘ ║
-╚═════════════════════════════════════════════════════════════════╝
-                             ↕
-╔═════════════════════════════════════════════════════════════════╗
-║                        🎯 GPU Memory                            ║
-╠═════════════════════════════════════════════════════════════════╣
-║                                                               ║
-║  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐ ║
-║  │ 🔄 Current      │    │ ⏳ Prefetch     │    │ 📤 To Offload   │ ║
-║  │ block/phase N   │◄──►│ block/phase N+1 │◄──►│ block/phase N-1 │ ║
-║  └─────────────────┘    └─────────────────┘    └─────────────────┘ ║
-║         │                       │                       │         ║
-║         ▼                       ▼                       ▼         ║
-║  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐         ║
-║  │ Compute     │    │ GPU Load    │    │ CPU Load    │         ║
-║  │ Stream      │    │ Stream      │    │ Stream      │         ║
-║  │(priority=-1)│   │ (priority=0) │   │ (priority=0) │         ║
-║  └─────────────┘    └─────────────┘    └─────────────┘         ║
-╚═════════════════════════════════════════════════════════════════╝
-
-╔═════════════════════════════════════════════════════════════════╗
-║                        🔄 Complete Workflow                     ║
-╠═════════════════════════════════════════════════════════════════╣
-║                                                               ║
-║  Step 1: Cache Miss Handling                                   ║
-║  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐         ║
-║  │ 💿 Disk     │───►│ 💾 CPU Cache│───►│ 🎯 GPU      │         ║
-║  │ (On-demand  │     │ (FIFO       │    │ Memory      │         ║
-║  │  loading)   │     │  Management)│    │ (Compute    │         ║
-║  └─────────────┘    └─────────────┘    │ Execution)  │         ║
-║                                        └─────────────┘         ║
-║                                                               ║
-║  Step 2: Cache Hit Handling                                    ║
-║  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐         ║
-║  │ 💿 Disk     │    │ 💾 CPU Cache│───►│ 🎯 GPU      │         ║
-║  │ (Skip       │     │ (Direct     │    │ Memory      │         ║
-║  │  loading)   │     │  Access)    │    │ (Compute    │         ║
-║  └─────────────┘    └─────────────┘    │ Execution)  │         ║
-║                                        └─────────────┘         ║
-║                                                               ║
-║  Step 3: Memory Management                                      ║
-║  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐         ║
-║  │ 💿 Disk     │    │ 💾 CPU Cache│    │ 🎯 GPU      │         ║
-║  │ (Persistent │     │ (FIFO       │    │ Memory      │         ║
-║  │  Storage)   │     │  Eviction)  │    │ (Swap       │         ║
-║  └─────────────┘    └─────────────┘    │ Rotation)   │         ║
-║                                        └─────────────┘         ║
-╚═════════════════════════════════════════════════════════════════╝
-
-Work Steps:
-1. Disk Storage: Model weights stored by block on SSD/NVMe, one .safetensors file per block
-2. Task Scheduling: When a block/phase is needed, priority task queue assigns disk worker threads
-3. Async Loading: Multiple disk threads parallelly read weight files from disk to CPU memory buffer
-4. Intelligent Caching: CPU memory buffer uses FIFO strategy for cache management with configurable size
-5. Cache Hit: If weights are already in cache, directly transfer to GPU without disk reading
-6. Prefetch Transfer: Weights in cache asynchronously transfer to GPU memory (using GPU load stream)
-7. Compute Execution: Weights on GPU perform computation (using compute stream), while background continues prefetching next block/phase
-8. Swap Rotation: After computation completion, rotate block/phase positions for continuous computation
-9. Memory Management: When CPU cache is full, automatically evict earliest used weight blocks/phases
-```
-
-**Key Features:**
-- **Lazy Loading**: Model weights loaded from disk on-demand, avoiding loading entire model at once
-- **Intelligent Caching**: CPU memory buffer uses FIFO strategy with configurable size
-- **Multi-threaded Prefetching**: Uses multiple disk worker threads for parallel loading
-- **Asynchronous Transfer**: Uses CUDA streams to overlap computation and data transfer
-- **Swap Rotation**: Achieves continuous computation through position rotation, avoiding repeated loading/unloading
-
-
-
-## ⚙️ Configuration Parameters
+## ⚙️ Configuration Parameters Details
 
 ### GPU-CPU Offloading Configuration
 
 ```python
 config = {
-    "cpu_offload": True,
-    "offload_ratio": 1.0,           # Offload ratio (0.0-1.0)
-    "offload_granularity": "block", # Offload granularity: "block" or "phase"
-    "lazy_load": False,             # Disable lazy loading
+    "cpu_offload": True,            # Enable CPU offloading functionality
+    "offload_ratio": 1.0,           # Offload ratio (0.0-1.0), 1.0 means complete offloading
+    "offload_granularity": "block", # Offload granularity selection: "block" or "phase"
+    "lazy_load": False,             # Disable lazy loading mode
 }
 ```
 
@@ -275,61 +95,67 @@ config = {
 
 ```python
 config = {
-    "cpu_offload": True,
-    "lazy_load": True,              # Enable lazy loading
-    "offload_ratio": 1.0,           # Offload ratio
-    "offload_granularity": "phase", # Recommended to use phase granularity
+    "cpu_offload": True,            # Enable CPU offloading functionality
+    "lazy_load": True,              # Enable lazy loading mode
+    "offload_ratio": 1.0,           # Offload ratio setting
+    "offload_granularity": "phase", # Recommended to use phase granularity for better memory control
     "num_disk_workers": 2,          # Number of disk worker threads
-    "offload_to_disk": True,        # Enable disk offloading
-    "offload_path": ".",            # Disk offload path
+    "offload_to_disk": True,        # Enable disk offloading functionality
+    "offload_path": ".",            # Disk offload path configuration
 }
 ```
 
-**Intelligent Cache Key Parameters:**
-- `max_memory`: Controls CPU cache size, affects cache hit rate and memory usage
-- `num_disk_workers`: Controls number of disk loading threads, affects prefetch speed
-- `offload_granularity`: Controls cache granularity (block or phase), affects cache efficiency
-  - `"block"`: Cache management in units of complete Transformer layers
-  - `"phase"`: Cache management in units of individual computational components
+**Intelligent Cache Key Parameter Descriptions:**
+- `max_memory`: Controls CPU cache size upper limit, directly affects cache hit rate and memory usage
+- `num_disk_workers`: Controls number of disk loading threads, affects data prefetch speed
+- `offload_granularity`: Controls cache management granularity, affects cache efficiency and memory utilization
+  - `"block"`: Cache management in units of complete Transformer layers, suitable for memory-sufficient environments
+  - `"phase"`: Cache management in units of individual computational components, suitable for memory-constrained environments
 
-Detailed configuration files can be referenced at [config](https://github.com/ModelTC/lightx2v/tree/main/configs/offload)
+Detailed configuration files can be referenced at [Official Configuration Repository](https://github.com/ModelTC/lightx2v/tree/main/configs/offload)
 
-## 🎯 Usage Recommendations
+## 🎯 Deployment Strategy Recommendations
 
-```
-╔═════════════════════════════════════════════════════════════════╗
-║                        📋 Configuration Guide                   ║
-╠═════════════════════════════════════════════════════════════════╣
-║                                                                 ║
-║  🔄 GPU-CPU Block/Phase Offloading:                            ║
-║        Suitable for insufficient GPU VRAM (RTX 3090/4090 24G)  ║
-║        but adequate system memory (>64/128G)                   ║
-║  💾 Disk-CPU-GPU Block/Phase Offloading:                       ║
-║        Suitable for insufficient GPU VRAM (RTX 3060/4090 8G)   ║
-║        and system memory (16/32G)                              ║
-║  🚫 No Offload: Suitable for high-end hardware configurations, ║
-║        pursuing optimal performance                             ║
-║                                                                 ║
-╚═════════════════════════════════════════════════════════════════╝
-```
+- 🔄 GPU-CPU Granularity Offloading: Suitable for insufficient GPU VRAM (RTX 3090/4090 24G) but adequate system memory (>64G)
+  - Advantages: Balances performance and memory usage, suitable for medium-scale model inference
 
-## 🔍 Troubleshooting
+- 💾 Disk-CPU-GPU Three-Level Offloading: Suitable for limited GPU VRAM (RTX 3060/4090 8G) and insufficient system memory (16-32G)
+  - Advantages: Supports ultra-large model inference with lowest hardware threshold
 
-### Common Issues and Solutions
+- 🚫 No Offload Mode: Suitable for high-end hardware configurations pursuing optimal inference performance
+  - Advantages: Maximizes computational efficiency, suitable for latency-sensitive application scenarios
 
-1. **Disk I/O Bottleneck**
-   ```
-   Solution: Use NVMe SSD, increase num_disk_workers
-   ```
+## 🔍 Troubleshooting and Solutions
+
+### Common Performance Issues and Optimization Strategies
+
+1. **Disk I/O Performance Bottleneck**
+   - Problem Symptoms: Slow model loading speed, high inference latency
+   - Solutions:
+     - Upgrade to NVMe SSD storage devices
+     - Increase num_disk_workers parameter value
+     - Optimize file system configuration
 
 2. **Memory Buffer Overflow**
-   ```
-   Solution: Increase max_memory or decrease num_disk_workers
-   ```
+   - Problem Symptoms: Insufficient system memory, program abnormal exit
+   - Solutions:
+     - Increase max_memory parameter value
+     - Decrease num_disk_workers parameter value
+     - Adjust offload_granularity to "phase"
 
-3. **Loading Timeout**
-   ```
-   Solution: Check disk performance, optimize file system
-   ```
+3. **Model Loading Timeout**
+   - Problem Symptoms: Timeout errors during model loading process
+   - Solutions:
+     - Check disk read/write performance
+     - Optimize file system parameters
+     - Verify storage device health status
 
-**Note**: This offloading mechanism is specifically designed for Lightx2v, fully utilizing modern hardware's asynchronous computing capabilities, significantly reducing the hardware threshold for large model inference.
+## 📚 Technical Summary
+
+Lightx2v's offloading mechanism is specifically designed for modern AI inference scenarios, fully leveraging GPU's asynchronous computing capabilities and multi-level storage architecture advantages. Through intelligent weight management and efficient parallel processing, this mechanism significantly reduces the hardware threshold for large model inference, providing developers with flexible and efficient deployment solutions.
+
+**Technical Highlights:**
+- 🚀 **Performance Optimization**: Asynchronous parallel processing maximizes hardware utilization
+- 💾 **Intelligent Memory**: Multi-level caching strategies achieve optimal memory management
+- 🔧 **Flexible Configuration**: Supports flexible configuration of multiple granularities and strategies
+- 🛡️ **Stable and Reliable**: Comprehensive error handling and fault recovery mechanisms
