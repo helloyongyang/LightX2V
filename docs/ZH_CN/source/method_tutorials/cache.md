@@ -11,18 +11,26 @@
 - 具体来说，算法在每一步推理时计算当前输入与上一步输入的相对L1距离，并将其累加。
 - 当累计距离未超过阈值，说明模型状态变化不明显，则直接复用最近一次缓存的内容，跳过部分冗余计算。这样可以显著减少模型的前向计算次数，提高推理速度。
 
-实际效果上，TeaCache 在保证生成质量的前提下，实现了明显的加速。加速前后的视频对比如下：  
+实际效果上，TeaCache 在保证生成质量的前提下，实现了明显的加速。在单卡H200上，加速前后的用时与视频对比如下：
 
-- 加速前：
-  - 单卡H200推理耗时：58s
-
-https://github.com/user-attachments/assets/1781df9b-04df-4586-b22f-5d15f8e1bff6
-
-
-- 加速后：
-  - 单卡H200推理耗时：17.9s
-
-https://github.com/user-attachments/assets/e93f91eb-3825-4866-90c2-351176263a2f
+<table>
+  <tr>
+    <td align="center">
+      加速前：58s
+    </td>
+    <td align="center">
+      加速后：17.9s
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <video src="https://github.com/user-attachments/assets/1781df9b-04df-4586-b22f-5d15f8e1bff6" width="100%"></video>
+    </td>
+    <td align="center">
+      <video src="https://github.com/user-attachments/assets/e93f91eb-3825-4866-90c2-351176263a2f" width="100%"></video>
+    </td>
+  </tr>
+</table>
 
 
 - 加速比为：**3.24**
