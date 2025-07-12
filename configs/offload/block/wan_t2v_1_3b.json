@@ -1,5 +1,5 @@
 {
-    "infer_steps": 40,
+    "infer_steps": 4,
     "target_video_length": 81,
     "target_height": 480,
     "target_width": 832,
@@ -10,14 +10,11 @@
     "sample_guide_scale": 5,
     "sample_shift": 5,
     "enable_cfg": true,
-    "cpu_offload": true,
-    "offload_granularity": "phase",
     "t5_cpu_offload": true,
     "t5_offload_granularity": "block",
-    "dit_quantized_ckpt": "/path/to/dit_int8",
-    "mm_config": {
-        "mm_type": "W-int8-channel-sym-A-int8-channel-sym-dynamic-Q8F",
-        "weight_auto_quant": false
-    },
+    "t5_quantized": true,
+    "t5_quantized_ckpt": "/path/to/models_t5_umt5-xxl-enc-fp8.pth",
+    "t5_quant_scheme": "fp8",
+    "unload_modules": true,
     "use_tiling_vae": true
 }

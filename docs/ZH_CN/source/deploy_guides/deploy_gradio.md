@@ -15,7 +15,7 @@ Lightx2v 是一个轻量级的视频推理和生成引擎，提供了基于 Grad
 - Python 3.10+ (推荐)
 - CUDA 12.4+ (推荐)
 - 至少 8GB GPU 显存
-- 至少 16GB 系统内存
+- 至少 16GB 系统内存（最好最少有 32G）
 - 至少 128GB SSD固态硬盘 (**💾 强烈建议使用SSD固态硬盘存储模型文件！"延迟加载"启动时，显著提升模型加载速度和推理性能**)
 
 
@@ -83,8 +83,9 @@ vim run_gradio.sh
 bash run_gradio.sh
 
 # 3. 或使用参数启动（推荐）
-bash run_gradio.sh --task i2v --lang zh --port 8032
-# bash run_gradio.sh --task t2v --lang zh --port 8032
+bash run_gradio.sh --task i2v --lang zh --model_size 14b --port 8032
+# bash run_gradio.sh --task i2v --lang zh --model_size 14b --port 8032
+# bash run_gradio.sh --task i2v --lang zh --model_size 1.3b --port 8032
 ```
 
 #### 方式二：直接命令行启动
@@ -93,6 +94,7 @@ bash run_gradio.sh --task i2v --lang zh --port 8032
 ```bash
 python gradio_demo_zh.py \
     --model_path /path/to/Wan2.1-I2V-14B-720P-Lightx2v \
+    --model_size 14b \
     --task i2v \
     --server_name 0.0.0.0 \
     --server_port 7862
@@ -102,6 +104,7 @@ python gradio_demo_zh.py \
 ```bash
 python gradio_demo_zh.py \
     --model_path /path/to/Wan2.1-T2V-1.3B \
+    --model_size 1.3b \
     --task t2v \
     --server_name 0.0.0.0 \
     --server_port 7862
@@ -111,6 +114,7 @@ python gradio_demo_zh.py \
 ```bash
 python gradio_demo.py \
     --model_path /path/to/model \
+    --model_size 14b \
     --task i2v \
     --server_name 0.0.0.0 \
     --server_port 7862
@@ -122,6 +126,7 @@ python gradio_demo.py \
 |------|------|------|--------|------|
 | `--model_path` | str | ✅ | - | 模型文件夹路径 |
 | `--model_cls` | str | ❌ | wan2.1 | 模型类别（目前仅支持wan2.1） |
+| `--model_size` | str | ✅ | - | 模型大小：`14b（图像到视频或者文本到视频）` 或 `1.3b（文本到视频）` |
 | `--task` | str | ✅ | - | 任务类型：`i2v`（图像到视频）或 `t2v`（文本到视频） |
 | `--server_port` | int | ❌ | 7862 | 服务器端口 |
 | `--server_name` | str | ❌ | 0.0.0.0 | 服务器IP地址 |
@@ -129,10 +134,6 @@ python gradio_demo.py \
 ## 🎯 功能特性
 
 ### 基本设置
-
-#### 模型类型选择
-- **Wan2.1 14B**: 参数量大，生成质量高，适合高质量视频生成
-- **Wan2.1 1.3B**: 轻量级模型，速度快，适合快速原型和测试
 
 #### 输入参数
 - **提示词 (Prompt)**: 描述期望的视频内容
@@ -221,7 +222,7 @@ lightx2v/app/
 ## 🎨 界面说明
 
 ### 基本设置标签页
-- **输入参数**: 模型类型、提示词、分辨率等基本设置
+- **输入参数**: 提示词、分辨率等基本设置
 - **视频参数**: FPS、帧数、CFG等视频生成参数
 - **输出设置**: 视频保存路径配置
 

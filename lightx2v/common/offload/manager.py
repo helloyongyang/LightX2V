@@ -15,6 +15,7 @@ class WeightAsyncStreamManager(object):
         self.cuda_load_stream = torch.cuda.Stream(priority=0)
         self.offload_block_num = int(offload_ratio * blocks_num)
         self.phases_num = phases_num
+        self.block_nums = blocks_num
         self.offload_phases_num = blocks_num * phases_num * offload_ratio
 
     def prefetch_weights(self, block_idx, blocks_weights):
@@ -128,6 +129,9 @@ class LazyWeightAsyncStreamManager(WeightAsyncStreamManager):
         if next_block_idx < 0:
             next_block_idx = 0
 
+        if next_block_idx == self.block_nums:
+            return
+
         if self.offload_gra == "phase":
             for phase_idx in range(self.phases_num):
                 obj_key = (next_block_idx, phase_idx)
@@ -170,6 +174,8 @@ class LazyWeightAsyncStreamManager(WeightAsyncStreamManager):
                 self.pin_memory_buffer.push(block_idx, block)
 
             block_idx += 1
+            if block_idx == self.block_nums:
+                break
 
     def prefetch_weights_from_disk(self, blocks):
         if self.initial_prefetch_done:

@@ -12,6 +12,7 @@
     "sample_shift": 8,
     "enable_cfg": true,
     "cpu_offload": true,
+    "t5_cpu_offload": true,
     "offload_granularity": "phase",
     "dit_quantized_ckpt": "/path/to/dit_int8",
     "mm_config": {

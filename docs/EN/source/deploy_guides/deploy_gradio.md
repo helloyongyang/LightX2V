@@ -15,7 +15,7 @@ This project contains two main demo files:
 - Python 3.10+ (recommended)
 - CUDA 12.4+ (recommended)
 - At least 8GB GPU VRAM
-- At least 16GB system memory
+- At least 16GB system memory (preferably at least 32GB)
 - At least 128GB SSD solid-state drive (**💾 Strongly recommend using SSD solid-state drives to store model files! During "lazy loading" startup, significantly improves model loading speed and inference performance**)
 
 ### Install Dependencies
@@ -80,8 +80,9 @@ vim run_gradio.sh
 bash run_gradio.sh
 
 # 3. Or start with parameters (recommended)
-bash run_gradio.sh --task i2v --lang en --port 8032
-# bash run_gradio.sh --task t2v --lang en --port 8032
+bash run_gradio.sh --task i2v --lang en --model_size 14b --port 8032
+# bash run_gradio.sh --task i2v --lang en --model_size 14b --port 8032
+# bash run_gradio.sh --task i2v --lang en --model_size 1.3b --port 8032
 ```
 
 #### Method 2: Direct Command Line Startup
@@ -90,6 +91,7 @@ bash run_gradio.sh --task i2v --lang en --port 8032
 ```bash
 python gradio_demo.py \
     --model_path /path/to/Wan2.1-I2V-14B-720P-Lightx2v \
+    --model_size 14b \
     --task i2v \
     --server_name 0.0.0.0 \
     --server_port 7862
@@ -99,6 +101,7 @@ python gradio_demo.py \
 ```bash
 python gradio_demo.py \
     --model_path /path/to/Wan2.1-T2V-1.3B \
+    --model_size 1.3b \
     --task t2v \
     --server_name 0.0.0.0 \
     --server_port 7862
@@ -108,6 +111,7 @@ python gradio_demo.py \
 ```bash
 python gradio_demo_zh.py \
     --model_path /path/to/model \
+    --model_size 14b \
     --task i2v \
     --server_name 0.0.0.0 \
     --server_port 7862
@@ -119,6 +123,7 @@ python gradio_demo_zh.py \
 |-----------|------|----------|---------|-------------|
 | `--model_path` | str | ✅ | - | Model folder path |
 | `--model_cls` | str | ❌ | wan2.1 | Model class (currently only supports wan2.1) |
+| `--model_size` | str | ✅ | - | Model size: `14b(t2v or i2v)` or `1.3b(t2v)` |
 | `--task` | str | ✅ | - | Task type: `i2v` (image-to-video) or `t2v` (text-to-video) |
 | `--server_port` | int | ❌ | 7862 | Server port |
 | `--server_name` | str | ❌ | 0.0.0.0 | Server IP address |
@@ -126,10 +131,6 @@ python gradio_demo_zh.py \
 ## 🎯 Features
 
 ### Basic Settings
-
-#### Model Type Selection
-- **Wan2.1 14B**: Large parameter count, high generation quality, suitable for high-quality video generation
-- **Wan2.1 1.3B**: Lightweight model, fast speed, suitable for rapid prototyping and testing
 
 #### Input Parameters
 - **Prompt**: Describe the expected video content
@@ -217,7 +218,7 @@ lightx2v/app/
 ## 🎨 Interface Description
 
 ### Basic Settings Tab
-- **Input Parameters**: Model type, prompts, resolution, and other basic settings
+- **Input Parameters**: Prompts, resolution, and other basic settings
 - **Video Parameters**: FPS, frame count, CFG, and other video generation parameters
 - **Output Settings**: Video save path configuration
 

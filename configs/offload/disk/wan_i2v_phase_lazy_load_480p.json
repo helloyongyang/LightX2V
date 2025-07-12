@@ -18,6 +18,7 @@
         "mm_type": "W-fp8-channel-sym-A-fp8-channel-sym-dynamic-Vllm",
         "weight_auto_quant": false
     },
+    "t5_cpu_offload": true,
     "t5_quantized": true,
     "t5_quantized_ckpt": "/path/to/models_t5_umt5-xxl-enc-fp8.pth",
     "t5_quant_scheme": "fp8",
