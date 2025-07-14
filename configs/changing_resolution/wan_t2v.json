@@ -12,5 +12,7 @@
     "sample_shift": 8,
     "enable_cfg": true,
     "cpu_offload": false,
-    "changing_resolution": true
+    "changing_resolution": true,
+    "resolution_rate": 0.75,
+    "changing_resolution_steps": 25
 }
