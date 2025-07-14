@@ -48,6 +48,7 @@ Documentation
    Attention Module <method_tutorials/attention.md>
    Offloading <method_tutorials/offload.md>
    Parallel Inference <method_tutorials/parallel.md>
+   Changing Resolution Inference <method_tutorials/changing_resolution.md>
    Step Distill <method_tutorials/step_distill.md>
    Autoregressive Distill <method_tutorials/autoregressive_distill.md>
 

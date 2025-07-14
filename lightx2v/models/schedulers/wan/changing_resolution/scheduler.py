@@ -5,8 +5,8 @@ from lightx2v.models.schedulers.wan.scheduler import WanScheduler
 class WanScheduler4ChangingResolution(WanScheduler):
     def __init__(self, config):
         super().__init__(config)
-        self.resolution_rate = 0.75
-        self.changing_resolution_steps = 25
+        self.resolution_rate = config.get("resolution_rate", 0.75)
+        self.changing_resolution_steps = config.get("changing_resolution_steps", config.infer_steps // 2)
 
     def prepare_latents(self, target_shape, dtype=torch.float32):
         self.latents = torch.randn(

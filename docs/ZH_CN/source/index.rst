@@ -49,6 +49,7 @@ HuggingFace: https://huggingface.co/lightx2v
    注意力机制 <method_tutorials/attention.md>
    参数卸载 <method_tutorials/offload.md>
    并行推理 <method_tutorials/parallel.md>
+   变分辨率推理 <method_tutorials/changing_resolution.md>
    步数蒸馏 <method_tutorials/step_distill.md>
    自回归蒸馏 <method_tutorials/autoregressive_distill.md>
 
