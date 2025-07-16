@@ -25,8 +25,8 @@ Model Root Directory/
 │   ├── fp8/                                          # FP8 quantized version (DIT/T5/CLIP)
 │   ├── int8/                                         # INT8 quantized version (DIT/T5/CLIP)
 │   ├── original/                                     # Original precision version (DIT)
-│   ├── xlm-roberta-large/                            
-│   └── google/                                      
+│   ├── xlm-roberta-large/
+│   └── google/
 ```
 
 ### 💾 Storage Recommendations

@@ -56,6 +56,7 @@ Documentation
    :maxdepth: 1
    :caption: Deployment Guides
 
+   Model Structure <deploy_guides/model_structure.md>
    Low Latency Deployment <deploy_guides/for_low_latency.md>
    Low Resource Deployment <deploy_guides/for_low_resource.md>
    Lora Deployment <deploy_guides/lora_deploy.md>
