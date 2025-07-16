@@ -1,6 +1,4 @@
-import asyncio
 import gc
-import aiohttp
 import requests
 from requests.exceptions import RequestException
 import torch
@@ -13,7 +11,6 @@ from lightx2v.utils.generate_task_id import generate_task_id
 from lightx2v.utils.envs import *
 from lightx2v.utils.service_utils import TensorTransporter, ImageTransporter
 from loguru import logger
-from .async_wrapper import AsyncWrapper
 from .base_runner import BaseRunner
 
 
@@ -33,21 +30,14 @@ class DefaultRunner(BaseRunner):
 
     def init_modules(self):
         logger.info("Initializing runner modules...")
-        if self.config["mode"] == "split_server":
-            self.tensor_transporter = TensorTransporter()
-            self.image_transporter = ImageTransporter()
-            if not self.check_sub_servers("dit"):
-                raise ValueError("No dit server available")
-            if not self.check_sub_servers("text_encoders"):
-                raise ValueError("No text encoder server available")
-            if self.config["task"] == "i2v":
-                if not self.check_sub_servers("image_encoder"):
-                    raise ValueError("No image encoder server available")
-            if not self.check_sub_servers("vae_model"):
-                raise ValueError("No vae server available")
+        if not self.config.get("lazy_load", False) and not self.config.get("unload_modules", False):
+            self.load_model()
+        self.run_dit = self._run_dit_local
+        self.run_vae_decoder = self._run_vae_decoder_local
+        if self.config["task"] == "i2v":
+            self.run_input_encoder = self._run_input_encoder_local_i2v
         else:
-            if not self.config.get("lazy_load", False) and not self.config.get("unload_modules", False):
-                self.load_model()
+            self.run_input_encoder = self._run_input_encoder_local_t2v
 
     def set_init_device(self):
         if self.config["parallel_attn_type"]:
@@ -123,14 +113,13 @@ class DefaultRunner(BaseRunner):
 
         return self.model.scheduler.latents, self.model.scheduler.generator
 
-    async def run_step(self, step_index=0):
-        async with AsyncWrapper(self) as wrapper:
-            self.init_scheduler()
-            self.inputs = await wrapper.run_input_encoder()
-            self.model.scheduler.prepare(self.inputs["image_encoder_output"])
-            self.model.scheduler.step_pre(step_index=step_index)
-            self.model.infer(self.inputs)
-            self.model.scheduler.step_post()
+    def run_step(self, step_index=0):
+        self.init_scheduler()
+        self.inputs = self.run_input_encoder()
+        self.model.scheduler.prepare(self.inputs["image_encoder_output"])
+        self.model.scheduler.step_pre(step_index=step_index)
+        self.model.infer(self.inputs)
+        self.model.scheduler.step_post()
 
     def end_run(self):
         self.model.scheduler.clear()
@@ -194,52 +183,6 @@ class DefaultRunner(BaseRunner):
         if not self.config.parallel_attn_type or (self.config.parallel_attn_type and dist.get_rank() == 0):
             self.save_video_func(images)
 
-    async def post_task(self, task_type, urls, message, device="cuda", max_retries=3, timeout=30):
-        for attempt in range(max_retries):
-            for url in urls:
-                try:
-                    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as session:
-                        try:
-                            async with session.get(f"{url}/v1/local/{task_type}/generate/service_status") as response:
-                                if response.status != 200:
-                                    logger.warning(f"Service {url} returned status {response.status}")
-                                    continue
-                                status = await response.json()
-                        except asyncio.TimeoutError:
-                            logger.warning(f"Timeout checking status for {url}")
-                            continue
-                        except Exception as e:
-                            logger.warning(f"Error checking status for {url}: {e}")
-                            continue
-
-                        if status.get("service_status") == "idle":
-                            try:
-                                async with session.post(f"{url}/v1/local/{task_type}/generate", json=message) as response:
-                                    if response.status == 200:
-                                        result = await response.json()
-                                        if result.get("kwargs") is not None:
-                                            for k, v in result["kwargs"].items():
-                                                setattr(self.config, k, v)
-                                        return self.tensor_transporter.load_tensor(result["output"], device)
-                                    else:
-                                        logger.warning(f"Task failed with status {response.status} for {url}")
-                            except asyncio.TimeoutError:
-                                logger.warning(f"Timeout posting task to {url}")
-                            except Exception as e:
-                                logger.error(f"Error posting task to {url}: {e}")
-
-                except aiohttp.ClientError as e:
-                    logger.warning(f"Client error for {url}: {e}")
-                except Exception as e:
-                    logger.error(f"Unexpected error for {url}: {e}")
-
-            if attempt < max_retries - 1:
-                wait_time = min(2**attempt, 10)
-                logger.info(f"Retrying in {wait_time} seconds... (attempt {attempt + 1}/{max_retries})")
-                await asyncio.sleep(wait_time)
-
-        raise RuntimeError(f"Failed to complete task {task_type} after {max_retries} attempts")
-
     def post_prompt_enhancer(self):
         while True:
             for url in self.config["sub_servers"]["prompt_enhancer"]:
@@ -256,138 +199,23 @@ class DefaultRunner(BaseRunner):
                     logger.info(f"Enhanced prompt: {enhanced_prompt}")
                     return enhanced_prompt
 
-    async def post_encoders_i2v(self, prompt, img=None, n_prompt=None, i2v=False):
-        tasks = []
-        img_byte = self.image_transporter.prepare_image(img)
-        tasks.append(
-            asyncio.create_task(
-                self.post_task(
-                    task_type="image_encoder",
-                    urls=self.config["sub_servers"]["image_encoder"],
-                    message={"task_id": generate_task_id(), "img": img_byte},
-                    device="cuda",
-                )
-            )
-        )
-        tasks.append(
-            asyncio.create_task(
-                self.post_task(
-                    task_type="vae_model/encoder",
-                    urls=self.config["sub_servers"]["vae_model"],
-                    message={"task_id": generate_task_id(), "img": img_byte},
-                    device="cuda",
-                )
-            )
-        )
-        tasks.append(
-            asyncio.create_task(
-                self.post_task(
-                    task_type="text_encoders",
-                    urls=self.config["sub_servers"]["text_encoders"],
-                    message={
-                        "task_id": generate_task_id(),
-                        "text": prompt,
-                        "img": img_byte,
-                        "n_prompt": n_prompt,
-                    },
-                    device="cuda",
-                )
-            )
-        )
-        results = await asyncio.gather(*tasks)
-        # clip_encoder, vae_encoder, text_encoders
-        return results[0], results[1], results[2]
+    def run_pipeline(self, save_video=True):
+        if self.config["use_prompt_enhancer"]:
+            self.config["prompt_enhanced"] = self.post_prompt_enhancer()
 
-    async def post_encoders_t2v(self, prompt, n_prompt=None):
-        tasks = []
-        tasks.append(
-            asyncio.create_task(
-                self.post_task(
-                    task_type="text_encoders",
-                    urls=self.config["sub_servers"]["text_encoders"],
-                    message={
-                        "task_id": generate_task_id(),
-                        "text": prompt,
-                        "img": None,
-                        "n_prompt": n_prompt,
-                    },
-                    device="cuda",
-                )
-            )
-        )
-        results = await asyncio.gather(*tasks)
-        # text_encoders
-        return results[0]
+        self.inputs = self.run_input_encoder()
 
-    async def _run_input_encoder_server_i2v(self):
-        prompt = self.config["prompt_enhanced"] if self.config["use_prompt_enhancer"] else self.config["prompt"]
-        n_prompt = self.config.get("negative_prompt", "")
-        img = Image.open(self.config["image_path"]).convert("RGB")
-        (
-            clip_encoder_out,
-            vae_encode_out,
-            text_encoder_output,
-        ) = await self.post_encoders_i2v(prompt, img, n_prompt)
+        kwargs = self.set_target_shape()
+
+        latents, generator = self.run_dit(kwargs)
+
+        images = self.run_vae_decoder(latents, generator)
+
+        if save_video:
+            self.save_video(images)
+
+        del latents, generator
         torch.cuda.empty_cache()
         gc.collect()
-        return self.get_encoder_output_i2v(clip_encoder_out, vae_encode_out, text_encoder_output, img)
 
-    async def _run_input_encoder_server_t2v(self):
-        prompt = self.config["prompt_enhanced"] if self.config["use_prompt_enhancer"] else self.config["prompt"]
-        n_prompt = self.config.get("negative_prompt", "")
-        text_encoder_output = await self.post_encoders_t2v(prompt, n_prompt)
-        torch.cuda.empty_cache()
-        gc.collect()
-        return {
-            "text_encoder_output": text_encoder_output,
-            "image_encoder_output": None,
-        }
-
-    async def _run_dit_server(self, kwargs):
-        if self.inputs.get("image_encoder_output", None) is not None:
-            self.inputs["image_encoder_output"].pop("img", None)
-        dit_output = await self.post_task(
-            task_type="dit",
-            urls=self.config["sub_servers"]["dit"],
-            message={
-                "task_id": generate_task_id(),
-                "inputs": self.tensor_transporter.prepare_tensor(self.inputs),
-                "kwargs": self.tensor_transporter.prepare_tensor(kwargs),
-            },
-            device="cuda",
-        )
-        return dit_output, None
-
-    async def _run_vae_decoder_server(self, latents, generator):
-        images = await self.post_task(
-            task_type="vae_model/decoder",
-            urls=self.config["sub_servers"]["vae_model"],
-            message={
-                "task_id": generate_task_id(),
-                "latents": self.tensor_transporter.prepare_tensor(latents),
-            },
-            device="cpu",
-        )
         return images
-
-    async def run_pipeline(self, save_video=True):
-        async with AsyncWrapper(self) as wrapper:
-            if self.config["use_prompt_enhancer"]:
-                self.config["prompt_enhanced"] = await wrapper.run_prompt_enhancer()
-
-            self.inputs = await wrapper.run_input_encoder()
-
-            kwargs = self.set_target_shape()
-
-            latents, generator = await wrapper.run_dit(kwargs)
-
-            images = await wrapper.run_vae_decoder(latents, generator)
-
-            if save_video:
-                await wrapper.save_video(images)
-
-            del latents, generator
-            torch.cuda.empty_cache()
-            gc.collect()
-
-            return images
