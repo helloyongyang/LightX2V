@@ -23,7 +23,7 @@ except ImportError:
     logger.info("flash_attn_varlen_func_v3 not found, please install flash_attn3 first")
     flash_attn_varlen_func_v3 = None
 
-if torch.cuda.get_device_capability(0)[0] <= 8 and torch.cuda.get_device_capability(0)[1] <= 9:
+if torch.cuda.get_device_capability(0) == (8, 9):
     try:
         from sageattention import sageattn_qk_int8_pv_fp16_triton as sageattn
     except ImportError:
