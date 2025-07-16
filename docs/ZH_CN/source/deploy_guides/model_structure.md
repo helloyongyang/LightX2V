@@ -81,6 +81,7 @@ python gradio_demo_zh.py \
 
 使用配置文件启动时, 如[配置文件](https://github.com/ModelTC/LightX2V/tree/main/configs/offload/disk/wan_i2v_phase_lazy_load_480p.json)中的以下路径配置可以省略：
 
+- `dit_quantized_ckpt` 无需指定，代码会自动在模型目录下查找
 - `tiny_vae_path`：无需指定，代码会自动在模型目录下查找
 - `clip_quantized_ckpt`：无需指定，代码会自动在模型目录下查找
 - `t5_quantized_ckpt`：无需指定，代码会自动在模型目录下查找

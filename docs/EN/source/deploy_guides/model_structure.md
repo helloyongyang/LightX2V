@@ -77,6 +77,7 @@ python gradio_demo_zh.py \
 
 When starting with configuration files, such as [configuration file](https://github.com/ModelTC/LightX2V/tree/main/configs/offload/disk/wan_i2v_phase_lazy_load_480p.json), the following path configurations can be omitted:
 
+- `dit_quantized_ckpt`: No need to specify, code will automatically search in the model directory
 - `tiny_vae_path`: No need to specify, code will automatically search in the model directory
 - `clip_quantized_ckpt`: No need to specify, code will automatically search in the model directory
 - `t5_quantized_ckpt`: No need to specify, code will automatically search in the model directory
