@@ -1,4 +1,4 @@
-# Lightx2v Parameter Offloading Mechanism Technical Documentation
+# Offload
 
 ## 📖 Overview
 
