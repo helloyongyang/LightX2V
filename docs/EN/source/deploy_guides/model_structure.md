@@ -25,8 +25,8 @@ Model Root Directory/
 │   ├── fp8/                                          # FP8 quantized version (DIT/T5/CLIP)
 │   ├── int8/                                         # INT8 quantized version (DIT/T5/CLIP)
 │   ├── original/                                     # Original precision version (DIT)
-│   ├── xlm-roberta-large/                            # Multilingual encoder
-│   └── google/                                       # Other shared resources
+│   ├── xlm-roberta-large/                            
+│   └── google/                                      
 ```
 
 ### 💾 Storage Recommendations
@@ -39,20 +39,6 @@ Model Root Directory/
 /data/ssd/models/         # Data SSD directory
 /opt/models/              # System optimization directory
 ```
-
-## 🔧 Model File Description
-
-### Core Model Files
-
-Each model directory contains the following core files:
-
-| Filename | Size | Purpose | Required |
-|----------|------|---------|----------|
-| `config.json` | ~250B | Model configuration file | ✅ Required |
-| `Wan2.1_VAE.pth` | ~508MB | VAE variational autoencoder | ✅ Required |
-| `models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth` | ~4.77GB | CLIP visual encoder (FP16) | ✅ Required |
-| `models_t5_umt5-xxl-enc-bf16.pth` | ~11.4GB | T5 text encoder (BF16) | ✅ Required |
-| `taew2_1.pth` | ~22.7MB | Lightweight VAE (optional) | ❌ Optional |
 
 ### Quantized Version Directories
 
