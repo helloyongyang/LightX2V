@@ -1,4 +1,4 @@
-欢迎了解 Lightx2v!
+欢迎了解 Lightx2v 论文收藏集!
 ==================
 
 .. figure:: ../../../assets/img_lightx2v.png
@@ -15,6 +15,7 @@
     <a href="https://deepwiki.com/ModelTC/lightx2v"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
     <a href="https://lightx2v-en.readthedocs.io/en/latest"><img src="https://img.shields.io/badge/docs-English-99cc2" alt="Doc"></a>
     <a href="https://lightx2v-zhcn.readthedocs.io/zh-cn/latest"><img src="https://img.shields.io/badge/文档-中文-99cc2" alt="Doc"></a>
+    <a href="https://lightx2v-papers-zhcn.readthedocs.io/zh-cn/latest"><img src="https://img.shields.io/badge/论文集-中文-99cc2" alt="Papers"></a>
     <a href="https://hub.docker.com/r/lightx2v/lightx2v/tags"><img src="https://badgen.net/badge/icon/docker?icon=docker&label" alt="Docker"></a>
 
     </div>
@@ -24,13 +25,13 @@
     </div>
 
 
-LightX2V 是一个轻量级的视频生成推理框架。这里是我们维护的一个视频生成推理加速相关的论文集，帮助你快速了解视频生成推理加速相关的经典方法和最新进展。
+LightX2V 是一个轻量级的视频生成推理框架。这里是我们维护的一个视频生成推理加速相关的论文收藏集，帮助你快速了解视频生成推理加速相关的经典方法和最新进展。
 
 GitHub: https://github.com/ModelTC/lightx2v
 
 HuggingFace: https://huggingface.co/lightx2v
 
-论文集
+论文收藏集
 -------------
 
 .. toctree::
