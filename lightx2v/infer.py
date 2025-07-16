@@ -86,6 +86,11 @@ def main():
 
         runner.run_pipeline()
 
+    # Clean up distributed process group
+    if dist.is_initialized():
+        dist.destroy_process_group()
+        logger.info("Distributed process group cleaned up")
+
 
 if __name__ == "__main__":
     main()
