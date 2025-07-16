@@ -1,6 +1,5 @@
 import os
 import gradio as gr
-import asyncio
 import argparse
 import json
 import torch
@@ -449,7 +448,7 @@ def run_inference(
     else:
         runner.config = config
 
-    asyncio.run(runner.run_pipeline())
+    runner.run_pipeline()
 
     del config, args, model_config, quant_model_config
     if "dit_quantized_ckpt" in locals():
