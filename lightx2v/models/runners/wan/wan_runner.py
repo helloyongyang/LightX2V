@@ -7,7 +7,9 @@ from PIL import Image
 from lightx2v.utils.registry_factory import RUNNER_REGISTER
 from lightx2v.models.runners.default_runner import DefaultRunner
 from lightx2v.models.schedulers.wan.scheduler import WanScheduler
-from lightx2v.models.schedulers.wan.changing_resolution.scheduler import WanScheduler4ChangingResolution
+from lightx2v.models.schedulers.wan.changing_resolution.scheduler import (
+    WanScheduler4ChangingResolution,
+)
 from lightx2v.models.schedulers.wan.feature_caching.scheduler import (
     WanSchedulerTeaCaching,
     WanSchedulerTaylorCaching,
@@ -50,6 +52,22 @@ class WanRunner(DefaultRunner):
     def load_image_encoder(self):
         image_encoder = None
         if self.config.task == "i2v":
+            # quant_config
+            clip_quantized = self.config.get("clip_quantized", False)
+            if clip_quantized:
+                clip_quant_scheme = self.config.get("clip_quant_scheme", None)
+                assert clip_quant_scheme is not None
+                clip_quantized_ckpt = self.config.get(
+                    "clip_quantized_ckpt",
+                    os.path.join(
+                        os.path.join(self.config.model_path, clip_quant_scheme),
+                        f"clip-{clip_quant_scheme}.pth",
+                    ),
+                )
+            else:
+                clip_quantized_ckpt = None
+                clip_quant_scheme = None
+
             image_encoder = CLIPModel(
                 dtype=torch.float16,
                 device=self.init_device,
@@ -57,18 +75,36 @@ class WanRunner(DefaultRunner):
                     self.config.model_path,
                     "models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth",
                 ),
-                clip_quantized=self.config.get("clip_quantized", False),
-                clip_quantized_ckpt=self.config.get("clip_quantized_ckpt", None),
-                quant_scheme=self.config.get("clip_quant_scheme", None),
+                clip_quantized=clip_quantized,
+                clip_quantized_ckpt=clip_quantized_ckpt,
+                quant_scheme=clip_quant_scheme,
             )
         return image_encoder
 
     def load_text_encoder(self):
+        # offload config
         t5_offload = self.config.get("t5_cpu_offload", False)
         if t5_offload:
             t5_device = torch.device("cpu")
         else:
             t5_device = torch.device("cuda")
+
+        # quant_config
+        t5_quantized = self.config.get("t5_quantized", False)
+        if t5_quantized:
+            t5_quant_scheme = self.config.get("t5_quant_scheme", None)
+            assert t5_quant_scheme is not None
+            t5_quantized_ckpt = self.config.get(
+                "t5_quantized_ckpt",
+                os.path.join(
+                    os.path.join(self.config.model_path, t5_quant_scheme),
+                    f"models_t5_umt5-xxl-enc-{t5_quant_scheme}.pth",
+                ),
+            )
+        else:
+            t5_quant_scheme = None
+            t5_quantized_ckpt = None
+
         text_encoder = T5EncoderModel(
             text_len=self.config["text_len"],
             dtype=torch.bfloat16,
@@ -78,9 +114,9 @@ class WanRunner(DefaultRunner):
             shard_fn=None,
             cpu_offload=t5_offload,
             offload_granularity=self.config.get("t5_offload_granularity", "model"),
-            t5_quantized=self.config.get("t5_quantized", False),
-            t5_quantized_ckpt=self.config.get("t5_quantized_ckpt", None),
-            quant_scheme=self.config.get("t5_quant_scheme", None),
+            t5_quantized=t5_quantized,
+            t5_quantized_ckpt=t5_quantized_ckpt,
+            quant_scheme=t5_quant_scheme,
         )
         text_encoders = [text_encoder]
         return text_encoders
