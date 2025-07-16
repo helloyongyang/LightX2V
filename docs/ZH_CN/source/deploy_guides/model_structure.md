@@ -43,17 +43,6 @@
 
 ## 🔧 模型文件说明
 
-### 核心模型文件
-
-每个模型目录包含以下核心文件：
-
-| 文件名 | 大小 | 作用 | 必需性 |
-|--------|------|------|--------|
-| `config.json` | ~250B | 模型配置文件 | ✅ 必需 |
-| `Wan2.1_VAE.pth` | ~508MB | VAE变分自编码器 | ✅ 必需 |
-| `models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth` | ~4.77GB | CLIP视觉编码器 (FP16) | ✅ 必需 |
-| `models_t5_umt5-xxl-enc-bf16.pth` | ~11.4GB | T5文本编码器 (BF16) | ✅ 必需 |
-| `taew2_1.pth` | ~22.7MB | 轻量级VAE (可选) | ❌ 可选 |
 
 ### 量化版本目录
 
