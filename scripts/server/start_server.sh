@@ -42,7 +42,6 @@ python -m lightx2v.api_server \
 --model_path $model_path \
 --config_json ${lightx2v_path}/configs/wan/wan_i2v_dist.json \
 --port 8000 \
---start_inference \
 --nproc_per_node 1
 
 echo "Service stopped"

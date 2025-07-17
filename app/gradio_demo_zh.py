@@ -1,6 +1,5 @@
 import os
 import gradio as gr
-import asyncio
 import argparse
 import json
 import torch
@@ -12,7 +11,6 @@ from loguru import logger
 import importlib.util
 import psutil
 import random
-
 
 logger.add(
     "inference_logs.log",
@@ -98,7 +96,7 @@ def get_gpu_memory(gpu_idx=0):
     try:
         with torch.cuda.device(gpu_idx):
             memory_info = torch.cuda.mem_get_info()
-            total_memory = memory_info[1] / (1024**3)
+            total_memory = memory_info[1] / (1024**3)  # Convert bytes to GB
             return total_memory
     except Exception as e:
         logger.warning(f"获取GPU内存失败: {e}")
@@ -108,6 +106,26 @@ def get_gpu_memory(gpu_idx=0):
 def get_cpu_memory():
     available_bytes = psutil.virtual_memory().available
     return available_bytes / 1024**3
+
+
+def cleanup_memory():
+    gc.collect()
+
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.synchronize()
+
+    try:
+        import psutil
+
+        if hasattr(psutil, "virtual_memory"):
+            if os.name == "posix":
+                try:
+                    os.system("sync")
+                except:  # noqa
+                    pass
+    except:  # noqa
+        pass
 
 
 def generate_unique_filename(base_dir="./saved_videos"):
@@ -148,11 +166,8 @@ for op_name, is_installed in available_attn_ops:
 
 
 def run_inference(
-    model_type,
-    task,
     prompt,
     negative_prompt,
-    image_path,
     save_video_path,
     torch_compile,
     infer_steps,
@@ -176,30 +191,30 @@ def run_inference(
     cpu_offload,
     offload_granularity,
     offload_ratio,
+    t5_cpu_offload,
+    unload_modules,
     t5_offload_granularity,
     attention_type,
     quant_op,
     rotary_chunk,
     rotary_chunk_size,
     clean_cuda_cache,
+    image_path=None,
 ):
+    cleanup_memory()
+
     quant_op = quant_op.split("(")[0].strip()
     attention_type = attention_type.split("(")[0].strip()
 
-    global global_runner, current_config, model_path
+    global global_runner, current_config, model_path, task
     global cur_dit_quant_scheme, cur_clip_quant_scheme, cur_t5_quant_scheme, cur_precision_mode, cur_enable_teacache
 
     if os.path.exists(os.path.join(model_path, "config.json")):
         with open(os.path.join(model_path, "config.json"), "r") as f:
             model_config = json.load(f)
 
-    if task == "图像生成视频":
-        task = "i2v"
-    elif task == "文本生成视频":
-        task = "t2v"
-
     if task == "t2v":
-        if model_type == "Wan2.1 1.3B":
+        if model_size == "1.3b":
             # 1.3B
             coefficient = [
                 [
@@ -294,6 +309,7 @@ def run_inference(
 
     needs_reinit = (
         lazy_load
+        or unload_modules
         or global_runner is None
         or current_config is None
         or cur_dit_quant_scheme is None
@@ -332,6 +348,8 @@ def run_inference(
         if os.path.exists(os.path.join(dit_quantized_ckpt, "config.json")):
             with open(os.path.join(dit_quantized_ckpt, "config.json"), "r") as f:
                 quant_model_config = json.load(f)
+        else:
+            quant_model_config = {}
     else:
         mm_type = "Default"
         dit_quantized_ckpt = None
@@ -362,6 +380,8 @@ def run_inference(
         "coefficients": coefficient[0] if use_ret_steps else coefficient[1],
         "use_ret_steps": use_ret_steps,
         "teacache_thresh": teacache_thresh,
+        "t5_cpu_offload": t5_cpu_offload,
+        "unload_modules": unload_modules,
         "t5_quantized": is_t5_quant,
         "t5_quantized_ckpt": t5_quant_ckpt,
         "t5_quant_scheme": t5_quant_scheme,
@@ -400,13 +420,13 @@ def run_inference(
 
     config.update({k: v for k, v in vars(args).items()})
     config = EasyDict(config)
-    config["mode"] = "infer"
     config.update(model_config)
     config.update(quant_model_config)
 
     logger.info(f"使用模型: {model_path}")
     logger.info(f"推理配置:\n{json.dumps(config, indent=4, ensure_ascii=False)}")
 
+    # Initialize or reuse the runner
     runner = global_runner
     if needs_reinit:
         if runner is not None:
@@ -429,17 +449,27 @@ def run_inference(
     else:
         runner.config = config
 
-    asyncio.run(runner.run_pipeline())
+    runner.run_pipeline()
 
-    if lazy_load:
-        del runner
-        torch.cuda.empty_cache()
-        gc.collect()
+    del config, args, model_config, quant_model_config
+    if "dit_quantized_ckpt" in locals():
+        del dit_quantized_ckpt
+    if "t5_quant_ckpt" in locals():
+        del t5_quant_ckpt
+    if "clip_quant_ckpt" in locals():
+        del clip_quant_ckpt
+
+    cleanup_memory()
 
     return save_video_path
 
 
-def auto_configure(enable_auto_config, model_type, resolution):
+def handle_lazy_load_change(lazy_load_enabled):
+    """Handle lazy_load checkbox change to automatically enable unload_modules"""
+    return gr.update(value=lazy_load_enabled)
+
+
+def auto_configure(enable_auto_config, resolution):
     default_config = {
         "torch_compile_val": False,
         "lazy_load_val": False,
@@ -449,6 +479,8 @@ def auto_configure(enable_auto_config, model_type, resolution):
         "cpu_offload_val": False,
         "offload_granularity_val": "block",
         "offload_ratio_val": 1,
+        "t5_cpu_offload_val": False,
+        "unload_modules_val": False,
         "t5_offload_granularity_val": "model",
         "attention_type_val": attn_op_choices[0][1],
         "quant_op_val": quant_op_choices[0][1],
@@ -505,7 +537,7 @@ def auto_configure(enable_auto_config, model_type, resolution):
     else:
         res = "480p"
 
-    if model_type in ["Wan2.1 14B"]:
+    if model_size == "14b":
         is_14b = True
     else:
         is_14b = False
@@ -513,13 +545,14 @@ def auto_configure(enable_auto_config, model_type, resolution):
     if res == "720p" and is_14b:
         gpu_rules = [
             (80, {}),
-            (48, {"cpu_offload_val": True, "offload_ratio_val": 0.5}),
-            (40, {"cpu_offload_val": True, "offload_ratio_val": 0.8}),
-            (32, {"cpu_offload_val": True, "offload_ratio_val": 1}),
+            (48, {"cpu_offload_val": True, "offload_ratio_val": 0.5, "t5_cpu_offload_val": True}),
+            (40, {"cpu_offload_val": True, "offload_ratio_val": 0.8, "t5_cpu_offload_val": True}),
+            (32, {"cpu_offload_val": True, "offload_ratio_val": 1, "t5_cpu_offload_val": True}),
             (
                 24,
                 {
                     "cpu_offload_val": True,
+                    "t5_cpu_offload_val": True,
                     "offload_ratio_val": 1,
                     "t5_offload_granularity_val": "block",
                     "precision_mode_val": "bf16",
@@ -530,6 +563,7 @@ def auto_configure(enable_auto_config, model_type, resolution):
                 16,
                 {
                     "cpu_offload_val": True,
+                    "t5_cpu_offload_val": True,
                     "offload_ratio_val": 1,
                     "t5_offload_granularity_val": "block",
                     "precision_mode_val": "bf16",
@@ -543,6 +577,7 @@ def auto_configure(enable_auto_config, model_type, resolution):
                 12,
                 {
                     "cpu_offload_val": True,
+                    "t5_cpu_offload_val": True,
                     "offload_ratio_val": 1,
                     "t5_offload_granularity_val": "block",
                     "precision_mode_val": "bf16",
@@ -551,12 +586,14 @@ def auto_configure(enable_auto_config, model_type, resolution):
                     "rotary_chunk_val": True,
                     "rotary_chunk_size_val": 100,
                     "clean_cuda_cache_val": True,
+                    "use_tiny_vae_val": True,
                 },
             ),
             (
                 8,
                 {
                     "cpu_offload_val": True,
+                    "t5_cpu_offload_val": True,
                     "offload_ratio_val": 1,
                     "t5_offload_granularity_val": "block",
                     "precision_mode_val": "bf16",
@@ -569,6 +606,8 @@ def auto_configure(enable_auto_config, model_type, resolution):
                     "clip_quant_scheme_val": quant_type,
                     "dit_quant_scheme_val": quant_type,
                     "lazy_load_val": True,
+                    "unload_modules_val": True,
+                    "use_tiny_vae_val": True,
                 },
             ),
         ]
@@ -576,13 +615,14 @@ def auto_configure(enable_auto_config, model_type, resolution):
     elif is_14b:
         gpu_rules = [
             (80, {}),
-            (48, {"cpu_offload_val": True, "offload_ratio_val": 0.2}),
-            (40, {"cpu_offload_val": True, "offload_ratio_val": 0.5}),
-            (24, {"cpu_offload_val": True, "offload_ratio_val": 0.8}),
+            (48, {"cpu_offload_val": True, "offload_ratio_val": 0.2, "t5_cpu_offload_val": True}),
+            (40, {"cpu_offload_val": True, "offload_ratio_val": 0.5, "t5_cpu_offload_val": True}),
+            (24, {"cpu_offload_val": True, "offload_ratio_val": 0.8, "t5_cpu_offload_val": True}),
             (
                 16,
                 {
                     "cpu_offload_val": True,
+                    "t5_cpu_offload_val": True,
                     "offload_ratio_val": 1,
                     "t5_offload_granularity_val": "block",
                     "precision_mode_val": "bf16",
@@ -595,6 +635,7 @@ def auto_configure(enable_auto_config, model_type, resolution):
                 (
                     {
                         "cpu_offload_val": True,
+                        "t5_cpu_offload_val": True,
                         "offload_ratio_val": 1,
                         "t5_offload_granularity_val": "block",
                         "precision_mode_val": "bf16",
@@ -604,12 +645,15 @@ def auto_configure(enable_auto_config, model_type, resolution):
                         "clip_quant_scheme_val": quant_type,
                         "dit_quant_scheme_val": quant_type,
                         "lazy_load_val": True,
+                        "unload_modules_val": True,
                         "rotary_chunk_val": True,
                         "rotary_chunk_size_val": 10000,
+                        "use_tiny_vae_val": True,
                     }
                     if res == "540p"
                     else {
                         "cpu_offload_val": True,
+                        "t5_cpu_offload_val": True,
                         "offload_ratio_val": 1,
                         "t5_offload_granularity_val": "block",
                         "precision_mode_val": "bf16",
@@ -619,8 +663,23 @@ def auto_configure(enable_auto_config, model_type, resolution):
                         "clip_quant_scheme_val": quant_type,
                         "dit_quant_scheme_val": quant_type,
                         "lazy_load_val": True,
+                        "unload_modules_val": True,
+                        "use_tiny_vae_val": True,
                     }
                 ),
+            ),
+        ]
+
+    else:
+        gpu_rules = [
+            (24, {}),
+            (
+                8,
+                {
+                    "t5_cpu_offload_val": True,
+                    "t5_offload_granularity_val": "block",
+                    "t5_quant_scheme_val": quant_type,
+                },
             ),
         ]
 
@@ -636,6 +695,19 @@ def auto_configure(enable_auto_config, model_type, resolution):
                     "t5_quant_scheme_val": quant_type,
                     "clip_quant_scheme_val": quant_type,
                     "lazy_load_val": True,
+                    "unload_modules_val": True,
+                },
+            ),
+        ]
+    else:
+        cpu_rules = [
+            (64, {}),
+            (
+                16,
+                {
+                    "t5_quant_scheme_val": quant_type,
+                    "unload_modules_val": True,
+                    "use_tiny_vae_val": True,
                 },
             ),
         ]
@@ -654,17 +726,11 @@ def auto_configure(enable_auto_config, model_type, resolution):
 
 
 def main():
-    def update_model_type(task_type):
-        if task_type == "图像生成视频":
-            return gr.update(choices=["Wan2.1 14B"], value="Wan2.1 14B")
-        elif task_type == "文本生成视频":
-            return gr.update(choices=["Wan2.1 14B", "Wan2.1 1.3B"], value="Wan2.1 14B")
-
     def toggle_image_input(task):
-        return gr.update(visible=(task == "图像生成视频"))
+        return gr.update(visible=(task == "i2v"))
 
     with gr.Blocks(
-        title="Lightx2v (轻量级视频生成推理引擎)",
+        title="Lightx2v (轻量级视频推理和生成引擎)",
         css="""
         .main-content { max-width: 1400px; margin: auto; }
         .output-video { max-height: 650px; }
@@ -683,37 +749,15 @@ def main():
                         with gr.Group():
                             gr.Markdown("## 📥 输入参数")
 
-                            with gr.Row():
-                                task = gr.Dropdown(
-                                    choices=["图像生成视频", "文本生成视频"],
-                                    value="图像生成视频",
-                                    label="任务类型",
-                                )
-                                model_type = gr.Dropdown(
-                                    choices=["Wan2.1 14B"],
-                                    value="Wan2.1 14B",
-                                    label="模型类型",
-                                )
-                                task.change(
-                                    fn=update_model_type,
-                                    inputs=task,
-                                    outputs=model_type,
-                                )
-
-                            with gr.Row():
-                                image_path = gr.Image(
-                                    label="输入图像",
-                                    type="filepath",
-                                    height=300,
-                                    interactive=True,
-                                    visible=True,
-                                )
-
-                                task.change(
-                                    fn=toggle_image_input,
-                                    inputs=task,
-                                    outputs=image_path,
-                                )
+                            if task == "i2v":
+                                with gr.Row():
+                                    image_path = gr.Image(
+                                        label="输入图像",
+                                        type="filepath",
+                                        height=300,
+                                        interactive=True,
+                                        visible=True,
+                                    )
 
                             with gr.Row():
                                 with gr.Column():
@@ -755,6 +799,11 @@ def main():
                                         value="832x480",
                                         label="最大分辨率",
                                     )
+
+                                with gr.Column():
+                                    enable_auto_config = gr.Checkbox(
+                                        label="自动配置推理选项", value=False, info="自动优化GPU设置以匹配当前分辨率。修改分辨率后，请重新勾选此选项，否则可能导致性能下降或运行失败。"
+                                    )
                                 with gr.Column(scale=9):
                                     seed = gr.Slider(
                                         label="随机种子",
@@ -764,9 +813,10 @@ def main():
                                         value=generate_random_seed(),
                                     )
                                 with gr.Column(scale=1):
-                                    randomize_btn = gr.Button("🎲 生成随机种子", variant="secondary")
+                                    randomize_btn = gr.Button("🎲 随机化", variant="secondary")
 
                                 randomize_btn.click(fn=generate_random_seed, inputs=None, outputs=seed)
+
                                 with gr.Column():
                                     infer_steps = gr.Slider(
                                         label="推理步数",
@@ -774,7 +824,7 @@ def main():
                                         maximum=100,
                                         step=1,
                                         value=40,
-                                        info="视频生成的推理步数。增加步数可能提高质量但降低速度",
+                                        info="视频生成的推理步数。增加步数可能提高质量但降低速度。",
                                     )
 
                             enable_cfg = gr.Checkbox(
@@ -788,7 +838,7 @@ def main():
                                 maximum=10,
                                 step=1,
                                 value=5,
-                                info="控制提示词的影响强度。值越高，提示词的影响越大",
+                                info="控制提示词的影响强度。值越高，提示词的影响越大。",
                             )
                             sample_shift = gr.Slider(
                                 label="分布偏移",
@@ -796,7 +846,7 @@ def main():
                                 minimum=0,
                                 maximum=10,
                                 step=1,
-                                info="控制样本分布偏移的程度。值越大表示偏移越明显",
+                                info="控制样本分布偏移的程度。值越大表示偏移越明显。",
                             )
 
                             fps = gr.Slider(
@@ -805,7 +855,7 @@ def main():
                                 maximum=30,
                                 step=1,
                                 value=16,
-                                info="视频的每秒帧数。较高的FPS会产生更流畅的视频",
+                                info="视频的每秒帧数。较高的FPS会产生更流畅的视频。",
                             )
                             num_frames = gr.Slider(
                                 label="总帧数",
@@ -813,7 +863,7 @@ def main():
                                 maximum=120,
                                 step=1,
                                 value=81,
-                                info="视频中的总帧数。更多帧数会产生更长的视频",
+                                info="视频中的总帧数。更多帧数会产生更长的视频。",
                             )
 
                         save_video_path = gr.Textbox(
@@ -835,14 +885,6 @@ def main():
 
             with gr.Tab("⚙️ 高级选项", id=2):
                 with gr.Group(elem_classes="advanced-options"):
-                    gr.Markdown("### 自动配置")
-                    with gr.Row():
-                        enable_auto_config = gr.Checkbox(
-                            label="自动配置",
-                            value=False,
-                            info="自动调整优化设置以适应您的GPU",
-                        )
-
                     gr.Markdown("### GPU内存优化")
                     with gr.Row():
                         rotary_chunk = gr.Checkbox(
@@ -857,13 +899,17 @@ def main():
                             minimum=100,
                             maximum=10000,
                             step=100,
-                            info="控制应用旋转编码的块大小, 较大的值可能提高性能但增加内存使用, 仅在'rotary_chunk'勾选时有效",
+                            info="控制应用旋转编码的块大小。较大的值可能提高性能但增加内存使用。仅在'rotary_chunk'勾选时有效。",
                         )
-
+                        unload_modules = gr.Checkbox(
+                            label="卸载模块",
+                            value=False,
+                            info="推理后卸载模块（T5、CLIP、DIT等）以减少GPU/CPU内存使用",
+                        )
                         clean_cuda_cache = gr.Checkbox(
                             label="清理CUDA内存缓存",
                             value=False,
-                            info="及时释放GPU内存, 但会减慢推理速度。",
+                            info="启用时，及时释放GPU内存但会减慢推理速度。",
                         )
 
                     gr.Markdown("### 异步卸载")
@@ -877,14 +923,14 @@ def main():
                         lazy_load = gr.Checkbox(
                             label="启用延迟加载",
                             value=False,
-                            info="在推理过程中延迟加载模型组件, 仅在'cpu_offload'勾选和使用量化Dit模型时有效",
+                            info="在推理过程中延迟加载模型组件。需要CPU加载和DIT量化。",
                         )
 
                         offload_granularity = gr.Dropdown(
                             label="Dit卸载粒度",
                             choices=["block", "phase"],
                             value="phase",
-                            info="设置Dit模型卸载粒度: 块或计算阶段",
+                            info="设置Dit模型卸载粒度：块或计算阶段",
                         )
                         offload_ratio = gr.Slider(
                             label="Dit模型卸载比例",
@@ -893,6 +939,11 @@ def main():
                             step=0.1,
                             value=1.0,
                             info="控制将多少Dit模型卸载到CPU",
+                        )
+                        t5_cpu_offload = gr.Checkbox(
+                            label="T5 CPU卸载",
+                            value=False,
+                            info="将T5编码器模型卸载到CPU以减少GPU内存使用",
                         )
                         t5_offload_granularity = gr.Dropdown(
                             label="T5编码器卸载粒度",
@@ -926,25 +977,25 @@ def main():
                             label="Dit",
                             choices=["fp8", "int8", "bf16"],
                             value="bf16",
-                            info="Dit模型的推理精度",
+                            info="Dit模型的量化精度",
                         )
                         t5_quant_scheme = gr.Dropdown(
                             label="T5编码器",
                             choices=["fp8", "int8", "bf16"],
                             value="bf16",
-                            info="T5编码器模型的推理精度",
+                            info="T5编码器模型的量化精度",
                         )
                         clip_quant_scheme = gr.Dropdown(
                             label="Clip编码器",
                             choices=["fp8", "int8", "fp16"],
                             value="fp16",
-                            info="Clip编码器的推理精度",
+                            info="Clip编码器的量化精度",
                         )
                         precision_mode = gr.Dropdown(
-                            label="敏感层精度",
+                            label="敏感层精度模式",
                             choices=["fp32", "bf16"],
                             value="fp32",
-                            info="选择用于敏感层（如norm层和embedding层）的数值精度",
+                            info="选择用于关键模型组件（如归一化和嵌入层）的数值精度。FP32提供更高精度，而BF16在兼容硬件上提高性能。",
                         )
 
                     gr.Markdown("### 变分自编码器(VAE)")
@@ -982,7 +1033,7 @@ def main():
 
                 enable_auto_config.change(
                     fn=auto_configure,
-                    inputs=[enable_auto_config, model_type, resolution],
+                    inputs=[enable_auto_config, resolution],
                     outputs=[
                         torch_compile,
                         lazy_load,
@@ -992,6 +1043,8 @@ def main():
                         cpu_offload,
                         offload_granularity,
                         offload_ratio,
+                        t5_cpu_offload,
+                        unload_modules,
                         t5_offload_granularity,
                         attention_type,
                         quant_op,
@@ -1007,46 +1060,92 @@ def main():
                     ],
                 )
 
-        infer_btn.click(
-            fn=run_inference,
-            inputs=[
-                model_type,
-                task,
-                prompt,
-                negative_prompt,
-                image_path,
-                save_video_path,
-                torch_compile,
-                infer_steps,
-                num_frames,
-                resolution,
-                seed,
-                sample_shift,
-                enable_teacache,
-                teacache_thresh,
-                use_ret_steps,
-                enable_cfg,
-                cfg_scale,
-                dit_quant_scheme,
-                t5_quant_scheme,
-                clip_quant_scheme,
-                fps,
-                use_tiny_vae,
-                use_tiling_vae,
-                lazy_load,
-                precision_mode,
-                cpu_offload,
-                offload_granularity,
-                offload_ratio,
-                t5_offload_granularity,
-                attention_type,
-                quant_op,
-                rotary_chunk,
-                rotary_chunk_size,
-                clean_cuda_cache,
-            ],
-            outputs=output_video,
-        )
+                lazy_load.change(
+                    fn=handle_lazy_load_change,
+                    inputs=[lazy_load],
+                    outputs=[unload_modules],
+                )
+        if task == "i2v":
+            infer_btn.click(
+                fn=run_inference,
+                inputs=[
+                    prompt,
+                    negative_prompt,
+                    save_video_path,
+                    torch_compile,
+                    infer_steps,
+                    num_frames,
+                    resolution,
+                    seed,
+                    sample_shift,
+                    enable_teacache,
+                    teacache_thresh,
+                    use_ret_steps,
+                    enable_cfg,
+                    cfg_scale,
+                    dit_quant_scheme,
+                    t5_quant_scheme,
+                    clip_quant_scheme,
+                    fps,
+                    use_tiny_vae,
+                    use_tiling_vae,
+                    lazy_load,
+                    precision_mode,
+                    cpu_offload,
+                    offload_granularity,
+                    offload_ratio,
+                    t5_cpu_offload,
+                    unload_modules,
+                    t5_offload_granularity,
+                    attention_type,
+                    quant_op,
+                    rotary_chunk,
+                    rotary_chunk_size,
+                    clean_cuda_cache,
+                    image_path,
+                ],
+                outputs=output_video,
+            )
+        else:
+            infer_btn.click(
+                fn=run_inference,
+                inputs=[
+                    prompt,
+                    negative_prompt,
+                    save_video_path,
+                    torch_compile,
+                    infer_steps,
+                    num_frames,
+                    resolution,
+                    seed,
+                    sample_shift,
+                    enable_teacache,
+                    teacache_thresh,
+                    use_ret_steps,
+                    enable_cfg,
+                    cfg_scale,
+                    dit_quant_scheme,
+                    t5_quant_scheme,
+                    clip_quant_scheme,
+                    fps,
+                    use_tiny_vae,
+                    use_tiling_vae,
+                    lazy_load,
+                    precision_mode,
+                    cpu_offload,
+                    offload_granularity,
+                    offload_ratio,
+                    t5_cpu_offload,
+                    unload_modules,
+                    t5_offload_granularity,
+                    attention_type,
+                    quant_op,
+                    rotary_chunk,
+                    rotary_chunk_size,
+                    clean_cuda_cache,
+                ],
+                outputs=output_video,
+            )
 
     demo.launch(share=True, server_port=args.server_port, server_name=args.server_name)
 
@@ -1061,12 +1160,16 @@ if __name__ == "__main__":
         default="wan2.1",
         help="要使用的模型类别",
     )
+    parser.add_argument("--model_size", type=str, required=True, choices=["14b", "1.3b"], help="模型大小：14b 或 1.3b")
+    parser.add_argument("--task", type=str, required=True, choices=["i2v", "t2v"], help="指定任务类型。'i2v'用于图像到视频转换，'t2v'用于文本到视频生成。")
     parser.add_argument("--server_port", type=int, default=7862, help="服务器端口")
     parser.add_argument("--server_name", type=str, default="0.0.0.0", help="服务器IP")
     args = parser.parse_args()
 
-    global model_path, model_cls
+    global model_path, model_cls, model_size
     model_path = args.model_path
     model_cls = args.model_cls
+    model_size = args.model_size
+    task = args.task
 
     main()

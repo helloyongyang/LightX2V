@@ -36,6 +36,7 @@ def main():
         choices=[
             "wan2.1",
             "hunyuan",
+            "wan2.1_distill",
             "wan2.1_causvid",
             "wan2.1_skyreels_v2_df",
             "wan2.1_audio",
@@ -48,6 +49,7 @@ def main():
 
     parser.add_argument("--split", action="store_true")
     parser.add_argument("--lora_path", type=str, required=False, default=None)
+    parser.add_argument("--lora_strength", type=float, default=1.0, help="The strength for the lora (default: 1.0)")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--nproc_per_node", type=int, default=1, help="Number of processes per node for distributed inference")
@@ -55,7 +57,7 @@ def main():
     args = parser.parse_args()
     logger.info(f"args: {args}")
 
-    cache_dir = Path(__file__).parent.parent / ".cache"
+    cache_dir = Path(__file__).parent.parent / "server_cache"
     inference_service = DistributedInferenceService()
 
     api_server = ApiServer()

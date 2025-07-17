@@ -29,6 +29,8 @@ class WanTransformerInfer(BaseTransformerInfer):
         self.mask_map = None
 
         if self.config["cpu_offload"]:
+            if torch.cuda.get_device_capability(0) == (9, 0):
+                assert self.config["self_attn_1_type"] != "sage_attn2"
             if "offload_ratio" in self.config:
                 offload_ratio = self.config["offload_ratio"]
             else:
@@ -104,7 +106,7 @@ class WanTransformerInfer(BaseTransformerInfer):
         return x
 
     def _infer_with_lazy_offload(self, weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context):
-        self.weights_stream_mgr.prefetch_weights_from_disk(weights)
+        self.weights_stream_mgr.prefetch_weights_from_disk(weights.blocks)
 
         for block_idx in range(self.blocks_num):
             if block_idx == 0:
@@ -132,7 +134,7 @@ class WanTransformerInfer(BaseTransformerInfer):
             if block_idx == self.blocks_num - 1:
                 self.weights_stream_mgr.pin_memory_buffer.pop_front()
 
-            self.weights_stream_mgr._async_prefetch_block(weights)
+            self.weights_stream_mgr._async_prefetch_block(weights.blocks)
 
         if self.clean_cuda_cache:
             del grid_sizes, embed, embed0, seq_lens, freqs, context
@@ -189,7 +191,7 @@ class WanTransformerInfer(BaseTransformerInfer):
         return x
 
     def _infer_with_phases_lazy_offload(self, weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context, audio_dit_blocks=None):
-        self.weights_stream_mgr.prefetch_weights_from_disk(weights)
+        self.weights_stream_mgr.prefetch_weights_from_disk(weights.blocks)
 
         for block_idx in range(weights.blocks_num):
             for phase_idx in range(self.weights_stream_mgr.phases_num):
@@ -236,7 +238,7 @@ class WanTransformerInfer(BaseTransformerInfer):
 
                 self.weights_stream_mgr.swap_phases()
 
-            self.weights_stream_mgr._async_prefetch_block(weights)
+            self.weights_stream_mgr._async_prefetch_block(weights.blocks)
 
             if self.clean_cuda_cache:
                 del attn_out, y_out, y

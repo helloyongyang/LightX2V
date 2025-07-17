@@ -24,6 +24,11 @@ class WanTransformerWeights(WeightModule):
         self.blocks = WeightModuleList([WanTransformerAttentionBlock(i, self.task, self.mm_type, self.config) for i in range(self.blocks_num)])
         self.add_module("blocks", self.blocks)
 
+    def clear(self):
+        for block in self.blocks:
+            for phase in block.compute_phases:
+                phase.clear()
+
 
 class WanTransformerAttentionBlock(WeightModule):
     def __init__(self, block_index, task, mm_type, config):

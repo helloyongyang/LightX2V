@@ -145,7 +145,7 @@ class MMWeightQuantTemplate(MMWeightTemplate):
                 self.pinned_weight = self.pinned_weight.t()
 
     def clear(self):
-        attrs = ["weight", "weight_scale", "bias"]
+        attrs = ["weight", "weight_scale", "bias", "pinned_weight", "pinned_weight_scale", "pinned_bias"]
         for attr in attrs:
             if hasattr(self, attr):
                 delattr(self, attr)

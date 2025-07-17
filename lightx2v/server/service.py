@@ -90,7 +90,6 @@ def _distributed_inference_worker(rank, world_size, master_addr, master_port, ar
 
         # Initialize configuration and model
         config = set_config(args)
-        config["mode"] = "server"
         logger.info(f"Rank {rank} config: {config}")
 
         runner = init_runner(config)
@@ -186,6 +185,12 @@ class DistributedInferenceService:
         self.is_running = False
 
     def start_distributed_inference(self, args) -> bool:
+        if hasattr(args, "lora_path") and args.lora_path:
+            args.lora_configs = [{"path": args.lora_path, "strength": getattr(args, "lora_strength", 1.0)}]
+            delattr(args, "lora_path")
+            if hasattr(args, "lora_strength"):
+                delattr(args, "lora_strength")
+
         self.args = args
         if self.is_running:
             logger.warning("Distributed inference service is already running")

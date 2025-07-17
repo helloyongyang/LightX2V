@@ -287,7 +287,7 @@ void scaled_fp8_quant_sm120(
   int32_t m = input.size(0);
   int32_t n = input.size(1);
 
-  TORCH_CHECK(n % 32 == 0, "The N dimension must be multiple of 16.");
+  TORCH_CHECK(n % 32 == 0, "The N dimension must be multiple of 32.");
 
   int multiProcessorCount = getMultiProcessorCount();
 

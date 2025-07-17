@@ -7,6 +7,9 @@ from PIL import Image
 from lightx2v.utils.registry_factory import RUNNER_REGISTER
 from lightx2v.models.runners.default_runner import DefaultRunner
 from lightx2v.models.schedulers.wan.scheduler import WanScheduler
+from lightx2v.models.schedulers.wan.changing_resolution.scheduler import (
+    WanScheduler4ChangingResolution,
+)
 from lightx2v.models.schedulers.wan.feature_caching.scheduler import (
     WanSchedulerTeaCaching,
     WanSchedulerTaylorCaching,
@@ -35,18 +38,36 @@ class WanRunner(DefaultRunner):
             self.config,
             self.init_device,
         )
-        if self.config.lora_path:
+        if self.config.get("lora_configs") and self.config.lora_configs:
             assert not self.config.get("dit_quantized", False) or self.config.mm_config.get("weight_auto_quant", False)
             lora_wrapper = WanLoraWrapper(model)
-            for lora_path in self.config.lora_path:
+            for lora_config in self.config.lora_configs:
+                lora_path = lora_config["path"]
+                strength = lora_config.get("strength", 1.0)
                 lora_name = lora_wrapper.load_lora(lora_path)
-                lora_wrapper.apply_lora(lora_name, self.config.strength_model)
-                logger.info(f"Loaded LoRA: {lora_name}")
+                lora_wrapper.apply_lora(lora_name, strength)
+                logger.info(f"Loaded LoRA: {lora_name} with strength: {strength}")
         return model
 
     def load_image_encoder(self):
         image_encoder = None
         if self.config.task == "i2v":
+            # quant_config
+            clip_quantized = self.config.get("clip_quantized", False)
+            if clip_quantized:
+                clip_quant_scheme = self.config.get("clip_quant_scheme", None)
+                assert clip_quant_scheme is not None
+                clip_quantized_ckpt = self.config.get(
+                    "clip_quantized_ckpt",
+                    os.path.join(
+                        os.path.join(self.config.model_path, clip_quant_scheme),
+                        f"clip-{clip_quant_scheme}.pth",
+                    ),
+                )
+            else:
+                clip_quantized_ckpt = None
+                clip_quant_scheme = None
+
             image_encoder = CLIPModel(
                 dtype=torch.float16,
                 device=self.init_device,
@@ -54,25 +75,48 @@ class WanRunner(DefaultRunner):
                     self.config.model_path,
                     "models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth",
                 ),
-                clip_quantized=self.config.get("clip_quantized", False),
-                clip_quantized_ckpt=self.config.get("clip_quantized_ckpt", None),
-                quant_scheme=self.config.get("clip_quant_scheme", None),
+                clip_quantized=clip_quantized,
+                clip_quantized_ckpt=clip_quantized_ckpt,
+                quant_scheme=clip_quant_scheme,
             )
         return image_encoder
 
     def load_text_encoder(self):
+        # offload config
+        t5_offload = self.config.get("t5_cpu_offload", False)
+        if t5_offload:
+            t5_device = torch.device("cpu")
+        else:
+            t5_device = torch.device("cuda")
+
+        # quant_config
+        t5_quantized = self.config.get("t5_quantized", False)
+        if t5_quantized:
+            t5_quant_scheme = self.config.get("t5_quant_scheme", None)
+            assert t5_quant_scheme is not None
+            t5_quantized_ckpt = self.config.get(
+                "t5_quantized_ckpt",
+                os.path.join(
+                    os.path.join(self.config.model_path, t5_quant_scheme),
+                    f"models_t5_umt5-xxl-enc-{t5_quant_scheme}.pth",
+                ),
+            )
+        else:
+            t5_quant_scheme = None
+            t5_quantized_ckpt = None
+
         text_encoder = T5EncoderModel(
             text_len=self.config["text_len"],
             dtype=torch.bfloat16,
-            device=self.init_device,
+            device=t5_device,
             checkpoint_path=os.path.join(self.config.model_path, "models_t5_umt5-xxl-enc-bf16.pth"),
             tokenizer_path=os.path.join(self.config.model_path, "google/umt5-xxl"),
             shard_fn=None,
-            cpu_offload=self.config.cpu_offload,
+            cpu_offload=t5_offload,
             offload_granularity=self.config.get("t5_offload_granularity", "model"),
-            t5_quantized=self.config.get("t5_quantized", False),
-            t5_quantized_ckpt=self.config.get("t5_quantized_ckpt", None),
-            quant_scheme=self.config.get("t5_quant_scheme", None),
+            t5_quantized=t5_quantized,
+            t5_quantized_ckpt=t5_quantized_ckpt,
+            quant_scheme=t5_quant_scheme,
         )
         text_encoders = [text_encoder]
         return text_encoders
@@ -114,28 +158,31 @@ class WanRunner(DefaultRunner):
         return vae_encoder, vae_decoder
 
     def init_scheduler(self):
-        if self.config.feature_caching == "NoCaching":
-            scheduler = WanScheduler(self.config)
-        elif self.config.feature_caching == "Tea":
-            scheduler = WanSchedulerTeaCaching(self.config)
-        elif self.config.feature_caching == "TaylorSeer":
-            scheduler = WanSchedulerTaylorCaching(self.config)
-        elif self.config.feature_caching == "Ada":
-            scheduler = WanSchedulerAdaCaching(self.config)
-        elif self.config.feature_caching == "Custom":
-            scheduler = WanSchedulerCustomCaching(self.config)
+        if self.config.get("changing_resolution", False):
+            scheduler = WanScheduler4ChangingResolution(self.config)
         else:
-            raise NotImplementedError(f"Unsupported feature_caching type: {self.config.feature_caching}")
+            if self.config.feature_caching == "NoCaching":
+                scheduler = WanScheduler(self.config)
+            elif self.config.feature_caching == "Tea":
+                scheduler = WanSchedulerTeaCaching(self.config)
+            elif self.config.feature_caching == "TaylorSeer":
+                scheduler = WanSchedulerTaylorCaching(self.config)
+            elif self.config.feature_caching == "Ada":
+                scheduler = WanSchedulerAdaCaching(self.config)
+            elif self.config.feature_caching == "Custom":
+                scheduler = WanSchedulerCustomCaching(self.config)
+            else:
+                raise NotImplementedError(f"Unsupported feature_caching type: {self.config.feature_caching}")
         self.model.set_scheduler(scheduler)
 
     def run_text_encoder(self, text, img):
-        if self.config.get("lazy_load", False):
+        if self.config.get("lazy_load", False) or self.config.get("unload_modules", False):
             self.text_encoders = self.load_text_encoder()
         text_encoder_output = {}
         n_prompt = self.config.get("negative_prompt", "")
         context = self.text_encoders[0].infer([text])
         context_null = self.text_encoders[0].infer([n_prompt if n_prompt else ""])
-        if self.config.get("lazy_load", False):
+        if self.config.get("lazy_load", False) or self.config.get("unload_modules", False):
             del self.text_encoders[0]
             torch.cuda.empty_cache()
             gc.collect()
@@ -144,11 +191,11 @@ class WanRunner(DefaultRunner):
         return text_encoder_output
 
     def run_image_encoder(self, img):
-        if self.config.get("lazy_load", False):
+        if self.config.get("lazy_load", False) or self.config.get("unload_modules", False):
             self.image_encoder = self.load_image_encoder()
         img = TF.to_tensor(img).sub_(0.5).div_(0.5).cuda()
         clip_encoder_out = self.image_encoder.visual([img[:, None, :, :]], self.config).squeeze(0).to(torch.bfloat16)
-        if self.config.get("lazy_load", False):
+        if self.config.get("lazy_load", False) or self.config.get("unload_modules", False):
             del self.image_encoder
             torch.cuda.empty_cache()
             gc.collect()
@@ -179,7 +226,7 @@ class WanRunner(DefaultRunner):
         msk = torch.concat([torch.repeat_interleave(msk[:, 0:1], repeats=4, dim=1), msk[:, 1:]], dim=1)
         msk = msk.view(1, msk.shape[1] // 4, 4, lat_h, lat_w)
         msk = msk.transpose(1, 2)[0]
-        if self.config.get("lazy_load", False):
+        if self.config.get("lazy_load", False) or self.config.get("unload_modules", False):
             self.vae_encoder = self.load_vae_encoder()
         vae_encode_out = self.vae_encoder.encode(
             [
@@ -193,7 +240,7 @@ class WanRunner(DefaultRunner):
             ],
             self.config,
         )[0]
-        if self.config.get("lazy_load", False):
+        if self.config.get("lazy_load", False) or self.config.get("unload_modules", False):
             del self.vae_encoder
             torch.cuda.empty_cache()
             gc.collect()

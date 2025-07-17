@@ -1,5 +1,4 @@
 import os
-import sys
 import torch
 import glob
 import json
@@ -37,7 +36,11 @@ class WanModel:
         self.clean_cuda_cache = self.config.get("clean_cuda_cache", False)
 
         self.dit_quantized = self.config.mm_config.get("mm_type", "Default") != "Default"
-        self.dit_quantized_ckpt = self.config.get("dit_quantized_ckpt", None)
+        if self.dit_quantized:
+            dit_quant_scheme = self.config.mm_config.get("mm_type").split("-")[1]
+            self.dit_quantized_ckpt = self.config.get("dit_quantized_ckpt", os.path.join(model_path, dit_quant_scheme))
+        else:
+            self.dit_quantized_ckpt = None
         self.weight_auto_quant = self.config.mm_config.get("weight_auto_quant", False)
         if self.dit_quantized:
             assert self.weight_auto_quant or self.dit_quantized_ckpt is not None
@@ -80,7 +83,12 @@ class WanModel:
         safetensors_files = glob.glob(safetensors_pattern)
 
         if not safetensors_files:
-            raise FileNotFoundError(f"No .safetensors files found in directory: {self.model_path}")
+            original_pattern = os.path.join(self.model_path, "original", "*.safetensors")
+            safetensors_files = glob.glob(original_pattern)
+
+            if not safetensors_files:
+                raise FileNotFoundError(f"No .safetensors files found in directory: {self.model_path}")
+
         weight_dict = {}
         for file_path in safetensors_files:
             file_weights = self._load_safetensor_to_dict(file_path, use_bf16, skip_bf16)
@@ -138,7 +146,14 @@ class WanModel:
     def _init_weights(self, weight_dict=None):
         use_bf16 = GET_DTYPE() == "BF16"
         # Some layers run with float32 to achieve high accuracy
-        skip_bf16 = {"norm", "embedding", "modulation", "time", "img_emb.proj.0", "img_emb.proj.4"}
+        skip_bf16 = {
+            "norm",
+            "embedding",
+            "modulation",
+            "time",
+            "img_emb.proj.0",
+            "img_emb.proj.4",
+        }
         if weight_dict is None:
             if not self.dit_quantized or self.weight_auto_quant:
                 self.original_weight_dict = self._load_ckpt(use_bf16, skip_bf16)

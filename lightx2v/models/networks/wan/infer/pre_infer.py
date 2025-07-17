@@ -64,7 +64,7 @@ class WanPreInfer:
         embed = sinusoidal_embedding_1d(self.freq_dim, t.flatten())
         if self.enable_dynamic_cfg:
             s = torch.tensor([self.cfg_scale], dtype=torch.float32).to(x.device)
-            cfg_embed = guidance_scale_embedding(s, embedding_dim=256, cfg_range=(0.0, 8.0), target_range=1000.0, dtype=torch.float32).type_as(x)
+            cfg_embed = guidance_scale_embedding(s, embedding_dim=256, cfg_range=(1.0, 8.0), target_range=1000.0, dtype=torch.float32).type_as(x)
             cfg_embed = weights.cfg_cond_proj.apply(cfg_embed)
             embed = embed + cfg_embed
         if GET_DTYPE() != "BF16":
