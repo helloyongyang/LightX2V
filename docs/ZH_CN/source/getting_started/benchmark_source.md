@@ -22,7 +22,7 @@
 | 配置 | 模型加载时间(s) | 推理时间(s) | GPU显存占用(GB) | 加速比 | 视频效果 |
 |:-----|:---------------:|:----------:|:---------------:|:------:|:--------:|
 | Wan2.1 Official(baseline) | 68.26 | 366.04 | 71 | 1.0x | <video src="https://github.com/user-attachments/assets/24fb112e-c868-4484-b7f0-d9542979c2c3" width="200px"></video> |
-| **LightX2V_1** | 37.28 | 249.54 | 53 | **1.47x** | <video src="[PATH_TO_LIGHTX2V_1_480P_VIDEO](https://github.com/user-attachments/assets/7bffe48f-e433-430b-91dc-ac745908ba3a)" width="200px"></video> |
+| **LightX2V_1** | 37.28 | 249.54 | 53 | **1.47x** | <video src="https://github.com/user-attachments/assets/7bffe48f-e433-430b-91dc-ac745908ba3a)" width="200px"></video> |
 | **LightX2V_2** | 37.24 | 216.16 | 50 | **1.69x** | <video src="https://github.com/user-attachments/assets/0a24ca47-c466-433e-8a53-96f259d19841" width="200px"></video> |
 | **LightX2V_3** | 23.62 | 190.73 | 35 | **1.92x** | <video src="https://github.com/user-attachments/assets/970c73d3-1d60-444e-b64d-9bf8af9b19f1" width="200px"></video> |
 | **LightX2V_4** | 23.62 | 107.19 | 35 | **3.41x** | <video src="https://github.com/user-attachments/assets/49cd2760-4be2-432c-bf4e-01af9a1303dd" width="200px"></video> |
