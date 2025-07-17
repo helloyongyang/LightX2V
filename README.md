@@ -18,6 +18,10 @@
 
 **LightX2V** is an advanced lightweight video generation inference framework engineered to deliver efficient, high-performance video synthesis solutions. This unified platform integrates multiple state-of-the-art video generation techniques, supporting diverse generation tasks including text-to-video (T2V) and image-to-video (I2V). **X2V represents the transformation of different input modalities (X, such as text or images) into video output (V)**.
 
+## 💡 Quick Start
+
+For comprehensive usage instructions, please refer to our documentation: **[English Docs](https://lightx2v-en.readthedocs.io/en/latest/) | [中文文档](https://lightx2v-zhcn.readthedocs.io/zh-cn/latest/)**
+
 ## 🚀 Core Features
 
 ### 🎯 **Ultimate Performance Optimization**
@@ -35,10 +39,6 @@
 - **🔄 Parallel Inference**: Multi-GPU parallel processing for enhanced performance
 - **📱 Flexible Deployment Options**: Support for Gradio, service deployment, ComfyUI and other deployment methods
 - **🎛️ Dynamic Resolution Inference**: Adaptive resolution adjustment for optimal generation quality
-
-## 💡 Quick Start
-
-For comprehensive usage instructions, please refer to our documentation: **[English Docs](https://lightx2v-en.readthedocs.io/en/latest/) | [中文文档](https://lightx2v-zhcn.readthedocs.io/zh-cn/latest/)**
 
 ## 🤖 Supported Model Ecosystem
 

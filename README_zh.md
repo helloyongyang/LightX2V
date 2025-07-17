@@ -18,6 +18,10 @@
 
 **LightX2V** 是一个先进的轻量级视频生成推理框架，专为提供高效、高性能的视频合成解决方案而设计。该统一平台集成了多种前沿的视频生成技术，支持文本生成视频(T2V)和图像生成视频(I2V)等多样化生成任务。**X2V 表示将不同的输入模态(X，如文本或图像)转换为视频输出(V)**。
 
+## 💡 快速开始
+
+详细使用说明请参考我们的文档：**[英文文档](https://lightx2v-en.readthedocs.io/en/latest/) | [中文文档](https://lightx2v-zhcn.readthedocs.io/zh-cn/latest/)**
+
 ## 🚀 核心特性
 
 ### 🎯 **极致性能优化**
@@ -35,10 +39,6 @@
 - **🔄 并行推理加速**: 多GPU并行处理，显著提升性能表现
 - **📱 灵活部署选择**: 支持Gradio、服务化部署、ComfyUI等多种部署方式
 - **🎛️ 动态分辨率推理**: 自适应分辨率调整，优化生成质量
-
-## 💡 快速开始
-
-详细使用说明请参考我们的文档：**[英文文档](https://lightx2v-en.readthedocs.io/en/latest/) | [中文文档](https://lightx2v-zhcn.readthedocs.io/zh-cn/latest/)**
 
 ## 🤖 支持的模型生态
 
