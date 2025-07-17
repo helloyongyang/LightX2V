@@ -123,17 +123,7 @@ pip install sageattention-2.1.1+cu126torch2.6.0-cp312-cp312-win_amd64.whl
 
 After installation, we recommend running a verification script to ensure proper functionality:
 
-```bash
-# Download and run test script
-python -c "
-import torch
-import sageattention
-print('✅ SageAttention installed successfully!')
-print(f'Version: {sageattention.__version__ if hasattr(sageattention, \"__version__\") else \"Unknown\"}')
-"
-```
-
-> 📝 **Extended Testing**: You can also run the [test script](https://github.com/woct0rdho/SageAttention/blob/main/tests/test_sageattn.py) for more detailed functionality verification.
+> 📝 **Testing**: You can also run the [official test script](https://github.com/woct0rdho/SageAttention/blob/main/tests/test_sageattn.py) for more detailed functionality verification.
 
 ### Step 6: Get LightX2V Project Code
 
