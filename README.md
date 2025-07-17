@@ -22,23 +22,6 @@
 
 For comprehensive usage instructions, please refer to our documentation: **[English Docs](https://lightx2v-en.readthedocs.io/en/latest/) | [中文文档](https://lightx2v-zhcn.readthedocs.io/zh-cn/latest/)**
 
-## 🚀 Core Features
-
-### 🎯 **Ultimate Performance Optimization**
-- **🔥 SOTA Inference Speed**: Achieve **~15x** acceleration through step distillation and operator optimization
-- **⚡️ Revolutionary 4-Step Distillation**: Compress original 40-50 step inference to just 4 steps without CFG requirements
-- **🛠️ Advanced Operator Support**: Integrated with cutting-edge operators including [Sage Attention](https://github.com/thu-ml/SageAttention), [Flash Attention](https://github.com/Dao-AILab/flash-attention), [Radial Attention](https://github.com/mit-han-lab/radial-attention), [q8-kernel](https://github.com/KONAKONA666/q8_kernels), [sgl-kernel](https://github.com/sgl-project/sglang/tree/main/sgl-kernel), [vllm](https://github.com/vllm-project/vllm)
-
-### 💾 **Resource-Efficient Deployment**
-- **💡 Breaking Hardware Barriers**: Run 14B models for 480P/720P video generation with only **8GB VRAM + 16GB RAM**
-- **🔧 Intelligent Parameter Offloading**: Advanced disk-CPU-GPU three-tier offloading architecture with phase/block-level granular management
-- **⚙️ Comprehensive Quantization**: Support for `w8a8-int8`, `w8a8-fp8`, `w4a4-nvfp4` and other quantization strategies
-
-### 🎨 **Rich Feature Ecosystem**
-- **📈 Smart Feature Caching**: Intelligent caching mechanisms to eliminate redundant computations
-- **🔄 Parallel Inference**: Multi-GPU parallel processing for enhanced performance
-- **📱 Flexible Deployment Options**: Support for Gradio, service deployment, ComfyUI and other deployment methods
-- **🎛️ Dynamic Resolution Inference**: Adaptive resolution adjustment for optimal generation quality
 
 ## 🤖 Supported Model Ecosystem
 
@@ -61,6 +44,26 @@ For comprehensive usage instructions, please refer to our documentation: **[Engl
 
 ### Autoregressive Models
 - ✅ [Wan2.1-T2V-CausVid](https://huggingface.co/lightx2v/Wan2.1-T2V-14B-CausVid)
+
+
+## 🚀 Core Features
+
+### 🎯 **Ultimate Performance Optimization**
+- **🔥 SOTA Inference Speed**: Achieve **~15x** acceleration via step distillation and system optimization (single GPU)
+- **⚡️ Revolutionary 4-Step Distillation**: Compress original 40-50 step inference to just 4 steps without CFG requirements
+- **🛠️ Advanced Operator Support**: Integrated with cutting-edge operators including [Sage Attention](https://github.com/thu-ml/SageAttention), [Flash Attention](https://github.com/Dao-AILab/flash-attention), [Radial Attention](https://github.com/mit-han-lab/radial-attention), [q8-kernel](https://github.com/KONAKONA666/q8_kernels), [sgl-kernel](https://github.com/sgl-project/sglang/tree/main/sgl-kernel), [vllm](https://github.com/vllm-project/vllm)
+
+### 💾 **Resource-Efficient Deployment**
+- **💡 Breaking Hardware Barriers**: Run 14B models for 480P/720P video generation with only **8GB VRAM + 16GB RAM**
+- **🔧 Intelligent Parameter Offloading**: Advanced disk-CPU-GPU three-tier offloading architecture with phase/block-level granular management
+- **⚙️ Comprehensive Quantization**: Support for `w8a8-int8`, `w8a8-fp8`, `w4a4-nvfp4` and other quantization strategies
+
+### 🎨 **Rich Feature Ecosystem**
+- **📈 Smart Feature Caching**: Intelligent caching mechanisms to eliminate redundant computations
+- **🔄 Parallel Inference**: Multi-GPU parallel processing for enhanced performance
+- **📱 Flexible Deployment Options**: Support for Gradio, service deployment, ComfyUI and other deployment methods
+- **🎛️ Dynamic Resolution Inference**: Adaptive resolution adjustment for optimal generation quality
+
 
 ## 🏆 Performance Benchmarks
 
