@@ -14,7 +14,7 @@
 ### 480P 5s Video
 
 **Test Configuration:**
-- **Model**: [Wan2.1-I2V-14B-480P-Lightx2v](https://huggingface.co/lightx2v/Wan2.1-I2V-14B-480P-Lightx2v) 
+- **Model**: [Wan2.1-I2V-14B-480P-Lightx2v](https://huggingface.co/lightx2v/Wan2.1-I2V-14B-480P-Lightx2v)
 - **Parameters**: infer_steps=40, seed=42, enable_cfg=True
 
 #### Performance Comparison
@@ -30,7 +30,7 @@
 ### 720P 5s Video
 
 **Test Configuration:**
-- **Model**: [Wan2.1-I2V-14B-720P-Lightx2v](https://huggingface.co/lightx2v/Wan2.1-I2V-14B-720P-Lightx2v) 
+- **Model**: [Wan2.1-I2V-14B-720P-Lightx2v](https://huggingface.co/lightx2v/Wan2.1-I2V-14B-720P-Lightx2v)
 - **Parameters**: infer_steps=40, seed=42, enable_cfg=True
 
 *Coming soon...*
