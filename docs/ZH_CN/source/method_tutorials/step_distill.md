@@ -38,8 +38,11 @@
   "infer_steps": 4,                              // 推理步数
   "denoising_step_list": [999, 750, 500, 250],   // 去噪时间步列表
   "enable_cfg": false,                           // 关闭CFG以提升速度
-  "lora_path": [                                 // LoRA权重路径（可选）
-    "path/to/distill_lora.safetensors"
+  "lora_configs": [                              // LoRA权重路径（可选）
+    {
+      "path": "path/to/distill_lora.safetensors",
+      "strength": 1.0
+    }
   ]
 }
 ```
@@ -50,21 +53,25 @@
 
 **完整模型：**
 将下载好的模型（`distill_model.pt` 或者 `distill_model.safetensors`）放到 Wan 模型根目录的 `distill_models/` 文件夹下即可
+
 - 对于 T2V：`Wan2.1-T2V-14B/distill_models/`
 - 对于 I2V-480P：`Wan2.1-I2V-14B-480P/distill_models/`
 
 **LoRA：**
+
 1. 将下载好的 LoRA 放到任意位置
 2. 修改配置文件中的 `lora_path` 参数为 LoRA 存放路径即可
 
 ### 推理脚本
 
 **T2V 完整模型：**
+
 ```bash
 bash scripts/wan/run_wan_t2v_distill_4step_cfg.sh
 ```
 
 **I2V 完整模型：**
+
 ```bash
 bash scripts/wan/run_wan_i2v_distill_4step_cfg.sh
 ```
@@ -72,11 +79,13 @@ bash scripts/wan/run_wan_i2v_distill_4step_cfg.sh
 ### 步数蒸馏 LoRA 推理脚本
 
 **T2V LoRA：**
+
 ```bash
 bash scripts/wan/run_wan_t2v_distill_4step_cfg_lora.sh
 ```
 
 **I2V LoRA：**
+
 ```bash
 bash scripts/wan/run_wan_i2v_distill_4step_cfg_lora.sh
 ```
