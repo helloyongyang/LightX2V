@@ -22,24 +22,6 @@
 
 详细使用说明请参考我们的文档：**[英文文档](https://lightx2v-en.readthedocs.io/en/latest/) | [中文文档](https://lightx2v-zhcn.readthedocs.io/zh-cn/latest/)**
 
-## 🚀 核心特性
-
-### 🎯 **极致性能优化**
-- **🔥 SOTA推理速度**: 通过步数蒸馏和算子优化实现**15倍**极速加速
-- **⚡️ 革命性4步蒸馏**: 将原始40-50步推理压缩至仅需4步，且无需CFG配置
-- **🛠️ 先进算子支持**: 集成顶尖算子，包括[Sage Attention](https://github.com/thu-ml/SageAttention)、[Flash Attention](https://github.com/Dao-AILab/flash-attention)、[Radial Attention](https://github.com/mit-han-lab/radial-attention)、[q8-kernel](https://github.com/KONAKONA666/q8_kernels)、[sgl-kernel](https://github.com/sgl-project/sglang/tree/main/sgl-kernel)、[vllm](https://github.com/vllm-project/vllm)
-
-### 💾 **资源高效部署**
-- **💡 突破硬件限制**: **仅需8GB显存 + 16GB内存**即可运行14B模型生成480P/720P视频
-- **🔧 智能参数卸载**: 先进的磁盘-CPU-GPU三级卸载架构，支持阶段/块级别的精细化管理
-- **⚙️ 全面量化支持**: 支持`w8a8-int8`、`w8a8-fp8`、`w4a4-nvfp4`等多种量化策略
-
-### 🎨 **丰富功能生态**
-- **📈 智能特征缓存**: 智能缓存机制，消除冗余计算，提升效率
-- **🔄 并行推理加速**: 多GPU并行处理，显著提升性能表现
-- **📱 灵活部署选择**: 支持Gradio、服务化部署、ComfyUI等多种部署方式
-- **🎛️ 动态分辨率推理**: 自适应分辨率调整，优化生成质量
-
 ## 🤖 支持的模型生态
 
 ### 官方开源模型
@@ -61,6 +43,25 @@
 
 ### 自回归模型
 - ✅ [Wan2.1-T2V-CausVid](https://huggingface.co/lightx2v/Wan2.1-T2V-14B-CausVid)
+
+## 🚀 核心特性
+
+### 🎯 **极致性能优化**
+- **🔥 SOTA推理速度**: 通过步数蒸馏和系统优化实现**15倍**极速加速(单GPU)
+- **⚡️ 革命性4步蒸馏**: 将原始40-50步推理压缩至仅需4步，且无需CFG配置
+- **🛠️ 先进算子支持**: 集成顶尖算子，包括[Sage Attention](https://github.com/thu-ml/SageAttention)、[Flash Attention](https://github.com/Dao-AILab/flash-attention)、[Radial Attention](https://github.com/mit-han-lab/radial-attention)、[q8-kernel](https://github.com/KONAKONA666/q8_kernels)、[sgl-kernel](https://github.com/sgl-project/sglang/tree/main/sgl-kernel)、[vllm](https://github.com/vllm-project/vllm)
+
+### 💾 **资源高效部署**
+- **💡 突破硬件限制**: **仅需8GB显存 + 16GB内存**即可运行14B模型生成480P/720P视频
+- **🔧 智能参数卸载**: 先进的磁盘-CPU-GPU三级卸载架构，支持阶段/块级别的精细化管理
+- **⚙️ 全面量化支持**: 支持`w8a8-int8`、`w8a8-fp8`、`w4a4-nvfp4`等多种量化策略
+
+### 🎨 **丰富功能生态**
+- **📈 智能特征缓存**: 智能缓存机制，消除冗余计算，提升效率
+- **🔄 并行推理加速**: 多GPU并行处理，显著提升性能表现
+- **📱 灵活部署选择**: 支持Gradio、服务化部署、ComfyUI等多种部署方式
+- **🎛️ 动态分辨率推理**: 自适应分辨率调整，优化生成质量
+
 
 ## 🏆 性能基准测试
 
