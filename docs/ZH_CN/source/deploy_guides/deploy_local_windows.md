@@ -121,19 +121,7 @@ pip install sageattention-2.1.1+cu126torch2.6.0-cp312-cp312-win_amd64.whl
 
 **验证SageAttention安装：**
 
-安装完成后，建议运行测试脚本验证功能是否正常：
-
-```bash
-# 下载并运行测试脚本
-python -c "
-import torch
-import sageattention
-print('✅ SageAttention安装成功!')
-print(f'版本: {sageattention.__version__ if hasattr(sageattention, \"__version__\") else \"未知\"}')
-"
-```
-
-> 📝 **扩展测试**: 您也可以运行[测试脚本](https://github.com/woct0rdho/SageAttention/blob/main/tests/test_sageattn.py)进行更详细的功能验证。
+> 📝 **测试**: 您也可以运行[测试脚本](https://github.com/woct0rdho/SageAttention/blob/main/tests/test_sageattn.py)进行更详细的功能验证。
 
 ### 步骤6：获取LightX2V项目代码
 
