@@ -118,7 +118,7 @@
 ```bibtex
 @misc{lightx2v,
  author = {LightX2V Contributors},
- title = {LightX2V: Lightweight Video Generation Inference Framework},
+ title = {LightX2V: Light Video Generation Inference Framework},
  year = {2025},
  publisher = {GitHub},
  journal = {GitHub repository},
