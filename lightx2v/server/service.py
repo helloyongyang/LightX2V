@@ -90,7 +90,6 @@ def _distributed_inference_worker(rank, world_size, master_addr, master_port, ar
 
         # Initialize configuration and model
         config = set_config(args)
-        config["mode"] = "server"
         logger.info(f"Rank {rank} config: {config}")
 
         runner = init_runner(config)

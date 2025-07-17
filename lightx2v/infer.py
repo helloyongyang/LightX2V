@@ -42,8 +42,9 @@ def init_runner(config):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--model_cls", type=str, required=True, choices=["wan2.1", "hunyuan", "wan2.1_distill", "wan2.1_causvid", "wan2.1_skyreels_v2_df", "cogvideox", "wan2.1_audio"], default="hunyuan"
+        "--model_cls", type=str, required=True, choices=["wan2.1", "hunyuan", "wan2.1_distill", "wan2.1_causvid", "wan2.1_skyreels_v2_df", "cogvideox", "wan2.1_audio"], default="wan2.1"
     )
+
     parser.add_argument("--task", type=str, choices=["t2v", "i2v"], default="t2v")
     parser.add_argument("--model_path", type=str, required=True)
     parser.add_argument("--config_json", type=str, required=True)
@@ -51,36 +52,17 @@ def main():
 
     parser.add_argument("--prompt", type=str, default="", help="The input prompt for text-to-video generation")
     parser.add_argument("--negative_prompt", type=str, default="")
-    parser.add_argument("--lora_path", type=str, default="", help="The lora file path")
-    parser.add_argument("--lora_strength", type=float, default=1.0, help="The strength for the lora (default: 1.0)")
-    parser.add_argument("--prompt_path", type=str, default="", help="The path to input prompt file")
-    parser.add_argument("--audio_path", type=str, default="", help="The path to input audio file")
-    parser.add_argument("--image_path", type=str, default="", help="The path to input image file or path for image-to-video (i2v) task")
+
+    parser.add_argument("--image_path", type=str, default="", help="The path to input image file for image-to-video (i2v) task")
+    parser.add_argument("--audio_path", type=str, default="", help="The path to input audio file for audio-to-video (a2v) task")
+
     parser.add_argument("--save_video_path", type=str, default="./output_lightx2v.mp4", help="The path to save video path/file")
     args = parser.parse_args()
-
-    if args.prompt_path:
-        try:
-            with open(args.prompt_path, "r", encoding="utf-8") as f:
-                args.prompt = f.read().strip()
-            logger.info(f"从文件 {args.prompt_path} 读取到prompt: {args.prompt}")
-        except FileNotFoundError:
-            logger.error(f"找不到prompt文件: {args.prompt_path}")
-            raise
-        except Exception as e:
-            logger.error(f"读取prompt文件时出错: {e}")
-            raise
-
-    if args.lora_path:
-        args.lora_configs = [{"path": args.lora_path, "strength": args.lora_strength}]
-        delattr(args, "lora_path")
-        delattr(args, "lora_strength")
 
     logger.info(f"args: {args}")
 
     with ProfilingContext("Total Cost"):
         config = set_config(args)
-        config["mode"] = "infer"
         logger.info(f"config:\n{json.dumps(config, ensure_ascii=False, indent=4)}")
         runner = init_runner(config)
 

@@ -420,7 +420,6 @@ def run_inference(
 
     config.update({k: v for k, v in vars(args).items()})
     config = EasyDict(config)
-    config["mode"] = "infer"
     config.update(model_config)
     config.update(quant_model_config)
 
