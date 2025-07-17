@@ -177,7 +177,7 @@ pip install -r requirements_win.txt
 After completing the environment setup, you can:
 
 - 📚 Check the [Quick Start Guide](../getting_started/quickstart.md) (skip environment installation steps)
-- 🌐 Use the [Gradio Web Interface](./deploy_gradio.md) for visual operations
+- 🌐 Use the [Gradio Web Interface](./deploy_gradio.md) for visual operations (skip environment installation steps)
 
 ## Version Compatibility Reference
 
