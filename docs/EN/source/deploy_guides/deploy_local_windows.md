@@ -19,22 +19,6 @@ This document provides detailed instructions for deploying LightX2V locally on W
 - **CUDA**: 12.4 or higher version
 - **Dependencies**: Refer to LightX2V project's requirements_win.txt
 
-### Installation Steps
-
-1. **Clone Project**
-```cmd
-git clone https://github.com/ModelTC/LightX2V.git
-cd LightX2V
-```
-
-2. **Install Dependencies**
-```cmd
-pip install -r requirements_win.txt
-```
-
-3. **Download Models**
-Refer to [Model Download Guide](../getting_started/quickstart.md) to download required models
-
 ## 🎯 Usage Methods
 
 ### Method 1: Using Batch File Inference
