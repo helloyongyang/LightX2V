@@ -1,194 +1,138 @@
-# Local Windows Deployment Guide
+# Windows Local Deployment Guide
 
-This document provides detailed instructions for deploying LightX2V locally on Windows environments.
+## 📖 Overview
 
-## System Requirements
+This document provides detailed instructions for deploying LightX2V locally on Windows environments, including batch file inference, Gradio Web interface inference, and other usage methods.
 
-Before getting started, please ensure your system meets the following requirements:
+## 🚀 Quick Start
 
+### Environment Requirements
+
+#### Hardware Requirements
+- **GPU**: NVIDIA GPU, recommended 8GB+ VRAM
+- **Memory**: Recommended 16GB+ RAM
+- **Storage**: Strongly recommended to use SSD solid-state drives, mechanical hard drives will cause slow model loading
+
+#### Software Requirements
 - **Operating System**: Windows 10/11
-- **Graphics Card**: NVIDIA GPU (with CUDA support)
-- **VRAM**: At least 8GB VRAM
-- **Memory**: At least 16GB RAM
-- **Storage**: 20GB+ available disk space
-- **Environment Manager**: Anaconda or Miniconda installed
-- **Network Tools**: Git (for cloning repositories)
+- **Python**: 3.12 or higher version
+- **CUDA**: 12.4 or higher version
+- **Dependencies**: Refer to LightX2V project's requirements_win.txt
 
-## Deployment Steps
+## 🎯 Usage Methods
 
-### Step 1: Check CUDA Version
+### Method 1: Using Batch File Inference
 
-First, verify your GPU driver and CUDA version by running the following command in Command Prompt:
+Refer to [Quick Start Guide](../getting_started/quickstart.md) to install environment, and use [batch files](https://github.com/ModelTC/LightX2V/tree/main/scripts/win) to run.
 
-```bash
-nvidia-smi
-```
+### Method 2: Using Gradio Web Interface Inference
 
-Note the **CUDA Version** displayed in the output, as you'll need to match this version during subsequent installations.
+#### Manual Gradio Configuration
 
-### Step 2: Create Python Environment
+Refer to [Quick Start Guide](../getting_started/quickstart.md) to install environment, refer to [Gradio Deployment Guide](./deploy_gradio.md)
 
-Create an isolated conda environment, we recommend using Python 3.12:
+#### One-Click Gradio Startup (Recommended)
 
-```bash
-# Create new environment (using Python 3.12 as example)
-conda create -n lightx2v python=3.12 -y
+**📦 Download Software Package**
+- [Baidu Cloud](https://pan.baidu.com/s/1ef3hEXyIuO0z6z9MoXe4nQ?pwd=7g4f)
+- [Quark Cloud](https://pan.quark.cn/s/36a0cdbde7d9)
 
-# Activate environment
-conda activate lightx2v
-```
-
-> 💡 **Tip**: Python 3.10 or higher is recommended for optimal compatibility.
-
-### Step 3: Install PyTorch Framework
-
-#### Method 1: Download Official Wheel Packages (Recommended)
-
-1. Visit the [PyTorch Official Wheel Download Page](https://download.pytorch.org/whl/torch/)
-2. Select the appropriate wheel package, ensuring you match:
-   - **Python Version**: Must match your environment (cp312 means Python 3.12)
-   - **CUDA Version**: Must match your GPU driver
-   - **Platform**: Choose Windows version (win_amd64)
-
-**Example for Python 3.12 + PyTorch 2.6 + CUDA 12.4:**
+**📁 Directory Structure**
+After extraction, ensure the directory structure is as follows:
 
 ```
-torch-2.6.0+cu124-cp312-cp312-win_amd64.whl
+├── env/                        # LightX2V environment directory
+├── LightX2V/                   # LightX2V project directory
+├── start_lightx2v.bat          # One-click startup script
+├── lightx2v_config.txt         # Configuration file
+├── LightX2V使用说明.txt         # LightX2V usage instructions
+└── models/                     # Model storage directory
+    ├── 说明.txt                       # Model documentation
+    ├── Wan2.1-I2V-14B-480P-Lightx2v/  # Image-to-video model (480P)
+    ├── Wan2.1-I2V-14B-720P-Lightx2v/  # Image-to-video model (720P)
+    ├── Wan2.1-I2V-14B-480P-StepDistill-CfgDistil-Lightx2v/  # Image-to-video model (4-step distillation, 480P)
+    ├── Wan2.1-I2V-14B-720P-StepDistill-CfgDistil-Lightx2v/  # Image-to-video model (4-step distillation, 720P)
+    ├── Wan2.1-T2V-1.3B-Lightx2v/      # Text-to-video model (1.3B parameters)
+    ├── Wan2.1-T2V-14B-Lightx2v/       # Text-to-video model (14B parameters)
+    └── Wan2.1-T2V-14B-StepDistill-CfgDistill-Lightx2v/      # Text-to-video model (4-step distillation)
 ```
 
-After downloading, install the packages:
+**📋 Configuration Parameters**
 
-```bash
-# Install PyTorch (replace with actual file path)
-pip install torch-2.6.0+cu124-cp312-cp312-win_amd64.whl
+Edit the `lightx2v_config.txt` file and modify the following parameters as needed:
 
-# Install accompanying vision and audio packages
-pip install torchvision==0.21.0 torchaudio==2.6.0
+```ini
+# Task type (i2v: image-to-video, t2v: text-to-video)
+task=i2v
+
+# Interface language (zh: Chinese, en: English)
+lang=en
+
+# Server port
+port=8032
+
+# GPU device ID (0, 1, 2...)
+gpu=0
+
+# Model size (14b: 14B parameter model, 1.3b: 1.3B parameter model)
+model_size=14b
+
+# Model class (wan2.1: standard model, wan2.1_distill: distilled model)
+model_cls=wan2.1
 ```
 
-#### Method 2: Direct pip Installation
+**⚠️ Important Note**: If using distilled models (model names containing StepDistill-CfgDistil field), please set `model_cls` to `wan2.1_distill`
 
-If you prefer direct installation, use the following command:
+**🚀 Start Service**
 
-```bash
-# Example: CUDA 12.4 version
-pip install torch==2.6.0+cu124 torchvision==0.21.0+cu124 torchaudio==2.6.0+cu124 --index-url https://download.pytorch.org/whl/cu124
+Double-click to run the `start_lightx2v.bat` file, the script will:
+1. Automatically read configuration file
+2. Verify model paths and file integrity
+3. Start Gradio Web interface
+4. Automatically open browser to access service
+
+**💡 Usage Suggestion**: After opening the Gradio Web page, it's recommended to check "Auto-configure Inference Options", the system will automatically select appropriate optimization configurations for your machine. When reselecting resolution, you also need to re-check "Auto-configure Inference Options".
+
+**⚠️ Important Note**: On first run, the system will automatically extract the environment file `env.zip`, which may take several minutes. Please be patient. Subsequent launches will skip this step. You can also manually extract the `env.zip` file to the current directory to save time on first startup.
+
+### Method 3: Using ComfyUI Inference
+
+This guide will instruct you on how to download and use the portable version of the Lightx2v-ComfyUI environment, so you can avoid manual environment configuration steps. This is suitable for users who want to quickly start experiencing accelerated video generation with Lightx2v on Windows systems.
+
+#### Download the Windows Portable Environment:
+
+- [Baidu Cloud Download](https://pan.baidu.com/s/1FVlicTXjmXJA1tAVvNCrBw?pwd=wfid), extraction code: wfid
+
+The portable environment already packages all Python runtime dependencies, including the code and dependencies for ComfyUI and LightX2V. After downloading, simply extract to use.
+
+After extraction, the directory structure is as follows:
+
+```shell
+lightx2v_env
+├──📂 ComfyUI                    # ComfyUI code
+├──📂 portable_python312_embed   # Standalone Python environment
+└── run_nvidia_gpu.bat            # Windows startup script (double-click to start)
 ```
 
-### Step 4: Install Windows Version vLLM
+#### Start ComfyUI
 
-Download the corresponding wheel package from the [vllm-windows releases page](https://github.com/SystemPanic/vllm-windows/releases).
+Directly double-click the run_nvidia_gpu.bat file. The system will open a Command Prompt window and run the program. The first startup may take a while, please be patient. After startup is complete, the browser will automatically open and display the ComfyUI frontend interface.
 
-**Version Matching Requirements:**
-- Python version must match (e.g., cp312)
-- PyTorch version must match
-- CUDA version must match
+![i2v example workflow](../../../../assets/figs/portabl_windows/pic1.png)
 
-**Recommended v0.9.1 Installation:**
+The plugin used by LightX2V-ComfyUI is [ComfyUI-Lightx2vWrapper](https://github.com/ModelTC/ComfyUI-Lightx2vWrapper). Example workflows can be obtained from this project.
 
-```bash
-pip install vllm-0.9.1+cu124-cp312-cp312-win_amd64.whl
-```
+#### Tested Graphics Cards (offload mode)
 
-> ⚠️ **Note**: Please select the appropriate wheel package filename based on your specific environment.
+- Tested model: `Wan2.1-I2V-14B-480P`
 
-### Step 5: Install Attention Mechanism Operators
-
-You can choose to install either Flash Attention 2 or SageAttention 2. **SageAttention 2 is strongly recommended**.
-
-#### Option A: Flash Attention 2
-
-```bash
-pip install flash-attn==2.7.2.post1
-```
-
-#### Option B: SageAttention 2 (Recommended)
-
-**Download Sources:**
-- [Windows Version 1](https://github.com/woct0rdho/SageAttention/releases)
-- [Windows Version 2](https://github.com/sdbds/SageAttention-for-windows/releases)
-
-**Version Selection Guidelines:**
-- Python version must match
-- PyTorch version must match
-- **CUDA version can be flexible** (SageAttention doesn't use breaking APIs yet)
-
-**Recommended Installation Version:**
-
-```bash
-pip install sageattention-2.1.1+cu126torch2.6.0-cp312-cp312-win_amd64.whl
-```
-
-**Verify SageAttention Installation:**
-
-After installation, we recommend running a verification script to ensure proper functionality:
-
-> 📝 **Testing**: You can also run the [official test script](https://github.com/woct0rdho/SageAttention/blob/main/tests/test_sageattn.py) for more detailed functionality verification.
-
-### Step 6: Get LightX2V Project Code
-
-Clone the LightX2V project from GitHub and install Windows-specific dependencies:
-
-```bash
-# Clone project code
-git clone https://github.com/ModelTC/LightX2V.git
-
-# Enter project directory
-cd LightX2V
-
-# Install Windows-specific dependencies
-pip install -r requirements_win.txt
-```
-
-> 🔍 **Note**: We use `requirements_win.txt` instead of the standard `requirements.txt` because Windows environments may require specific package versions or additional dependencies.
+| GPU Model   | Task Type   | VRAM Capacity | Actual Max VRAM Usage | Actual Max RAM Usage |
+|:-----------|:------------|:--------------|:---------------------|:---------------------|
+| 3090Ti     | I2V         | 24G           | 6.1G                 | 7.1G                 |
+| 3080Ti     | I2V         | 12G           | 6.1G                 | 7.1G                 |
+| 3060Ti     | I2V         | 8G            | 6.1G                 | 7.1G                 |
 
 
-## Troubleshooting
-
-### 1. CUDA Version Mismatch
-
-**Symptoms**: CUDA-related errors occur
-
-**Solutions**:
-- Verify GPU driver supports required CUDA version
-- Re-download matching wheel packages
-- Use `nvidia-smi` to check maximum supported CUDA version
-
-### 2. Dependency Conflicts
-
-**Symptoms**: Package version conflicts or import errors
-
-**Solutions**:
-- Remove existing environment: `conda env remove -n lightx2v`
-- Recreate environment and install dependencies strictly by version requirements
-- Use virtual environments to isolate dependencies for different projects
-
-### 3. Wheel Package Download Issues
-
-**Symptoms**: Slow download speeds or connection failures
-
-**Solutions**:
-- Use download tools or browser for direct downloads
-- Look for domestic mirror sources
-- Check network connections and firewall settings
-
-## Next Steps
-
-After completing the environment setup, you can:
-
-- 📚 Check the [Quick Start Guide](../getting_started/quickstart.md) (skip environment installation steps)
-- 🌐 Use the [Gradio Web Interface](./deploy_gradio.md) for visual operations (skip environment installation steps)
-
-## Version Compatibility Reference
-
-| Component | Recommended Version |
-|-----------|-------------------|
-| Python | 3.12 |
-| PyTorch | 2.6.0+cu124 |
-| vLLM | 0.9.1+cu124 |
-| SageAttention | 2.1.1+cu126torch2.6.0 |
-| CUDA | 12.4+ |
-
----
-
-💡 **Pro Tip**: If you encounter other issues, we recommend first checking whether all component versions match properly, as most problems stem from version incompatibilities.
+#### Environment Packaging and Usage Reference
+- [ComfyUI](https://github.com/comfyanonymous/ComfyUI)
+- [Portable-Windows-ComfyUI-Docs](https://docs.comfy.org/zh-CN/installation/comfyui_portable_windows#portable-%E5%8F%8A%E8%87%AA%E9%83%A8%E7%BD%B2)

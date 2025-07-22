@@ -7,6 +7,7 @@ from lightx2v.utils.envs import *
 class WanPreInfer:
     def __init__(self, config):
         assert (config["dim"] % config["num_heads"]) == 0 and (config["dim"] // config["num_heads"]) % 2 == 0
+        self.config = config
         d = config["dim"] // config["num_heads"]
         self.clean_cuda_cache = config.get("clean_cuda_cache", False)
         self.task = config["task"]
@@ -28,7 +29,7 @@ class WanPreInfer:
         self.scheduler = scheduler
 
     def infer(self, weights, inputs, positive, kv_start=0, kv_end=0):
-        x = [self.scheduler.latents]
+        x = self.scheduler.latents
 
         if self.scheduler.flag_df:
             t = self.scheduler.df_timesteps[self.scheduler.step_index].unsqueeze(0)
@@ -40,27 +41,28 @@ class WanPreInfer:
             context = inputs["text_encoder_output"]["context"]
         else:
             context = inputs["text_encoder_output"]["context_null"]
-        seq_len = self.scheduler.seq_len
 
         if self.task == "i2v":
             clip_fea = inputs["image_encoder_output"]["clip_encoder_out"]
 
-            image_encoder = inputs["image_encoder_output"]["vae_encode_out"]
+            if self.config.get("changing_resolution", False):
+                image_encoder = inputs["image_encoder_output"]["vae_encode_out"][self.scheduler.changing_resolution_index]
+            else:
+                image_encoder = inputs["image_encoder_output"]["vae_encode_out"]
+
             frame_seq_length = (image_encoder.size(2) // 2) * (image_encoder.size(3) // 2)
             if kv_end - kv_start >= frame_seq_length:  # 如果是CausalVid, image_encoder取片段
                 idx_s = kv_start // frame_seq_length
                 idx_e = kv_end // frame_seq_length
                 image_encoder = image_encoder[:, idx_s:idx_e, :, :]
-            y = [image_encoder]
-            x = [torch.cat([u, v], dim=0) for u, v in zip(x, y)]
+            y = image_encoder
+            x = torch.cat([x, y], dim=0)
 
         # embeddings
-        x = [weights.patch_embedding.apply(u.unsqueeze(0)) for u in x]
-        grid_sizes = torch.stack([torch.tensor(u.shape[2:], dtype=torch.long) for u in x])
-        x = [u.flatten(2).transpose(1, 2) for u in x]
-        seq_lens = torch.tensor([u.size(1) for u in x], dtype=torch.long).cuda()
-        assert seq_lens.max() <= seq_len
-        x = torch.cat([torch.cat([u, u.new_zeros(1, seq_len - u.size(1), u.size(2))], dim=1) for u in x])
+        x = weights.patch_embedding.apply(x.unsqueeze(0))
+        grid_sizes = torch.tensor(x.shape[2:], dtype=torch.long).unsqueeze(0)
+        x = x.flatten(2).transpose(1, 2).contiguous()
+        seq_lens = torch.tensor(x.size(1), dtype=torch.long).cuda().unsqueeze(0)
 
         embed = sinusoidal_embedding_1d(self.freq_dim, t.flatten())
         if self.enable_dynamic_cfg:

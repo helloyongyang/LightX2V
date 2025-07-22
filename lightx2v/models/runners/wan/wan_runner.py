@@ -57,11 +57,12 @@ class WanRunner(DefaultRunner):
             if clip_quantized:
                 clip_quant_scheme = self.config.get("clip_quant_scheme", None)
                 assert clip_quant_scheme is not None
+                tmp_clip_quant_scheme = clip_quant_scheme.split("-")[0]
                 clip_quantized_ckpt = self.config.get(
                     "clip_quantized_ckpt",
                     os.path.join(
-                        os.path.join(self.config.model_path, clip_quant_scheme),
-                        f"clip-{clip_quant_scheme}.pth",
+                        os.path.join(self.config.model_path, tmp_clip_quant_scheme),
+                        f"clip-{tmp_clip_quant_scheme}.pth",
                     ),
                 )
             else:
@@ -93,12 +94,13 @@ class WanRunner(DefaultRunner):
         t5_quantized = self.config.get("t5_quantized", False)
         if t5_quantized:
             t5_quant_scheme = self.config.get("t5_quant_scheme", None)
+            tmp_t5_quant_scheme = t5_quant_scheme.split("-")[0]
             assert t5_quant_scheme is not None
             t5_quantized_ckpt = self.config.get(
                 "t5_quantized_ckpt",
                 os.path.join(
-                    os.path.join(self.config.model_path, t5_quant_scheme),
-                    f"models_t5_umt5-xxl-enc-{t5_quant_scheme}.pth",
+                    os.path.join(self.config.model_path, tmp_t5_quant_scheme),
+                    f"models_t5_umt5-xxl-enc-{tmp_t5_quant_scheme}.pth",
                 ),
             )
         else:
@@ -202,18 +204,29 @@ class WanRunner(DefaultRunner):
         return clip_encoder_out
 
     def run_vae_encoder(self, img):
-        kwargs = {}
         img = TF.to_tensor(img).sub_(0.5).div_(0.5).cuda()
         h, w = img.shape[1:]
         aspect_ratio = h / w
         max_area = self.config.target_height * self.config.target_width
         lat_h = round(np.sqrt(max_area * aspect_ratio) // self.config.vae_stride[1] // self.config.patch_size[1] * self.config.patch_size[1])
         lat_w = round(np.sqrt(max_area / aspect_ratio) // self.config.vae_stride[2] // self.config.patch_size[2] * self.config.patch_size[2])
+
+        if self.config.get("changing_resolution", False):
+            self.config.lat_h, self.config.lat_w = lat_h, lat_w
+            vae_encode_out_list = []
+            for i in range(len(self.config["resolution_rate"])):
+                lat_h, lat_w = int(self.config.lat_h * self.config.resolution_rate[i]) // 2 * 2, int(self.config.lat_w * self.config.resolution_rate[i]) // 2 * 2
+                vae_encode_out_list.append(self.get_vae_encoder_output(img, lat_h, lat_w))
+            vae_encode_out_list.append(self.get_vae_encoder_output(img, self.config.lat_h, self.config.lat_w))
+            return vae_encode_out_list
+        else:
+            self.config.lat_h, self.config.lat_w = lat_h, lat_w
+            vae_encode_out = self.get_vae_encoder_output(img, lat_h, lat_w)
+            return vae_encode_out
+
+    def get_vae_encoder_output(self, img, lat_h, lat_w):
         h = lat_h * self.config.vae_stride[1]
         w = lat_w * self.config.vae_stride[2]
-
-        self.config.lat_h, kwargs["lat_h"] = lat_h, lat_h
-        self.config.lat_w, kwargs["lat_w"] = lat_w, lat_w
 
         msk = torch.ones(
             1,
@@ -245,7 +258,7 @@ class WanRunner(DefaultRunner):
             torch.cuda.empty_cache()
             gc.collect()
         vae_encode_out = torch.concat([msk, vae_encode_out]).to(torch.bfloat16)
-        return vae_encode_out, kwargs
+        return vae_encode_out
 
     def get_encoder_output_i2v(self, clip_encoder_out, vae_encode_out, text_encoder_output, img):
         image_encoder_output = {
@@ -258,7 +271,6 @@ class WanRunner(DefaultRunner):
         }
 
     def set_target_shape(self):
-        ret = {}
         num_channels_latents = self.config.get("num_channels_latents", 16)
         if self.config.task == "i2v":
             self.config.target_shape = (
@@ -267,8 +279,6 @@ class WanRunner(DefaultRunner):
                 self.config.lat_h,
                 self.config.lat_w,
             )
-            ret["lat_h"] = self.config.lat_h
-            ret["lat_w"] = self.config.lat_w
         elif self.config.task == "t2v":
             self.config.target_shape = (
                 num_channels_latents,
@@ -276,8 +286,6 @@ class WanRunner(DefaultRunner):
                 int(self.config.target_height) // self.config.vae_stride[1],
                 int(self.config.target_width) // self.config.vae_stride[2],
             )
-        ret["target_shape"] = self.config.target_shape
-        return ret
 
     def save_video_func(self, images):
         cache_video(

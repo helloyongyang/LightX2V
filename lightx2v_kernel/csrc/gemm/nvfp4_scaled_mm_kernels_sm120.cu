@@ -215,7 +215,7 @@ void runGemmNvfp4Sm120(
 constexpr auto FLOAT4_E2M1X2 = at::ScalarType::Byte;
 constexpr auto SF_DTYPE = at::ScalarType::Float8_e4m3fn;
 
-void cutlass_scaled_fp4_mm_sm120(
+void cutlass_scaled_nvfp4_mm_sm120(
     torch::Tensor& D,
     torch::Tensor const& A,
     torch::Tensor const& B,

@@ -13,5 +13,6 @@
     "cpu_offload": false,
     "mm_config": {
         "mm_type": "W-fp8-channel-sym-A-fp8-channel-sym-dynamic-Sgl-ActVllm"
-    }
+    },
+    "use_tiling_vae": true
 }
