@@ -4,7 +4,6 @@
 
 lightx2v_path=
 model_path=
-lora_path=
 
 # check section
 if [ -z "${CUDA_VISIBLE_DEVICES}" ]; then
