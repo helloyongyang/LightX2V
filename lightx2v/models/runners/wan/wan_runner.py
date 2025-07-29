@@ -50,7 +50,7 @@ class WanRunner(DefaultRunner):
 
     def load_image_encoder(self):
         image_encoder = None
-        if self.config.task == "i2v":
+        if self.config.task == "i2v" and self.config.get("use_image_encoder", True):
             # quant_config
             clip_quantized = self.config.get("clip_quantized", False)
             if clip_quantized:
