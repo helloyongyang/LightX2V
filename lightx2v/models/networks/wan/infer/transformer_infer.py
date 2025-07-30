@@ -309,12 +309,13 @@ class WanTransformerInfer(BaseTransformerInfer):
         return x
 
     def infer_modulation(self, weights, embed0):
-        if embed0.dim() == 3:
+        if embed0.dim() == 3 and embed0.shape[2] == 1:
             modulation = weights.modulation.tensor.unsqueeze(2)
             embed0 = (modulation + embed0).chunk(6, dim=1)
             shift_msa, scale_msa, gate_msa, c_shift_msa, c_scale_msa, c_gate_msa = [ei.squeeze(1) for ei in embed0]
-        elif embed0.dim() == 2:
+        else:
             shift_msa, scale_msa, gate_msa, c_shift_msa, c_scale_msa, c_gate_msa = (weights.modulation.tensor + embed0).chunk(6, dim=1)
+
         if self.clean_cuda_cache:
             del embed0
             torch.cuda.empty_cache()
@@ -330,11 +331,11 @@ class WanTransformerInfer(BaseTransformerInfer):
 
     def infer_self_attn(self, weights, grid_sizes, x, seq_lens, freqs, shift_msa, scale_msa):
         if hasattr(weights, "smooth_norm1_weight"):
-            norm1_weight = (1 + scale_msa.squeeze(0)) * weights.smooth_norm1_weight.tensor
-            norm1_bias = shift_msa.squeeze(0) * weights.smooth_norm1_bias.tensor
+            norm1_weight = (1 + scale_msa.squeeze()) * weights.smooth_norm1_weight.tensor
+            norm1_bias = shift_msa.squeeze() * weights.smooth_norm1_bias.tensor
         else:
-            norm1_weight = 1 + scale_msa.squeeze(0)
-            norm1_bias = shift_msa.squeeze(0)
+            norm1_weight = 1 + scale_msa.squeeze()
+            norm1_bias = shift_msa.squeeze()
 
         norm1_out = weights.norm1.apply(x)
 
@@ -398,9 +399,9 @@ class WanTransformerInfer(BaseTransformerInfer):
 
     def infer_cross_attn(self, weights, x, context, y_out, gate_msa):
         if GET_DTYPE() != "BF16":
-            x = x.float() + y_out.float() * gate_msa.squeeze(0)
+            x = x.float() + y_out.float() * gate_msa.squeeze()
         else:
-            x.add_(y_out * gate_msa.squeeze(0))
+            x.add_(y_out * gate_msa.squeeze())
 
         norm3_out = weights.norm3.apply(x)
         if self.task == "i2v" and self.config.get("use_image_encoder", True):
@@ -473,11 +474,11 @@ class WanTransformerInfer(BaseTransformerInfer):
             torch.cuda.empty_cache()
 
         if hasattr(weights, "smooth_norm2_weight"):
-            norm2_weight = (1 + c_scale_msa.squeeze(0)) * weights.smooth_norm2_weight.tensor
-            norm2_bias = c_shift_msa.squeeze(0) * weights.smooth_norm2_bias.tensor
+            norm2_weight = (1 + c_scale_msa.squeeze()) * weights.smooth_norm2_weight.tensor
+            norm2_bias = c_shift_msa.squeeze() * weights.smooth_norm2_bias.tensor
         else:
-            norm2_weight = 1 + c_scale_msa.squeeze(0)
-            norm2_bias = c_shift_msa.squeeze(0)
+            norm2_weight = 1 + c_scale_msa.squeeze()
+            norm2_bias = c_shift_msa.squeeze()
 
         norm2_out = weights.norm2.apply(x)
         if GET_DTYPE() != "BF16":
@@ -499,9 +500,9 @@ class WanTransformerInfer(BaseTransformerInfer):
 
     def post_process(self, x, y, c_gate_msa):
         if GET_DTYPE() != "BF16":
-            x = x.float() + y.float() * c_gate_msa.squeeze(0)
+            x = x.float() + y.float() * c_gate_msa.squeeze()
         else:
-            x.add_(y * c_gate_msa.squeeze(0))
+            x.add_(y * c_gate_msa.squeeze())
 
         if self.clean_cuda_cache:
             del y, c_gate_msa

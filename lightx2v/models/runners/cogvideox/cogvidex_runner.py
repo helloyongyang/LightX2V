@@ -49,7 +49,7 @@ class CogvideoxRunner(DefaultRunner):
         # TODO: implement vae encoder for Cogvideox
         raise NotImplementedError("I2V inference is not implemented for Cogvideox.")
 
-    def get_encoder_output_i2v(self, clip_encoder_out, vae_encode_out, text_encoder_output, img):
+    def get_encoder_output_i2v(self, clip_encoder_out, vae_encoder_out, text_encoder_output, img):
         # TODO: Implement image encoder for Cogvideox-I2V
         raise ValueError(f"Unsupported model class: {self.config['model_cls']}")
 

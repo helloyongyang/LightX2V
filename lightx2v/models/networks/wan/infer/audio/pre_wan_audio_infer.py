@@ -51,7 +51,7 @@ class WanAudioPreInfer(WanPreInfer):
         seq_len = self.scheduler.seq_len
 
         clip_fea = inputs["image_encoder_output"]["clip_encoder_out"]
-        ref_image_encoder = inputs["image_encoder_output"]["vae_encode_out"]
+        ref_image_encoder = inputs["image_encoder_output"]["vae_encoder_out"]
         batch_size = len(x)
         num_channels, num_frames, height, width = x[0].shape
         _, ref_num_channels, ref_num_frames, _, _ = ref_image_encoder.shape

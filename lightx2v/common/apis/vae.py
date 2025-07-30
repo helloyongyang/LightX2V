@@ -60,8 +60,8 @@ class VAERunner:
 
     def _run_vae_encoder(self, img):
         img = image_transporter.load_image(img)
-        vae_encode_out, kwargs = self.runner.run_vae_encoder(img)
-        return vae_encode_out, kwargs
+        vae_encoder_out, kwargs = self.runner.run_vae_encoder(img)
+        return vae_encoder_out, kwargs
 
     def _run_vae_decoder(self, latents):
         latents = tensor_transporter.load_tensor(latents)
@@ -72,9 +72,9 @@ class VAERunner:
 def run_vae_encoder(message: Message):
     try:
         global runner
-        vae_encode_out, kwargs = runner._run_vae_encoder(message.img)
+        vae_encoder_out, kwargs = runner._run_vae_encoder(message.img)
         VAEServiceStatus.complete_task(message)
-        return vae_encode_out, kwargs
+        return vae_encoder_out, kwargs
     except Exception as e:
         logger.error(f"task_id {message.task_id} failed: {str(e)}")
         VAEServiceStatus.record_failed_task(message, error=str(e))
@@ -95,9 +95,9 @@ def run_vae_decoder(message: Message):
 def v1_local_vae_model_encoder_generate(message: Message):
     try:
         task_id = VAEServiceStatus.start_task(message)
-        vae_encode_out, kwargs = run_vae_encoder(message)
-        output = tensor_transporter.prepare_tensor(vae_encode_out)
-        del vae_encode_out
+        vae_encoder_out, kwargs = run_vae_encoder(message)
+        output = tensor_transporter.prepare_tensor(vae_encoder_out)
+        del vae_encoder_out
         return {"task_id": task_id, "task_status": "completed", "output": output, "kwargs": kwargs}
     except RuntimeError as e:
         return {"error": str(e)}

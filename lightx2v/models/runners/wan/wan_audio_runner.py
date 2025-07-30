@@ -435,10 +435,10 @@ class WanAudioRunner(WanRunner):  # type:ignore
 
         if os.path.isfile(self.config.image_path):
             with ProfilingContext("Run Img Encoder"):
-                vae_encode_out, clip_encoder_out = self.run_image_encoder(self.config, self.vae_encoder)
+                vae_encoder_out, clip_encoder_out = self.run_image_encoder(self.config, self.vae_encoder)
                 image_encoder_output = {
                     "clip_encoder_out": clip_encoder_out,
-                    "vae_encode_out": vae_encode_out,
+                    "vae_encoder_out": vae_encoder_out,
                 }
 
         with ProfilingContext("Run Text Encoder"):
@@ -659,11 +659,11 @@ class WanAudioRunner(WanRunner):  # type:ignore
 
         # vae encode
         cond_frms = rearrange(cond_frms, "1 C H W -> 1 C 1 H W")
-        vae_encode_out = vae_model.encode(cond_frms.to(torch.float), config)
-        if isinstance(vae_encode_out, list):
-            vae_encode_out = torch.stack(vae_encode_out, dim=0).to(torch.bfloat16)
+        vae_encoder_out = vae_model.encode(cond_frms.to(torch.float), config)
+        if isinstance(vae_encoder_out, list):
+            vae_encoder_out = torch.stack(vae_encoder_out, dim=0).to(torch.bfloat16)
 
-        return vae_encode_out, clip_encoder_out
+        return vae_encoder_out, clip_encoder_out
 
     def set_target_shape(self):
         """Set target shape for generation"""

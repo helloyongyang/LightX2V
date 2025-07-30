@@ -36,9 +36,9 @@ class WanSkyreelsV2DFRunner(WanRunner):  # Diffustion foring for SkyReelsV2 DF I
         config.lat_h = lat_h
         config.lat_w = lat_w
 
-        vae_encode_out = vae_model.encode([torch.nn.functional.interpolate(img[None].cpu(), size=(h, w), mode="bicubic").transpose(0, 1).cuda()], config)[0]
-        vae_encode_out = vae_encode_out.to(torch.bfloat16)
-        return vae_encode_out
+        vae_encoder_out = vae_model.encode([torch.nn.functional.interpolate(img[None].cpu(), size=(h, w), mode="bicubic").transpose(0, 1).cuda()], config)[0]
+        vae_encoder_out = vae_encoder_out.to(torch.bfloat16)
+        return vae_encoder_out
 
     def set_target_shape(self):
         if os.path.isfile(self.config.image_path):
