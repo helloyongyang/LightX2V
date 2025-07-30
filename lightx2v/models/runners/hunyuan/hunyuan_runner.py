@@ -137,8 +137,8 @@ class HunyuanRunner(DefaultRunner):
 
         return img_latents, kwargs
 
-    def get_encoder_output_i2v(self, clip_encoder_out, vae_encode_out, text_encoder_output, img):
-        image_encoder_output = {"img": img, "img_latents": vae_encode_out}
+    def get_encoder_output_i2v(self, clip_encoder_out, vae_encoder_out, text_encoder_output, img):
+        image_encoder_output = {"img": img, "img_latents": vae_encoder_out}
         return {"text_encoder_output": text_encoder_output, "image_encoder_output": image_encoder_output}
 
     def set_target_shape(self):

@@ -25,7 +25,7 @@ class WanPostInfer:
 
         if GET_DTYPE() != "BF16":
             x = x.float()
-        x.mul_(1 + e[1].squeeze(0)).add_(e[0].squeeze(0))
+        x.mul_(1 + e[1].squeeze()).add_(e[0].squeeze())
         if GET_DTYPE() != "BF16":
             x = x.to(torch.bfloat16)
 
