@@ -61,8 +61,18 @@ class WanAudioModel(WanModel):
                 if self.scheduler.cnt >= self.scheduler.num_steps:
                     self.scheduler.cnt = 0
 
-            self.scheduler.noise_pred = noise_pred_uncond + self.config.sample_guide_scale * (noise_pred_cond - noise_pred_uncond)
+            self.scheduler.noise_pred = noise_pred_uncond + self.scheduler.sample_guide_scale * (noise_pred_cond - noise_pred_uncond)
 
             if self.config["cpu_offload"]:
                 self.pre_weight.to_cpu()
                 self.post_weight.to_cpu()
+
+
+class Wan22MoeAudioModel(WanAudioModel):
+    def _load_ckpt(self, use_bf16, skip_bf16):
+        safetensors_files = glob.glob(os.path.join(self.model_path, "*.safetensors"))
+        weight_dict = {}
+        for file_path in safetensors_files:
+            file_weights = self._load_safetensor_to_dict(file_path, use_bf16, skip_bf16)
+            weight_dict.update(file_weights)
+        return weight_dict

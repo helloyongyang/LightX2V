@@ -9,7 +9,7 @@ class WanAudioPreInfer(WanPreInfer):
     def __init__(self, config):
         assert (config["dim"] % config["num_heads"]) == 0 and (config["dim"] // config["num_heads"]) % 2 == 0
         d = config["dim"] // config["num_heads"]
-
+        self.config = config
         self.task = config["task"]
         self.freqs = torch.cat(
             [
@@ -22,6 +22,7 @@ class WanAudioPreInfer(WanPreInfer):
         self.freq_dim = config["freq_dim"]
         self.dim = config["dim"]
         self.text_len = config["text_len"]
+        self.clean_cuda_cache = self.config.get("clean_cuda_cache", False)
 
     def infer(self, weights, inputs, positive):
         prev_latents = inputs["previmg_encoder_output"]["prev_latents"].unsqueeze(0)
@@ -93,13 +94,20 @@ class WanAudioPreInfer(WanPreInfer):
         out = torch.nn.functional.gelu(out, approximate="tanh")
         context = weights.text_embedding_2.apply(out)
 
-        if self.task == "i2v":
+        if self.task == "i2v" and self.config.get("use_image_encoder", True):
             context_clip = weights.proj_0.apply(clip_fea)
             context_clip = weights.proj_1.apply(context_clip)
             context_clip = torch.nn.functional.gelu(context_clip, approximate="none")
             context_clip = weights.proj_3.apply(context_clip)
             context_clip = weights.proj_4.apply(context_clip)
-
+            if self.clean_cuda_cache:
+                del clip_fea
+                torch.cuda.empty_cache()
             context = torch.concat([context_clip, context], dim=0)
+
+        if self.clean_cuda_cache:
+            if self.config.get("use_image_encoder", True):
+                del context_clip
+            torch.cuda.empty_cache()
 
         return (embed, x_grid_sizes, (x.squeeze(0), embed0.squeeze(0), seq_lens, self.freqs, context, audio_dit_blocks), valid_patch_length)

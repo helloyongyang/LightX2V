@@ -305,6 +305,10 @@ class MultiModelStruct:
         self.cur_model_index = -1
         logger.info(f"boundary: {self.boundary}, boundary_timestep: {self.boundary_timestep}")
 
+    @property
+    def device(self):
+        return self.model[self.cur_model_index].device
+
     def set_scheduler(self, shared_scheduler):
         self.scheduler = shared_scheduler
         for model in self.model:
