@@ -13,7 +13,7 @@ from lightx2v.models.runners.hunyuan.hunyuan_runner import HunyuanRunner
 from lightx2v.models.runners.wan.wan_runner import WanRunner, Wan22MoeRunner
 from lightx2v.models.runners.wan.wan_distill_runner import WanDistillRunner
 from lightx2v.models.runners.wan.wan_causvid_runner import WanCausVidRunner
-from lightx2v.models.runners.wan.wan_audio_runner import WanAudioRunner
+from lightx2v.models.runners.wan.wan_audio_runner import WanAudioRunner, Wan22MoeAudioRunner
 from lightx2v.models.runners.wan.wan_skyreels_v2_df_runner import WanSkyreelsV2DFRunner
 from lightx2v.models.runners.graph_runner import GraphRunner
 from lightx2v.models.runners.cogvideox.cogvidex_runner import CogvideoxRunner

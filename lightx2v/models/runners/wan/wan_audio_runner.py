@@ -11,11 +11,12 @@ from dataclasses import dataclass
 from lightx2v.utils.registry_factory import RUNNER_REGISTER
 from lightx2v.models.runners.wan.wan_runner import WanRunner
 from lightx2v.utils.profiler import ProfilingContext4Debug, ProfilingContext
-from lightx2v.models.networks.wan.audio_model import WanAudioModel
+from lightx2v.models.networks.wan.audio_model import WanAudioModel, Wan22MoeAudioModel
 from lightx2v.models.networks.wan.lora_adapter import WanLoraWrapper
 from lightx2v.models.networks.wan.audio_adapter import AudioAdapter, AudioAdapterPipe, rank0_load_state_dict_from_path
 from lightx2v.utils.utils import save_to_video, vae_to_comfyui_image
 from lightx2v.models.schedulers.wan.audio.scheduler import ConsistencyModelScheduler
+from .wan_runner import MultiModelStruct
 
 from loguru import logger
 from einops import rearrange
@@ -262,7 +263,7 @@ class VideoGenerator:
         if prev_video is None:
             return None
 
-        device = self.model.device
+        device = torch.device("cuda")
         dtype = torch.bfloat16
         vae_dtype = torch.float
 
@@ -315,7 +316,7 @@ class VideoGenerator:
             self.model.scheduler.reset()
 
         # Prepare previous latents - ALWAYS needed, even for first segment
-        device = self.model.device
+        device = torch.device("cuda")
         dtype = torch.bfloat16
         vae_dtype = torch.float
         tgt_h, tgt_w = self.config.tgt_h, self.config.tgt_w
@@ -423,7 +424,7 @@ class WanAudioRunner(WanRunner):  # type:ignore
         audio_adapter = rank0_load_state_dict_from_path(audio_adapter, audio_adapter_path, strict=False)
 
         # Audio encoder
-        device = self.model.device
+        device = torch.device("cuda")
         audio_encoder_repo = self.config["model_path"] + "/audio_encoder"
         self._audio_adapter_pipe = AudioAdapterPipe(audio_adapter, audio_encoder_repo=audio_encoder_repo, dtype=torch.bfloat16, device=device, generator=torch.Generator(device), weight=1.0)
 
@@ -655,7 +656,7 @@ class WanAudioRunner(WanRunner):  # type:ignore
         cond_frms = torch.nn.functional.interpolate(ref_img, size=(config.tgt_h, config.tgt_w), mode="bicubic")
 
         # clip encoder
-        clip_encoder_out = self.image_encoder.visual([cond_frms], self.config).squeeze(0).to(torch.bfloat16)
+        clip_encoder_out = self.image_encoder.visual([cond_frms], self.config).squeeze(0).to(torch.bfloat16) if self.config.get("use_image_encoder", True) else None
 
         # vae encode
         cond_frms = rearrange(cond_frms, "1 C H W -> 1 C 1 H W")
@@ -684,3 +685,44 @@ class WanAudioRunner(WanRunner):  # type:ignore
 
         ret["target_shape"] = self.config.target_shape
         return ret
+
+
+@RUNNER_REGISTER("wan2.2_moe_audio")
+class Wan22MoeAudioRunner(WanAudioRunner):
+    def __init__(self, config):
+        super().__init__(config)
+
+    def load_transformer(self):
+        # encoder -> high_noise_model -> low_noise_model -> vae -> video_output
+        high_noise_model = Wan22MoeAudioModel(
+            os.path.join(self.config.model_path, "high_noise_model"),
+            self.config,
+            self.init_device,
+        )
+        low_noise_model = Wan22MoeAudioModel(
+            os.path.join(self.config.model_path, "low_noise_model"),
+            self.config,
+            self.init_device,
+        )
+
+        if self.config.get("lora_configs") and self.config.lora_configs:
+            assert not self.config.get("dit_quantized", False) or self.config.mm_config.get("weight_auto_quant", False)
+
+            for lora_config in self.config.lora_configs:
+                lora_path = lora_config["path"]
+                strength = lora_config.get("strength", 1.0)
+                if lora_config.name == "high_noise_model":
+                    lora_wrapper = WanLoraWrapper(high_noise_model)
+                    lora_name = lora_wrapper.load_lora(lora_path)
+                    lora_wrapper.apply_lora(lora_name, strength)
+                    logger.info(f"{lora_config.name} Loaded LoRA: {lora_name} with strength: {strength}")
+
+                if lora_config.name == "low_noise_model":
+                    lora_wrapper = WanLoraWrapper(low_noise_model)
+                    lora_name = lora_wrapper.load_lora(lora_path)
+                    lora_wrapper.apply_lora(lora_name, strength)
+                    logger.info(f"{lora_config.name} Loaded LoRA: {lora_name} with strength: {strength}")
+        # XXX: trick
+        self._audio_preprocess = AutoFeatureExtractor.from_pretrained(self.config["model_path"], subfolder="audio_encoder")
+
+        return MultiModelStruct([high_noise_model, low_noise_model], self.config, self.config.boundary)
