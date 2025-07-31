@@ -844,7 +844,7 @@ class Wan2_2_VAE:
         self.dtype = dtype
         self.device = device
 
-        mean = torch.tensor(
+        self.mean = torch.tensor(
             [
                 -0.2289,
                 -0.0052,
@@ -898,7 +898,7 @@ class Wan2_2_VAE:
             dtype=dtype,
             device=device,
         )
-        std = torch.tensor(
+        self.std = torch.tensor(
             [
                 0.4765,
                 1.0364,
@@ -952,8 +952,8 @@ class Wan2_2_VAE:
             dtype=dtype,
             device=device,
         )
-        self.scale = [mean, 1.0 / std]
-
+        self.inv_std = 1.0 / self.std
+        self.scale = [self.mean, self.inv_std]
         # init model
         self.model = (
             _video_vae(
@@ -968,25 +968,35 @@ class Wan2_2_VAE:
             .to(device)
         )
 
-    def encode(self, videos):
-        # try:
-        #     if not isinstance(videos, list):
-        #         raise TypeError("videos should be a list")
-        #     with amp.autocast(dtype=self.dtype):
-        #         return [
-        #             self.model.encode(u.unsqueeze(0),
-        #                               self.scale).float().squeeze(0)
-        #             for u in videos
-        #         ]
-        # except TypeError as e:
-        #     logging.info(e)
-        #     return None
+    def to_cpu(self):
+        self.model.encoder = self.model.encoder.to("cpu")
+        self.model.decoder = self.model.decoder.to("cpu")
+        self.model = self.model.to("cpu")
+        self.mean = self.mean.cpu()
+        self.inv_std = self.inv_std.cpu()
+        self.scale = [self.mean, self.inv_std]
 
-        # print(1111111)
-        # print(self.model.encode(videos.unsqueeze(0), self.scale).float().shape)
-        # exit()
+    def to_cuda(self):
+        self.model.encoder = self.model.encoder.to("cuda")
+        self.model.decoder = self.model.decoder.to("cuda")
+        self.model = self.model.to("cuda")
+        self.mean = self.mean.cuda()
+        self.inv_std = self.inv_std.cuda()
+        self.scale = [self.mean, self.inv_std]
 
-        return self.model.encode(videos.unsqueeze(0), self.scale).float().squeeze(0)
+    def encode(self, videos, args):
+        if hasattr(args, "cpu_offload") and args.cpu_offload:
+            self.to_cuda()
+        out = self.model.encode(videos.unsqueeze(0), self.scale).float().squeeze(0)
+        if hasattr(args, "cpu_offload") and args.cpu_offload:
+            self.to_cpu()
+        return out
 
     def decode(self, zs, generator, config):
-        return self.model.decode(zs.unsqueeze(0), self.scale).float().clamp_(-1, 1)
+        if config.cpu_offload:
+            self.to_cuda()
+        images = self.model.decode(zs.unsqueeze(0), self.scale).float().clamp_(-1, 1)
+        if config.cpu_offload:
+            images = images.cpu().float()
+            self.to_cpu()
+        return images
