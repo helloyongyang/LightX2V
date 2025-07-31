@@ -1,6 +1,6 @@
 import torch
 import math
-from ..utils import compute_freqs, compute_freqs_causvid, compute_freqs_dist, apply_rotary_emb
+from ..utils import compute_freqs, compute_freqs_causvid, apply_rotary_emb
 from lightx2v.utils.envs import *
 from ..transformer_infer import WanTransformerInfer
 

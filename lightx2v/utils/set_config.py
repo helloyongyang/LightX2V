@@ -8,8 +8,6 @@ def get_default_config():
     default_config = {
         "do_mm_calib": False,
         "cpu_offload": False,
-        "parallel_attn_type": None,  # [None, "ulysses", "ring"]
-        "parallel_vae": False,
         "max_area": False,
         "vae_stride": (4, 8, 8),
         "patch_size": (1, 2, 2),
@@ -20,6 +18,7 @@ def get_default_config():
         "lora_configs": None,  # List of dicts with 'path' and 'strength' keys
         "mm_config": {},
         "use_prompt_enhancer": False,
+        "parallel": False,
     }
     return default_config
 

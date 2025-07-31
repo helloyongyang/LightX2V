@@ -43,7 +43,7 @@ class DefaultRunner(BaseRunner):
             self.run_input_encoder = self._run_input_encoder_local_t2v
 
     def set_init_device(self):
-        if self.config.parallel_attn_type:
+        if self.config.parallel:
             cur_rank = dist.get_rank()
             torch.cuda.set_device(cur_rank)
         if self.config.cpu_offload:
@@ -237,7 +237,7 @@ class DefaultRunner(BaseRunner):
             else:
                 fps = self.config.get("fps", 16)
 
-            if not self.config.get("parallel_attn_type", None) or dist.get_rank() == 0:
+            if not dist.is_initialized() or dist.get_rank() == 0:
                 logger.info(f"Saving video to {self.config.save_video_path}")
 
                 if self.config["model_cls"] != "wan2.2":

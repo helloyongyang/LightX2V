@@ -1,5 +1,5 @@
 import torch
-from .utils import compute_freqs, compute_freqs_dist, compute_freqs_audio, compute_freqs_audio_dist, apply_rotary_emb, apply_rotary_emb_chunk
+from .utils import compute_freqs, compute_freqs_audio, apply_rotary_emb, apply_rotary_emb_chunk
 from lightx2v.common.offload.manager import (
     WeightAsyncStreamManager,
     LazyWeightAsyncStreamManager,
@@ -367,7 +367,7 @@ class WanTransformerInfer(BaseTransformerInfer):
             del freqs_i, norm1_out, norm1_weight, norm1_bias
             torch.cuda.empty_cache()
 
-        if self.config.get("parallel_attn_type", None):
+        if self.config.parallel and self.config.parallel.get("seq_p_size", False) and self.config.parallel.seq_p_size > 1:
             attn_out = weights.self_attn_1_parallel.apply(
                 q=q,
                 k=k,
@@ -375,6 +375,7 @@ class WanTransformerInfer(BaseTransformerInfer):
                 img_qkv_len=q.shape[0],
                 cu_seqlens_qkv=cu_seqlens_q,
                 attention_module=weights.self_attn_1,
+                seq_p_group=self.seq_p_group,
             )
         else:
             attn_out = weights.self_attn_1.apply(

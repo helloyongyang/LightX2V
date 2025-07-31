@@ -1,5 +1,6 @@
 import os
 import torch
+import torch.distributed as dist
 import glob
 import json
 from lightx2v.common.ops.attn import MaskMap
@@ -69,7 +70,7 @@ class WanModel:
     def _init_infer_class(self):
         self.pre_infer_class = WanPreInfer
         self.post_infer_class = WanPostInfer
-        if self.config.get("parallel_attn_type", None):
+        if self.config.parallel and self.config.parallel.get("seq_p_size", False) and self.config.parallel.seq_p_size > 1:
             self.transformer_infer_class = WanTransformerDistInfer
         else:
             if self.config["feature_caching"] == "NoCaching":
@@ -186,6 +187,10 @@ class WanModel:
         self.pre_infer = self.pre_infer_class(self.config)
         self.post_infer = self.post_infer_class(self.config)
         self.transformer_infer = self.transformer_infer_class(self.config)
+        if self.config.parallel and self.config.parallel.get("cfg_p_size", False) and self.config.parallel.cfg_p_size > 1:
+            self.infer = self.infer_with_cfg_parallel
+        else:
+            self.infer = self.infer_wo_cfg_parallel
 
     def set_scheduler(self, scheduler):
         self.scheduler = scheduler
@@ -204,7 +209,7 @@ class WanModel:
         self.transformer_weights.to_cuda()
 
     @torch.no_grad()
-    def infer(self, inputs):
+    def infer_wo_cfg_parallel(self, inputs):
         if self.cpu_offload:
             if self.offload_granularity == "model" and self.scheduler.step_index == 0:
                 self.to_cuda()
@@ -244,6 +249,29 @@ class WanModel:
             elif self.offload_granularity != "model":
                 self.pre_weight.to_cpu()
                 self.post_weight.to_cpu()
+
+    @torch.no_grad()
+    def infer_with_cfg_parallel(self, inputs):
+        assert self.config["enable_cfg"], "enable_cfg must be True"
+        cfg_p_group = self.config["device_mesh"].get_group(mesh_dim="cfg_p")
+        assert dist.get_world_size(cfg_p_group) == 2, f"cfg_p_world_size must be equal to 2"
+        cfg_p_rank = dist.get_rank(cfg_p_group)
+
+        if cfg_p_rank == 0:
+            embed, grid_sizes, pre_infer_out = self.pre_infer.infer(self.pre_weight, inputs, positive=True)
+            x = self.transformer_infer.infer(self.transformer_weights, grid_sizes, embed, *pre_infer_out)
+            noise_pred = self.post_infer.infer(self.post_weight, x, embed, grid_sizes)[0]
+        else:
+            embed, grid_sizes, pre_infer_out = self.pre_infer.infer(self.pre_weight, inputs, positive=False)
+            x = self.transformer_infer.infer(self.transformer_weights, grid_sizes, embed, *pre_infer_out)
+            noise_pred = self.post_infer.infer(self.post_weight, x, embed, grid_sizes)[0]
+
+        noise_pred_list = [torch.zeros_like(noise_pred) for _ in range(2)]
+        dist.all_gather(noise_pred_list, noise_pred, group=cfg_p_group)
+
+        noise_pred_cond = noise_pred_list[0]  # cfg_p_rank == 0
+        noise_pred_uncond = noise_pred_list[1]  # cfg_p_rank == 1
+        self.scheduler.noise_pred = noise_pred_uncond + self.scheduler.sample_guide_scale * (noise_pred_cond - noise_pred_uncond)
 
 
 class Wan22MoeModel(WanModel):

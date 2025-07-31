@@ -124,7 +124,7 @@ class WanRunner(DefaultRunner):
         vae_config = {
             "vae_pth": find_torch_model_path(self.config, "vae_pth", "Wan2.1_VAE.pth"),
             "device": self.init_device,
-            "parallel": self.config.parallel_vae,
+            "parallel": self.config.parallel and self.config.parallel.get("vae_p_size", False) and self.config.parallel.vae_p_size > 1,
             "use_tiling": self.config.get("use_tiling_vae", False),
         }
         if self.config.task != "i2v":
@@ -136,7 +136,7 @@ class WanRunner(DefaultRunner):
         vae_config = {
             "vae_pth": find_torch_model_path(self.config, "vae_pth", "Wan2.1_VAE.pth"),
             "device": self.init_device,
-            "parallel": self.config.parallel_vae,
+            "parallel": self.config.parallel and self.config.parallel.get("vae_p_size", False) and self.config.parallel.vae_p_size > 1,
             "use_tiling": self.config.get("use_tiling_vae", False),
         }
         if self.config.get("use_tiny_vae", False):
