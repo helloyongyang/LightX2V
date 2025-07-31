@@ -16,7 +16,6 @@
     "cpu_offload": false,
     "offload_granularity": "model",
     "fps": 24,
-    "save_video": true,
     "feature_caching": "Tea",
     "coefficients": [
         [],
