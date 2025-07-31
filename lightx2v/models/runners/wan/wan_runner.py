@@ -418,5 +418,5 @@ class Wan22DenseRunner(WanRunner):
         return vae_encoder_out
 
     def get_vae_encoder_output(self, img):
-        z = self.vae_encoder.encode(img)
+        z = self.vae_encoder.encode(img, self.config)
         return z

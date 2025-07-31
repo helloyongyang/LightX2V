@@ -37,6 +37,9 @@ class WanModel:
     def __init__(self, model_path, config, device):
         self.model_path = model_path
         self.config = config
+        self.cpu_offload = self.config.get("cpu_offload", False)
+        self.offload_granularity = self.config.get("offload_granularity", "block")
+
         self.clean_cuda_cache = self.config.get("clean_cuda_cache", False)
         self.dit_quantized = self.config.mm_config.get("mm_type", "Default") != "Default"
 
@@ -202,14 +205,17 @@ class WanModel:
 
     @torch.no_grad()
     def infer(self, inputs):
+        if self.cpu_offload:
+            if self.offload_granularity == "model" and self.scheduler.step_index == 0:
+                self.to_cuda()
+            elif self.offload_granularity != "model":
+                self.pre_weight.to_cuda()
+                self.post_weight.to_cuda()
+
         if self.transformer_infer.mask_map is None:
             _, c, h, w = self.scheduler.latents.shape
             video_token_num = c * (h // 2) * (w // 2)
             self.transformer_infer.mask_map = MaskMap(video_token_num, c)
-
-        if self.config.get("cpu_offload", False):
-            self.pre_weight.to_cuda()
-            self.post_weight.to_cuda()
 
         embed, grid_sizes, pre_infer_out = self.pre_infer.infer(self.pre_weight, inputs, positive=True)
         x = self.transformer_infer.infer(self.transformer_weights, grid_sizes, embed, *pre_infer_out)
@@ -228,13 +234,16 @@ class WanModel:
 
             self.scheduler.noise_pred = noise_pred_uncond + self.scheduler.sample_guide_scale * (self.scheduler.noise_pred - noise_pred_uncond)
 
-            if self.config.get("cpu_offload", False):
+            if self.clean_cuda_cache:
+                del x, embed, pre_infer_out, noise_pred_uncond, grid_sizes
+                torch.cuda.empty_cache()
+
+        if self.cpu_offload:
+            if self.offload_granularity == "model" and self.scheduler.step_index == self.scheduler.infer_steps - 1:
+                self.to_cpu()
+            elif self.offload_granularity != "model":
                 self.pre_weight.to_cpu()
                 self.post_weight.to_cpu()
-
-                if self.clean_cuda_cache:
-                    del x, embed, pre_infer_out, noise_pred_uncond, grid_sizes
-                    torch.cuda.empty_cache()
 
 
 class Wan22MoeModel(WanModel):
@@ -248,6 +257,10 @@ class Wan22MoeModel(WanModel):
 
     @torch.no_grad()
     def infer(self, inputs):
+        if self.cpu_offload and self.offload_granularity != "model":
+            self.pre_weight.to_cuda()
+            self.post_weight.to_cuda()
+
         embed, grid_sizes, pre_infer_out = self.pre_infer.infer(self.pre_weight, inputs, positive=True)
         x = self.transformer_infer.infer(self.transformer_weights, grid_sizes, embed, *pre_infer_out)
         noise_pred_cond = self.post_infer.infer(self.post_weight, x, embed, grid_sizes)[0]
@@ -260,3 +273,7 @@ class Wan22MoeModel(WanModel):
             noise_pred_uncond = self.post_infer.infer(self.post_weight, x, embed, grid_sizes)[0]
 
             self.scheduler.noise_pred = noise_pred_uncond + self.scheduler.sample_guide_scale * (self.scheduler.noise_pred - noise_pred_uncond)
+
+        if self.cpu_offload and self.offload_granularity != "model":
+            self.pre_weight.to_cpu()
+            self.post_weight.to_cpu()
