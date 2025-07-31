@@ -98,5 +98,5 @@ class ConsistencyModelScheduler(EulerSchedulerTimestepFix):
         sigma = unsqueeze_to_ndim(self.sigmas[self.step_index], sample.ndim).to(sample.device, sample.dtype)
         sigma_next = unsqueeze_to_ndim(self.sigmas[self.step_index + 1], sample.ndim).to(sample.device, sample.dtype)
         x0 = sample - model_output * sigma
-        x_t_next = x0 * (1 - sigma_next) + sigma_next * torch.randn_like(x0)
+        x_t_next = x0 * (1 - sigma_next) + sigma_next * torch.randn(x0.shape, dtype=x0.dtype, device=x0.device, generator=self.generator)
         self.latents = x_t_next
