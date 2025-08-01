@@ -27,11 +27,28 @@
 
 #### 1. 拉取镜像
 
-访问 LightX2V 的 [Docker Hub](https://hub.docker.com/r/lightx2v/lightx2v/tags)，选择一个最新日期的 tag，比如 `25061301`：
+访问 LightX2V 的 [Docker Hub](https://hub.docker.com/r/lightx2v/lightx2v/tags)，选择一个最新日期的 tag，比如 `25080104`：
 
 ```bash
 # 拉取最新版本的 LightX2V 镜像
-docker pull lightx2v/lightx2v:25061301
+docker pull lightx2v/lightx2v:25080104
+```
+
+如果需要使用`SageAttention`，可以使用带`-SageSmXX`后缀的镜像版本，`SageAttention`的使用需要针对GPU类型进行选择，其中：
+
+1. A100: -SageSm80
+2. RTX30系列: -SageSm86
+3. RTX40系列: -SageSm89
+4. H100: -SageSm90
+5. RTX50系列: -SageSm120
+
+比如要在4090或者H100上使用`SageAttention`，则拉取镜像命令为：
+
+```bash
+# 对于4090
+docker pull lightx2v/lightx2v:25080104-SageSm89
+# 对于H100
+docker pull lightx2v/lightx2v:25080104-SageSm90
 ```
 
 #### 2. 运行容器

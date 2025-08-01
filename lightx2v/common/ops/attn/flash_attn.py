@@ -71,5 +71,5 @@ class FlashAttn3Weight(AttnWeightTemplate):
             cu_seqlens_kv,
             max_seqlen_q,
             max_seqlen_kv,
-        )[0].reshape(max_seqlen_q, -1)
+        ).reshape(max_seqlen_q, -1)
         return x
