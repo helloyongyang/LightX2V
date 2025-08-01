@@ -187,10 +187,10 @@ class WanModel:
         self.pre_infer = self.pre_infer_class(self.config)
         self.post_infer = self.post_infer_class(self.config)
         self.transformer_infer = self.transformer_infer_class(self.config)
-        if self.config.parallel and self.config.parallel.get("cfg_p_size", False) and self.config.parallel.cfg_p_size > 1:
-            self.infer = self.infer_with_cfg_parallel
+        if self.config["enable_cfg"] and self.config.parallel and self.config.parallel.get("cfg_p_size", False) and self.config.parallel.cfg_p_size > 1:
+            self.infer_func = self.infer_with_cfg_parallel
         else:
-            self.infer = self.infer_wo_cfg_parallel
+            self.infer_func = self.infer_wo_cfg_parallel
 
     def set_scheduler(self, scheduler):
         self.scheduler = scheduler
@@ -207,6 +207,10 @@ class WanModel:
         self.pre_weight.to_cuda()
         self.post_weight.to_cuda()
         self.transformer_weights.to_cuda()
+
+    @torch.no_grad()
+    def infer(self, inputs):
+        return self.infer_func(inputs)
 
     @torch.no_grad()
     def infer_wo_cfg_parallel(self, inputs):
