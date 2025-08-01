@@ -59,10 +59,20 @@ docker run --gpus all -itd --ipc=host --name [container_name] -v [mount_settings
 
 #### 3. Domestic Mirror Source (Optional)
 
-For users in mainland China, if the network is unstable when pulling images, you can pull from [Duduniao](https://docker.aityp.com/r/docker.io/lightx2v/lightx2v):
+For users in mainland China, if the network is unstable when pulling images, you can pull from Aliyun:
 
 ```bash
-docker pull swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/lightx2v/lightx2v:25061301
+# Replace [tag] with the desired image tag to download
+docker pull registry.cn-hangzhou.aliyuncs.com/yongyang/lightx2v:[tag]
+
+# For example, download 25080104
+docker pull registry.cn-hangzhou.aliyuncs.com/yongyang/lightx2v:25080104
+
+# For example, download 25080104-SageSm89
+docker pull registry.cn-hangzhou.aliyuncs.com/yongyang/lightx2v:25080104-SageSm89
+
+# For example, download 25080104-SageSm90
+docker pull registry.cn-hangzhou.aliyuncs.com/yongyang/lightx2v:25080104-SageSm90
 ```
 
 ### 🐍 Conda Environment Setup

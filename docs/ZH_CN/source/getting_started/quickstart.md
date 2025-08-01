@@ -59,10 +59,20 @@ docker run --gpus all -itd --ipc=host --name [容器名] -v [挂载设置] --ent
 
 #### 3. 国内镜像源（可选）
 
-对于中国大陆地区，如果拉取镜像时网络不稳定，可以从[渡渡鸟](https://docker.aityp.com/r/docker.io/lightx2v/lightx2v)上拉取：
+对于中国大陆地区，如果拉取镜像时网络不稳定，可以从阿里云上拉取：
 
 ```bash
-docker pull swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/lightx2v/lightx2v:25061301
+# 修改[tag]为所需下载的镜像tag
+docker pull registry.cn-hangzhou.aliyuncs.com/yongyang/lightx2v:[tag]
+
+# 比如下载 25080104
+docker pull registry.cn-hangzhou.aliyuncs.com/yongyang/lightx2v:25080104
+
+# 比如下载 25080104-SageSm89
+docker pull registry.cn-hangzhou.aliyuncs.com/yongyang/lightx2v:25080104-SageSm89
+
+# 比如下载 25080104-SageSm90
+docker pull registry.cn-hangzhou.aliyuncs.com/yongyang/lightx2v:25080104-SageSm90
 ```
 
 ### 🐍 Conda 环境搭建
