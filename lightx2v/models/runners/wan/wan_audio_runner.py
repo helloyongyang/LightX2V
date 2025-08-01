@@ -2,32 +2,27 @@ import os
 import gc
 import numpy as np
 import torch
-import torchvision.transforms.functional as TF
+import subprocess
+import torchaudio as ta
+
 from PIL import Image
 from contextlib import contextmanager
-from typing import Optional, Tuple, Union, List, Dict, Any
+from typing import Optional, Tuple, List, Dict, Any
 from dataclasses import dataclass
+from loguru import logger
+from einops import rearrange
+from transformers import AutoFeatureExtractor
+from torchvision.transforms import InterpolationMode
+from torchvision.transforms.functional import resize
 
 from lightx2v.utils.registry_factory import RUNNER_REGISTER
-from lightx2v.models.runners.wan.wan_runner import WanRunner
+from lightx2v.models.runners.wan.wan_runner import WanRunner, MultiModelStruct
 from lightx2v.utils.profiler import ProfilingContext4Debug, ProfilingContext
 from lightx2v.models.networks.wan.audio_model import WanAudioModel, Wan22MoeAudioModel
 from lightx2v.models.networks.wan.lora_adapter import WanLoraWrapper
 from lightx2v.models.networks.wan.audio_adapter import AudioAdapter, AudioAdapterPipe, rank0_load_state_dict_from_path
 from lightx2v.utils.utils import save_to_video, vae_to_comfyui_image
 from lightx2v.models.schedulers.wan.audio.scheduler import ConsistencyModelScheduler
-from .wan_runner import MultiModelStruct
-
-from loguru import logger
-from einops import rearrange
-import torchaudio as ta
-from transformers import AutoFeatureExtractor
-
-from torchvision.transforms import InterpolationMode
-from torchvision.transforms.functional import resize
-
-import subprocess
-import warnings
 
 
 @contextmanager
@@ -424,9 +419,13 @@ class WanAudioRunner(WanRunner):  # type:ignore
         audio_adapter = rank0_load_state_dict_from_path(audio_adapter, audio_adapter_path, strict=False)
 
         # Audio encoder
-        device = torch.device("cuda")
+        cpu_offload = self.config.get("cpu_offload", False)
+        if cpu_offload:
+            device = torch.device("cpu")
+        else:
+            device = torch.device("cuda")
         audio_encoder_repo = self.config["model_path"] + "/audio_encoder"
-        self._audio_adapter_pipe = AudioAdapterPipe(audio_adapter, audio_encoder_repo=audio_encoder_repo, dtype=torch.bfloat16, device=device, generator=torch.Generator(device), weight=1.0)
+        self._audio_adapter_pipe = AudioAdapterPipe(audio_adapter, audio_encoder_repo=audio_encoder_repo, dtype=torch.bfloat16, device=device, weight=1.0, cpu_offload=cpu_offload)
 
         return self._audio_adapter_pipe
 
@@ -622,7 +621,7 @@ class WanAudioRunner(WanRunner):  # type:ignore
 
         ref_img = Image.open(config.image_path)
         ref_img = (np.array(ref_img).astype(np.float32) - 127.5) / 127.5
-        ref_img = torch.from_numpy(ref_img).to(vae_model.device)
+        ref_img = torch.from_numpy(ref_img).cuda()
         ref_img = rearrange(ref_img, "H W C -> 1 C H W")
         ref_img = ref_img[:, :3]
 
