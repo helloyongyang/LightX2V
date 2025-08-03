@@ -367,7 +367,7 @@ class WanTransformerInfer(BaseTransformerInfer):
             del freqs_i, norm1_out, norm1_weight, norm1_bias
             torch.cuda.empty_cache()
 
-        if self.config.parallel and self.config.parallel.get("seq_p_size", False) and self.config.parallel.seq_p_size > 1:
+        if self.config["seq_parallel"]:
             attn_out = weights.self_attn_1_parallel.apply(
                 q=q,
                 k=k,

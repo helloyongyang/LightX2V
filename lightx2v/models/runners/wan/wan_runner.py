@@ -176,16 +176,30 @@ class WanRunner(DefaultRunner):
     def run_text_encoder(self, text, img):
         if self.config.get("lazy_load", False) or self.config.get("unload_modules", False):
             self.text_encoders = self.load_text_encoder()
-        text_encoder_output = {}
         n_prompt = self.config.get("negative_prompt", "")
-        context = self.text_encoders[0].infer([text])
-        context_null = self.text_encoders[0].infer([n_prompt if n_prompt else ""])
+
+        if self.config["cfg_parallel"]:
+            cfg_p_group = self.config["device_mesh"].get_group(mesh_dim="cfg_p")
+            cfg_p_rank = dist.get_rank(cfg_p_group)
+            if cfg_p_rank == 0:
+                context = self.text_encoders[0].infer([text])
+                text_encoder_output = {"context": context}
+            else:
+                context_null = self.text_encoders[0].infer([n_prompt])
+                text_encoder_output = {"context_null": context_null}
+        else:
+            context = self.text_encoders[0].infer([text])
+            context_null = self.text_encoders[0].infer([n_prompt])
+            text_encoder_output = {
+                "context": context,
+                "context_null": context_null,
+            }
+
         if self.config.get("lazy_load", False) or self.config.get("unload_modules", False):
             del self.text_encoders[0]
             torch.cuda.empty_cache()
             gc.collect()
-        text_encoder_output["context"] = context
-        text_encoder_output["context_null"] = context_null
+
         return text_encoder_output
 
     def run_image_encoder(self, img):

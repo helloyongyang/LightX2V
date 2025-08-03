@@ -191,7 +191,7 @@ class WanSelfAttention(WeightModule):
         else:
             self.add_module("self_attn_1", ATTN_WEIGHT_REGISTER[self.config["self_attn_1_type"]]())
 
-        if self.config.parallel and self.config.parallel.get("seq_p_size", False) and self.config.parallel.seq_p_size > 1:
+        if self.config["seq_parallel"]:
             self.add_module("self_attn_1_parallel", ATTN_WEIGHT_REGISTER[self.config.parallel.get("seq_p_attn_type", "ulysses")]())
 
         if self.quant_method in ["advanced_ptq"]:
