@@ -27,8 +27,8 @@ def init_runner(config):
 
     if CHECK_ENABLE_GRAPH_MODE():
         default_runner = RUNNER_REGISTER[config.model_cls](config)
+        default_runner.init_modules()
         runner = GraphRunner(default_runner)
-        runner.runner.init_modules()
     else:
         runner = RUNNER_REGISTER[config.model_cls](config)
         runner.init_modules()

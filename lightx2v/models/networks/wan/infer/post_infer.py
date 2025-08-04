@@ -12,6 +12,7 @@ class WanPostInfer:
     def set_scheduler(self, scheduler):
         self.scheduler = scheduler
 
+    @torch.compile(disable=not CHECK_ENABLE_GRAPH_MODE())
     def infer(self, weights, x, e, grid_sizes):
         if e.dim() == 2:
             modulation = weights.head_modulation.tensor  # 1, 2, dim

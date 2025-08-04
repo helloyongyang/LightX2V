@@ -107,8 +107,9 @@ class DefaultRunner(BaseRunner):
     def set_progress_callback(self, callback):
         self.progress_callback = callback
 
-    def run(self):
-        total_steps = self.model.scheduler.infer_steps
+    def run(self, total_steps=None):
+        if total_steps is None:
+            total_steps = self.model.scheduler.infer_steps
         for step_index in range(total_steps):
             logger.info(f"==> step_index: {step_index + 1} / {total_steps}")
 
@@ -126,13 +127,10 @@ class DefaultRunner(BaseRunner):
 
         return self.model.scheduler.latents, self.model.scheduler.generator
 
-    def run_step(self, step_index=0):
-        self.init_scheduler()
+    def run_step(self):
         self.inputs = self.run_input_encoder()
-        self.model.scheduler.prepare(self.inputs["image_encoder_output"])
-        self.model.scheduler.step_pre(step_index=step_index)
-        self.model.infer(self.inputs)
-        self.model.scheduler.step_post()
+        self.set_target_shape()
+        self.run_dit(total_steps=1)
 
     def end_run(self):
         self.model.scheduler.clear()
@@ -171,14 +169,14 @@ class DefaultRunner(BaseRunner):
         }
 
     @ProfilingContext("Run DiT")
-    def _run_dit_local(self):
+    def _run_dit_local(self, total_steps=None):
         if self.config.get("lazy_load", False) or self.config.get("unload_modules", False):
             self.model = self.load_transformer()
         self.init_scheduler()
         self.model.scheduler.prepare(self.inputs["image_encoder_output"])
         if self.config.get("model_cls") == "wan2.2" and self.config["task"] == "i2v":
             self.inputs["image_encoder_output"]["vae_encoder_out"] = None
-        latents, generator = self.run()
+        latents, generator = self.run(total_steps)
         self.end_run()
         return latents, generator
 

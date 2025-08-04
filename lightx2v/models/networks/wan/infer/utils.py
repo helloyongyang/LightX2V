@@ -6,7 +6,7 @@ from lightx2v.utils.envs import *
 
 def compute_freqs(c, grid_sizes, freqs):
     freqs = freqs.split([c - 2 * (c // 3), c // 3, c // 3], dim=1)
-    f, h, w = grid_sizes[0].tolist()
+    f, h, w = grid_sizes[0]
     seq_len = f * h * w
     freqs_i = torch.cat(
         [
@@ -22,7 +22,7 @@ def compute_freqs(c, grid_sizes, freqs):
 
 def compute_freqs_audio(c, grid_sizes, freqs):
     freqs = freqs.split([c - 2 * (c // 3), c // 3, c // 3], dim=1)
-    f, h, w = grid_sizes[0].tolist()
+    f, h, w = grid_sizes[0]
     f = f + 1  ##for r2v add 1 channel
     seq_len = f * h * w
     freqs_i = torch.cat(
@@ -39,7 +39,7 @@ def compute_freqs_audio(c, grid_sizes, freqs):
 
 def compute_freqs_causvid(c, grid_sizes, freqs, start_frame=0):
     freqs = freqs.split([c - 2 * (c // 3), c // 3, c // 3], dim=1)
-    f, h, w = grid_sizes[0].tolist()
+    f, h, w = grid_sizes[0]
     seq_len = f * h * w
     freqs_i = torch.cat(
         [
