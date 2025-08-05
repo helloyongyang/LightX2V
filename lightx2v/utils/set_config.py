@@ -61,8 +61,6 @@ def set_config(args):
             logger.warning(f"`num_frames - 1` has to be divisible by {config.vae_stride[0]}. Rounding to the nearest number.")
             config.target_video_length = config.target_video_length // config.vae_stride[0] * config.vae_stride[0] + 1
 
-    set_parallel_config(config)  # parallel config
-
     return config
 
 
@@ -83,9 +81,3 @@ def set_parallel_config(config):
 
         if config.get("enable_cfg", False) and config.parallel and config.parallel.get("cfg_p_size", False) and config.parallel.cfg_p_size > 1:
             config["cfg_parallel"] = True
-
-
-def print_config(config):
-    config_to_print = config.copy()
-    config_to_print.pop("device_mesh", None)  # Remove device_mesh if it exists
-    logger.info(f"config:\n{json.dumps(config_to_print, ensure_ascii=False, indent=4)}")

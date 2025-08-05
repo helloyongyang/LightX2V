@@ -3,6 +3,7 @@ import time
 from functools import wraps
 
 import torch
+import torch.distributed as dist
 from loguru import logger
 
 from lightx2v.utils.envs import *
@@ -12,9 +13,10 @@ class _ProfilingContext:
     def __init__(self, name):
         self.name = name
         self.rank_info = ""
-        if torch.distributed.is_available() and torch.distributed.is_initialized():
-            rank = torch.distributed.get_rank()
-            self.rank_info = f"Rank {rank} - "
+        if dist.is_initialized():
+            self.rank_info = f"Rank {dist.get_rank()}"
+        else:
+            self.rank_info = "Single GPU"
 
     def __enter__(self):
         torch.cuda.synchronize()
@@ -27,11 +29,11 @@ class _ProfilingContext:
         torch.cuda.synchronize()
         if torch.cuda.is_available():
             peak_memory = torch.cuda.max_memory_allocated() / (1024**3)  # 转换为GB
-            logger.info(f"{self.rank_info}Function '{self.name}' Peak Memory: {peak_memory:.2f} GB")
+            logger.info(f"[Profile] {self.rank_info} - {self.name} Peak Memory: {peak_memory:.2f} GB")
         else:
-            logger.info(f"{self.rank_info}Function '{self.name}' executed without GPU.")
+            logger.info(f"[Profile] {self.rank_info} - {self.name} executed without GPU.")
         elapsed = time.perf_counter() - self.start_time
-        logger.info(f"[Profile] {self.name} cost {elapsed:.6f} seconds")
+        logger.info(f"[Profile] {self.rank_info} - {self.name} cost {elapsed:.6f} seconds")
         return False
 
     async def __aenter__(self):
@@ -45,11 +47,11 @@ class _ProfilingContext:
         torch.cuda.synchronize()
         if torch.cuda.is_available():
             peak_memory = torch.cuda.max_memory_allocated() / (1024**3)  # 转换为GB
-            logger.info(f"{self.rank_info}Function '{self.name}' Peak Memory: {peak_memory:.2f} GB")
+            logger.info(f"[Profile] {self.rank_info} - {self.name} Peak Memory: {peak_memory:.2f} GB")
         else:
-            logger.info(f"{self.rank_info}Function '{self.name}' executed without GPU.")
+            logger.info(f"[Profile] {self.rank_info} - {self.name} executed without GPU.")
         elapsed = time.perf_counter() - self.start_time
-        logger.info(f"[Profile] {self.name} cost {elapsed:.6f} seconds")
+        logger.info(f"[Profile] {self.rank_info} - {self.name} cost {elapsed:.6f} seconds")
         return False
 
     def __call__(self, func):

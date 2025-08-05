@@ -43,9 +43,6 @@ class DefaultRunner(BaseRunner):
             self.run_input_encoder = self._run_input_encoder_local_t2v
 
     def set_init_device(self):
-        if self.config.parallel:
-            cur_rank = dist.get_rank()
-            torch.cuda.set_device(cur_rank)
         if self.config.cpu_offload:
             self.init_device = torch.device("cpu")
         else:

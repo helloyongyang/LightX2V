@@ -15,7 +15,7 @@ from lightx2v.models.runners.wan.wan_skyreels_v2_df_runner import WanSkyreelsV2D
 from lightx2v.utils.envs import *
 from lightx2v.utils.profiler import ProfilingContext
 from lightx2v.utils.registry_factory import RUNNER_REGISTER
-from lightx2v.utils.set_config import print_config, set_config
+from lightx2v.utils.set_config import set_config, set_parallel_config
 from lightx2v.utils.utils import seed_all
 
 
@@ -58,11 +58,17 @@ def main():
 
     logger.info(f"args: {args}")
 
-    with ProfilingContext("Total Cost"):
-        config = set_config(args)
-        print_config(config)
-        runner = init_runner(config)
+    # set config
+    config = set_config(args)
+    logger.info(f"config:\n{json.dumps(config, ensure_ascii=False, indent=4)}")
 
+    if "parallel" in config:
+        dist.init_process_group(backend="nccl")
+        torch.cuda.set_device(dist.get_rank())
+        set_parallel_config(config)
+
+    with ProfilingContext("Total Cost"):
+        runner = init_runner(config)
         runner.run_pipeline()
 
     # Clean up distributed process group
