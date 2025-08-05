@@ -22,6 +22,8 @@ def get_default_config():
         "mm_config": {},
         "use_prompt_enhancer": False,
         "parallel": False,
+        "seq_parallel": False,
+        "cfg_parallel": False,
         "enable_cfg": False,
     }
     return default_config
@@ -65,8 +67,6 @@ def set_config(args):
 
 
 def set_parallel_config(config):
-    config["seq_parallel"] = False
-    config["cfg_parallel"] = False
     if config.parallel:
         if not dist.is_initialized():
             dist.init_process_group(backend="nccl")

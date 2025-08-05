@@ -63,7 +63,7 @@ def main():
     config = set_config(args)
     logger.info(f"config:\n{json.dumps(config, ensure_ascii=False, indent=4)}")
 
-    if "parallel" in config:
+    if config.parallel:
         dist.init_process_group(backend="nccl")
         torch.cuda.set_device(dist.get_rank())
         set_parallel_config(config)
