@@ -3,16 +3,21 @@ import math
 import torch
 
 from lightx2v.models.networks.wan.infer.post_infer import WanPostInfer
+from lightx2v.utils.envs import *
 
 
 class WanAudioPostInfer(WanPostInfer):
     def __init__(self, config):
         self.out_dim = config["out_dim"]
         self.patch_size = (1, 2, 2)
+        self.clean_cuda_cache = config.get("clean_cuda_cache", False)
+        self.infer_dtype = GET_DTYPE()
+        self.sensitive_layer_dtype = GET_SENSITIVE_DTYPE()
 
     def set_scheduler(self, scheduler):
         self.scheduler = scheduler
 
+    @torch.compile(disable=not CHECK_ENABLE_GRAPH_MODE())
     def infer(self, weights, x, e, grid_sizes, valid_patch_length):
         if e.dim() == 2:
             modulation = weights.head_modulation.tensor  # 1, 2, dim
@@ -22,13 +27,23 @@ class WanAudioPostInfer(WanPostInfer):
             e = (modulation + e.unsqueeze(1)).chunk(2, dim=1)
             e = [ei.squeeze(1) for ei in e]
 
-        norm_out = torch.nn.functional.layer_norm(x, (x.shape[1],), None, None, 1e-6).type_as(x)
-        out = norm_out * (1 + e[1].squeeze(0)) + e[0].squeeze(0)
-        x = weights.head.apply(out)
+        x = weights.norm.apply(x)
+
+        if self.sensitive_layer_dtype != self.infer_dtype:
+            x = x.to(self.sensitive_layer_dtype)
+        x.mul_(1 + e[1].squeeze()).add_(e[0].squeeze())
+        if self.sensitive_layer_dtype != self.infer_dtype:
+            x = x.to(self.infer_dtype)
+
+        x = weights.head.apply(x)
 
         x = x[:, :valid_patch_length]
-
         x = self.unpatchify(x, grid_sizes)
+
+        if self.clean_cuda_cache:
+            del e, grid_sizes
+            torch.cuda.empty_cache()
+
         return [u.float() for u in x]
 
     def unpatchify(self, x, grid_sizes):
