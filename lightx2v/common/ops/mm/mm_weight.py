@@ -37,6 +37,11 @@ try:
 except ImportError:
     gguf = None
 
+try:
+    import marlin_cuda_quant
+except ModuleNotFoundError:
+    marlin_cuda_quant = None
+
 
 class MMWeightTemplate(metaclass=ABCMeta):
     def __init__(self, weight_name, bias_name, lazy_load=False, lazy_load_file=None):
@@ -682,6 +687,38 @@ class MMWeightGGUFTemplate(MMWeightQuantTemplate):
 class MMWeightGGUFQ4K(MMWeightGGUFTemplate):
     def __init__(self, weight_name, bias_name, lazy_load=False, lazy_load_file=None):
         super().__init__(weight_name, bias_name, lazy_load, lazy_load_file)
+
+
+@MM_WEIGHT_REGISTER("W-int4-group128-sym-Marlin")
+class MMWeightWint4group128Marlin(MMWeightQuantTemplate):
+    """
+    Name: "W-int4-group128-sym-Marlin
+
+    Quant int4 x FP16:
+        Weight: int4 pergroup sym
+        Kernel: Marlin
+    """
+
+    def __init__(self, weight_name, bias_name, lazy_load=False, lazy_load_file=None):
+        super().__init__(weight_name, bias_name, lazy_load, lazy_load_file)
+        self.load_func = self.load_quantized
+
+    def load(self, weight_dict):
+        assert not self.lazy_load
+        self.load_func(weight_dict)
+        self.workspace = weight_dict[f"{self.weight_name}_workspace"]
+        if self.bias_name is not None:
+            self.bias = weight_dict[self.bias_name]
+            self.pinned_bias = torch.empty(self.bias.shape, pin_memory=True, dtype=self.bias.dtype)
+        else:
+            self.bias = None
+
+    def apply(self, input_tensor):
+        output_tensor = torch.empty(input_tensor.shape[:-1] + (self.weight_scale.shape[1],), dtype=input_tensor.dtype, device=input_tensor.device)
+        marlin_cuda_quant.mul(input_tensor, self.weight, output_tensor, self.weight_scale.half(), self.workspace, -1, -1, -1, -1)
+        if hasattr(self, "bias") and self.bias is not None:
+            output_tensor.add_(self.bias)
+        return output_tensor
 
 
 if __name__ == "__main__":
