@@ -1,34 +1,13 @@
 #!/bin/bash
 
 # set path and first
-lightx2v_path=/data/video_gen/lightx2v_latest/lightx2v
-model_path=/data/video_gen/x2v_models/Wan2.1-I2V-14B-720P
+lightx2v_path=
+model_path=
 
+export CUDA_VISIBLE_DEVICES=0
 
-# check section
-if [ -z "${CUDA_VISIBLE_DEVICES}" ]; then
-    cuda_devices=0
-    echo "Warn: CUDA_VISIBLE_DEVICES is not set, using default value: ${cuda_devices}, change at shell script or set env variable."
-    export CUDA_VISIBLE_DEVICES=${cuda_devices}
-fi
-
-if [ -z "${lightx2v_path}" ]; then
-    echo "Error: lightx2v_path is not set. Please set this variable first."
-    exit 1
-fi
-
-if [ -z "${model_path}" ]; then
-    echo "Error: model_path is not set. Please set this variable first."
-    exit 1
-fi
-
-export TOKENIZERS_PARALLELISM=false
-export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-export PYTHONPATH=${lightx2v_path}:$PYTHONPATH
-
-export ENABLE_PROFILING_DEBUG=true
-export ENABLE_GRAPH_MODE=true
-export DTYPE=BF16  # remove this can get high quality video
+# set environment variables
+source ${lightx2v_path}/scripts/base/base.sh
 
 python -m lightx2v.infer \
 --model_cls wan2.1 \

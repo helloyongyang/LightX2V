@@ -43,7 +43,7 @@ def GET_DTYPE():
 
 @lru_cache(maxsize=None)
 def GET_SENSITIVE_DTYPE():
-    RUNNING_FLAG = os.getenv("SENSITIVE_LAYER_DTYPE", None)
-    if RUNNING_FLAG is None:
+    RUNNING_FLAG = os.getenv("SENSITIVE_LAYER_DTYPE", "None")
+    if RUNNING_FLAG == "None":
         return GET_DTYPE()
     return DTYPE_MAP[RUNNING_FLAG]

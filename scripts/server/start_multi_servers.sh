@@ -1,37 +1,13 @@
 #!/bin/bash
 
-# Default values
+# set path and first
 lightx2v_path=
 model_path=
 
-# check section
-if [ -z "${CUDA_VISIBLE_DEVICES}" ]; then
-    cuda_devices=0,1,2,3,4,5,6,7
-    echo "Warn: CUDA_VISIBLE_DEVICES is not set, using default value: ${cuda_devices}, change at shell script or set env variable."
-    export CUDA_VISIBLE_DEVICES=${cuda_devices}
-fi
+export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
 
-if [ -z "${num_gpus}" ]; then
-    num_gpus=8
-fi
-
-# Check required parameters
-if [ -z "${lightx2v_path}" ]; then
-    echo "Error: lightx2v_path is not set. Please set this variable first."
-    exit 1
-fi
-
-if [ -z "${model_path}" ]; then
-    echo "Error: model_path is not set. Please set this variable first."
-    exit 1
-fi
-
-# Set environment variables
-export TOKENIZERS_PARALLELISM=false
-export PYTHONPATH=${lightx2v_path}:$PYTHONPATH
-export ENABLE_PROFILING_DEBUG=true
-export ENABLE_GRAPH_MODE=false
-export DTYPE=BF16
+# set environment variables
+source ${lightx2v_path}/scripts/base/base.sh
 
 # Start multiple servers
 python -m lightx2v.api_multi_servers \
