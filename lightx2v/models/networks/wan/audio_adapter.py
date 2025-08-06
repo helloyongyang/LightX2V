@@ -121,7 +121,7 @@ class PerceiverAttentionCA(nn.Module):
         x = self.norm_kv(x)
         shift, scale, gate = (t_emb + self.shift_scale_gate).chunk(3, dim=1)
         latents = self.norm_q(latents) * (1 + scale) + shift
-        q = self.to_q(latents)
+        q = self.to_q(latents.to(GET_DTYPE()))
         k, v = self.to_kv(x).chunk(2, dim=-1)
         q = rearrange(q, "B L (H C) -> (B L) H C", H=self.heads)
         k = rearrange(k, "B T L (H C) -> (B T L) H C", H=self.heads)
