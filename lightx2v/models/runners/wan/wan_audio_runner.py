@@ -426,7 +426,15 @@ class WanAudioRunner(WanRunner):  # type:ignore
         else:
             device = torch.device("cuda")
         audio_encoder_repo = self.config["model_path"] + "/audio_encoder"
-        self._audio_adapter_pipe = AudioAdapterPipe(audio_adapter, audio_encoder_repo=audio_encoder_repo, dtype=GET_DTYPE(), device=device, weight=1.0, cpu_offload=cpu_offload)
+
+        if self.model.transformer_infer.seq_p_group is not None:
+            seq_p_group = self.model.transformer_infer.seq_p_group
+        else:
+            seq_p_group = None
+
+        self._audio_adapter_pipe = AudioAdapterPipe(
+            audio_adapter, audio_encoder_repo=audio_encoder_repo, dtype=GET_DTYPE(), device=device, weight=1.0, cpu_offload=cpu_offload, seq_p_group=seq_p_group
+        )
 
         return self._audio_adapter_pipe
 

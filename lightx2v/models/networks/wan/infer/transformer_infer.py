@@ -11,7 +11,6 @@ from lightx2v.utils.envs import *
 
 from .utils import apply_rotary_emb, apply_rotary_emb_chunk, compute_freqs, compute_freqs_audio
 
-
 class WanTransformerInfer(BaseTransformerInfer):
     def __init__(self, config):
         self.config = config
@@ -33,6 +32,7 @@ class WanTransformerInfer(BaseTransformerInfer):
         self.infer_dtype = GET_DTYPE()
         self.sensitive_layer_dtype = GET_SENSITIVE_DTYPE()
 
+        self.seq_p_group = None
         if self.config.get("cpu_offload", False):
             if torch.cuda.get_device_capability(0) == (9, 0):
                 assert self.config["self_attn_1_type"] != "sage_attn2"
@@ -359,8 +359,6 @@ class WanTransformerInfer(BaseTransformerInfer):
         v = weights.self_attn_v.apply(norm1_out).view(s, n, d)
 
         freqs_i = self.compute_freqs(q, grid_sizes, freqs)
-
-        freqs_i = self.zero_temporal_component_in_3DRoPE(seq_lens, freqs_i)
 
         q = self.apply_rotary_emb_func(q, freqs_i)
         k = self.apply_rotary_emb_func(k, freqs_i)

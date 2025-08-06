@@ -13,6 +13,8 @@ from lightx2v.models.networks.wan.weights.transformer_weights import (
     WanTransformerWeights,
 )
 
+from loguru import logger
+
 
 class WanAudioModel(WanModel):
     pre_weight_class = WanPreWeights
@@ -62,6 +64,49 @@ class WanAudioModel(WanModel):
             self.scheduler.noise_pred = noise_pred_uncond + self.scheduler.sample_guide_scale * (noise_pred_cond - noise_pred_uncond)
 
             if self.config["cpu_offload"]:
+                self.pre_weight.to_cpu()
+                self.post_weight.to_cpu()
+
+    @torch.no_grad()
+    def infer_wo_cfg_parallel(self, inputs):
+        if self.cpu_offload:
+            if self.offload_granularity == "model" and self.scheduler.step_index == 0:
+                self.to_cuda()
+            elif self.offload_granularity != "model":
+                self.pre_weight.to_cuda()
+                self.post_weight.to_cuda()
+
+        if self.transformer_infer.mask_map is None:
+            _, c, h, w = self.scheduler.latents.shape
+            num_frame = c + 1  # for r2v
+            video_token_num = num_frame * (h // 2) * (w // 2)
+            self.transformer_infer.mask_map = MaskMap(video_token_num, num_frame)
+
+        embed, grid_sizes, pre_infer_out, valid_patch_length = self.pre_infer.infer(self.pre_weight, inputs, positive=True)
+        x = self.transformer_infer.infer(self.transformer_weights, grid_sizes, embed, *pre_infer_out)
+        noise_pred_cond = self.post_infer.infer(self.post_weight, x, embed, grid_sizes, valid_patch_length)[0]
+
+        self.scheduler.noise_pred = noise_pred_cond
+
+        if self.clean_cuda_cache:
+            del x, embed, pre_infer_out, noise_pred_cond, grid_sizes
+            torch.cuda.empty_cache()
+
+        if self.config["enable_cfg"]:
+            embed, grid_sizes, pre_infer_out = self.pre_infer.infer(self.pre_weight, inputs, positive=False)
+            x = self.transformer_infer.infer(self.transformer_weights, grid_sizes, embed, *pre_infer_out)
+            noise_pred_uncond = self.post_infer.infer(self.post_weight, x, embed, grid_sizes)[0]
+
+            self.scheduler.noise_pred = noise_pred_uncond + self.scheduler.sample_guide_scale * (self.scheduler.noise_pred - noise_pred_uncond)
+
+            if self.clean_cuda_cache:
+                del x, embed, pre_infer_out, noise_pred_uncond, grid_sizes
+                torch.cuda.empty_cache()
+
+        if self.cpu_offload:
+            if self.offload_granularity == "model" and self.scheduler.step_index == self.scheduler.infer_steps - 1:
+                self.to_cpu()
+            elif self.offload_granularity != "model":
                 self.pre_weight.to_cpu()
                 self.post_weight.to_cpu()
 
