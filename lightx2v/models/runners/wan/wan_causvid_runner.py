@@ -8,6 +8,7 @@ from lightx2v.models.networks.wan.lora_adapter import WanLoraWrapper
 from lightx2v.models.networks.wan.model import WanModel
 from lightx2v.models.runners.wan.wan_runner import WanRunner
 from lightx2v.models.schedulers.wan.step_distill.scheduler import WanStepDistillScheduler
+from lightx2v.utils.envs import *
 from lightx2v.utils.profiler import ProfilingContext4Debug
 from lightx2v.utils.registry_factory import RUNNER_REGISTER
 
@@ -65,13 +66,13 @@ class WanCausVidRunner(WanRunner):
             )
 
     def run(self):
-        self.model.transformer_infer._init_kv_cache(dtype=torch.bfloat16, device="cuda")
-        self.model.transformer_infer._init_crossattn_cache(dtype=torch.bfloat16, device="cuda")
+        self.model.transformer_infer._init_kv_cache(dtype=GET_DTYPE(), device="cuda")
+        self.model.transformer_infer._init_crossattn_cache(dtype=GET_DTYPE(), device="cuda")
 
         output_latents = torch.zeros(
             (self.model.config.target_shape[0], self.num_frames + (self.num_fragments - 1) * (self.num_frames - self.num_frame_per_block), *self.model.config.target_shape[2:]),
             device="cuda",
-            dtype=torch.bfloat16,
+            dtype=GET_DTYPE(),
         )
 
         start_block_idx = 0

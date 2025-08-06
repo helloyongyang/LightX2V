@@ -78,7 +78,7 @@ class HunyuanModel:
                     for k in f.keys():
                         weight_dict[k] = f.get_tensor(k)
                         if weight_dict[k].dtype == torch.float:
-                            weight_dict[k] = weight_dict[k].to(torch.bfloat16)
+                            weight_dict[k] = weight_dict[k].to(GET_DTYPE())
 
         return weight_dict
 

@@ -17,6 +17,8 @@ class RMSWeightTemplate(metaclass=ABCMeta):
         self.eps = eps
         self.lazy_load = lazy_load
         self.lazy_load_file = lazy_load_file
+        self.infer_dtype = GET_DTYPE()
+        self.sensitive_layer_dtype = GET_SENSITIVE_DTYPE()
         self.config = {}
 
     def load(self, weight_dict):
@@ -64,17 +66,17 @@ class RMSWeight(RMSWeightTemplate):
 
     def load_from_disk(self):
         if not torch._dynamo.is_compiling():
-            self.weight = self.lazy_load_file.get_tensor(self.weight_name).to(torch.bfloat16).pin_memory()
+            self.weight = self.lazy_load_file.get_tensor(self.weight_name).to(GET_DTYPE()).pin_memory()
         else:
-            self.weight = self.lazy_load_file.get_tensor(self.weight_name).to(torch.bfloat16)
+            self.weight = self.lazy_load_file.get_tensor(self.weight_name).to(GET_DTYPE())
 
     def apply(self, input_tensor):
-        if GET_DTYPE() == "BF16":
+        if GET_SENSITIVE_DTYPE() != GET_DTYPE():
             input_tensor = input_tensor * torch.rsqrt(input_tensor.pow(2).mean(-1, keepdim=True) + self.eps)
             input_tensor = input_tensor * self.weight
         else:
             input_tensor = input_tensor * torch.rsqrt(input_tensor.float().pow(2).mean(-1, keepdim=True) + self.eps)
-            input_tensor = (input_tensor * self.weight).to(torch.bfloat16)
+            input_tensor = (input_tensor * self.weight).to(GET_DTYPE())
 
         return input_tensor
 
@@ -97,24 +99,23 @@ class RMSWeightSgl(RMSWeight):
 
     def load_from_disk(self):
         if not torch._dynamo.is_compiling():
-            self.weight = self.lazy_load_file.get_tensor(self.weight_name).to(torch.bfloat16).pin_memory()
+            self.weight = self.lazy_load_file.get_tensor(self.weight_name).to(GET_DTYPE()).pin_memory()
         else:
-            self.weight = self.lazy_load_file.get_tensor(self.weight_name).to(torch.bfloat16)
+            self.weight = self.lazy_load_file.get_tensor(self.weight_name).to(GET_DTYPE())
 
     def apply(self, input_tensor):
-        use_bf16 = GET_DTYPE() == "BF16"
-        if sgl_kernel is not None and use_bf16:
+        if sgl_kernel is not None and self.sensitive_layer_dtype == self.infer_dtype:
             input_tensor = input_tensor.contiguous()
             orig_shape = input_tensor.shape
             input_tensor = input_tensor.view(-1, orig_shape[-1])
             input_tensor = sgl_kernel.rmsnorm(input_tensor, self.weight, self.eps).view(orig_shape)
         else:
-            # sgl_kernel is not available or dtype!=torch.bfloat16, fallback to default implementation
-            if use_bf16:
+            # sgl_kernel is not available or dtype!=torch.bfloat16/float16, fallback to default implementation
+            if self.sensitive_layer_dtype != self.infer_dtype:
+                input_tensor = input_tensor * torch.rsqrt(input_tensor.float().pow(2).mean(-1, keepdim=True) + self.eps).to(self.infer_dtype)
+                input_tensor = (input_tensor * self.weight).to(self.infer_dtype)
+            else:
                 input_tensor = input_tensor * torch.rsqrt(input_tensor.pow(2).mean(-1, keepdim=True) + self.eps)
                 input_tensor = input_tensor * self.weight
-            else:
-                input_tensor = input_tensor * torch.rsqrt(input_tensor.float().pow(2).mean(-1, keepdim=True) + self.eps).type_as(input_tensor)
-                input_tensor = (input_tensor * self.weight).type_as(input_tensor)
 
         return input_tensor

@@ -3,6 +3,8 @@ import math
 import torch
 from einops import rearrange
 
+from lightx2v.utils.envs import *
+
 
 class HunyuanPreInfer:
     def __init__(self, config):
@@ -64,7 +66,7 @@ class HunyuanPreInfer:
     def infer_time_in(self, weights, t):
         freqs = torch.exp(-math.log(10000) * torch.arange(start=0, end=128, dtype=torch.float32) / 128).to(device=t.device)
         args = t.unsqueeze(0).unsqueeze(0).float() * freqs[None]
-        embedding = torch.cat([torch.cos(args), torch.sin(args)], dim=-1).to(dtype=torch.bfloat16)
+        embedding = torch.cat([torch.cos(args), torch.sin(args)], dim=-1).to(dtype=GET_DTYPE())
         out = weights.time_in_mlp_0.apply(embedding)
         out = torch.nn.functional.silu(out)
         out = weights.time_in_mlp_2.apply(out)
@@ -78,12 +80,12 @@ class HunyuanPreInfer:
     def infer_text_in(self, weights, text_states, text_mask, t):
         freqs = torch.exp(-math.log(10000) * torch.arange(start=0, end=128, dtype=torch.float32) / 128).to(device=t.device)
         args = t.unsqueeze(0).unsqueeze(0).float() * freqs[None]
-        embedding = torch.cat([torch.cos(args), torch.sin(args)], dim=-1).to(dtype=torch.bfloat16)
+        embedding = torch.cat([torch.cos(args), torch.sin(args)], dim=-1).to(dtype=GET_DTYPE())
         out = weights.txt_in_t_embedder_mlp_0.apply(embedding)
         out = torch.nn.functional.silu(out)
         timestep_aware_representations = weights.txt_in_t_embedder_mlp_2.apply(out)
 
-        mask_float = text_mask.float().unsqueeze(-1).to(torch.bfloat16)  # [b, s1, 1]
+        mask_float = text_mask.float().unsqueeze(-1).to(GET_DTYPE())  # [b, s1, 1]
         context_aware_representations = (text_states * mask_float).sum(dim=1) / mask_float.sum(dim=1)
         context_aware_representations = context_aware_representations
 
@@ -148,7 +150,7 @@ class HunyuanPreInfer:
     def infer_guidance_in(self, weights, guidance):
         freqs = torch.exp(-math.log(10000) * torch.arange(start=0, end=128, dtype=torch.float32) / 128).to(device=guidance.device)
         args = guidance.float() * freqs[None]
-        embedding = torch.cat([torch.cos(args), torch.sin(args)], dim=-1).to(dtype=torch.bfloat16)
+        embedding = torch.cat([torch.cos(args), torch.sin(args)], dim=-1).to(dtype=GET_DTYPE())
         out = weights.guidance_in_mlp_0.apply(embedding)
         out = torch.nn.functional.silu(out)
         out = weights.guidance_in_mlp_2.apply(out)

@@ -30,6 +30,8 @@ class WanTransformerInfer(BaseTransformerInfer):
             self.apply_rotary_emb_func = apply_rotary_emb
         self.clean_cuda_cache = self.config.get("clean_cuda_cache", False)
         self.mask_map = None
+        self.infer_dtype = GET_DTYPE()
+        self.sensitive_layer_dtype = GET_SENSITIVE_DTYPE()
 
         if self.config.get("cpu_offload", False):
             if torch.cuda.get_device_capability(0) == (9, 0):
@@ -342,13 +344,13 @@ class WanTransformerInfer(BaseTransformerInfer):
 
         norm1_out = weights.norm1.apply(x)
 
-        if GET_DTYPE() != "BF16":
-            norm1_out = norm1_out.float()
+        if self.sensitive_layer_dtype != self.infer_dtype:
+            norm1_out = norm1_out.to(self.sensitive_layer_dtype)
 
         norm1_out.mul_(norm1_weight).add_(norm1_bias)
 
-        if GET_DTYPE() != "BF16":
-            norm1_out = norm1_out.to(torch.bfloat16)
+        if self.sensitive_layer_dtype != self.infer_dtype:
+            norm1_out = norm1_out.to(self.infer_dtype)
 
         s, n, d = *norm1_out.shape[:1], self.num_heads, self.head_dim
 
@@ -402,8 +404,8 @@ class WanTransformerInfer(BaseTransformerInfer):
         return y
 
     def infer_cross_attn(self, weights, x, context, y_out, gate_msa):
-        if GET_DTYPE() != "BF16":
-            x = x.float() + y_out.float() * gate_msa.squeeze()
+        if self.sensitive_layer_dtype != self.infer_dtype:
+            x = x.to(self.sensitive_layer_dtype) + y_out.to(self.sensitive_layer_dtype) * gate_msa.squeeze()
         else:
             x.add_(y_out * gate_msa.squeeze())
 
@@ -414,10 +416,10 @@ class WanTransformerInfer(BaseTransformerInfer):
         else:
             context_img = None
 
-        if GET_DTYPE() != "BF16":
-            context = context.to(torch.bfloat16)
+        if self.sensitive_layer_dtype != self.infer_dtype:
+            context = context.to(self.infer_dtype)
             if self.task == "i2v" and self.config.get("use_image_encoder", True):
-                context_img = context_img.to(torch.bfloat16)
+                context_img = context_img.to(self.infer_dtype)
 
         n, d = self.num_heads, self.head_dim
 
@@ -485,11 +487,11 @@ class WanTransformerInfer(BaseTransformerInfer):
             norm2_bias = c_shift_msa.squeeze()
 
         norm2_out = weights.norm2.apply(x)
-        if GET_DTYPE() != "BF16":
-            norm2_out = norm2_out.float()
+        if self.sensitive_layer_dtype != self.infer_dtype:
+            norm2_out = norm2_out.to(self.sensitive_layer_dtype)
         norm2_out.mul_(norm2_weight).add_(norm2_bias)
-        if GET_DTYPE() != "BF16":
-            norm2_out = norm2_out.to(torch.bfloat16)
+        if self.sensitive_layer_dtype != self.infer_dtype:
+            norm2_out = norm2_out.to(self.infer_dtype)
 
         y = weights.ffn_0.apply(norm2_out)
         if self.clean_cuda_cache:
@@ -503,8 +505,8 @@ class WanTransformerInfer(BaseTransformerInfer):
         return y
 
     def post_process(self, x, y, c_gate_msa):
-        if GET_DTYPE() != "BF16":
-            x = x.float() + y.float() * c_gate_msa.squeeze()
+        if self.sensitive_layer_dtype != self.infer_dtype:
+            x = x.to(self.sensitive_layer_dtype) + y.to(self.sensitive_layer_dtype) * c_gate_msa.squeeze()
         else:
             x.add_(y * c_gate_msa.squeeze())
 

@@ -6,6 +6,7 @@ from diffusers.video_processor import VideoProcessor  # type: ignore
 from safetensors import safe_open  # type: ignore
 
 from lightx2v.models.video_encoders.hf.cogvideox.autoencoder_ks_cogvidex import AutoencoderKLCogVideoX
+from lightx2v.utils.envs import *
 
 
 class CogvideoxVAE:
@@ -15,7 +16,7 @@ class CogvideoxVAE:
 
     def _load_safetensor_to_dict(self, file_path):
         with safe_open(file_path, framework="pt") as f:
-            tensor_dict = {key: f.get_tensor(key).to(torch.bfloat16).cuda() for key in f.keys()}
+            tensor_dict = {key: f.get_tensor(key).to(GET_DTYPE()).cuda() for key in f.keys()}
         return tensor_dict
 
     def _load_ckpt(self, model_path):
@@ -39,7 +40,7 @@ class CogvideoxVAE:
         self.vae_scale_factor_temporal = self.vae_config["temporal_compression_ratio"]  # 4
         self.vae_scaling_factor_image = self.vae_config["scaling_factor"]  # 0.7
         self.model.load_state_dict(vae_ckpt)
-        self.model.to(torch.bfloat16).to(torch.device("cuda"))
+        self.model.to(GET_DTYPE()).to(torch.device("cuda"))
         self.video_processor = VideoProcessor(vae_scale_factor=self.vae_scale_factor_spatial)
 
     @torch.no_grad()

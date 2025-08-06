@@ -1,10 +1,8 @@
 import gc
 import math
-import warnings
 
 import numpy as np
 import torch
-from torch import Tensor
 
 from lightx2v.models.schedulers.scheduler import BaseScheduler
 from lightx2v.utils.envs import *
@@ -34,8 +32,8 @@ class EulerSchedulerTimestepFix(BaseScheduler):
 
     def step_pre(self, step_index):
         self.step_index = step_index
-        if GET_DTYPE() == "BF16":
-            self.latents = self.latents.to(dtype=torch.bfloat16)
+        if GET_DTYPE() == GET_SENSITIVE_DTYPE():
+            self.latents = self.latents.to(GET_DTYPE())
 
     def prepare(self, image_encoder_output=None):
         self.prepare_latents(self.config.target_shape, dtype=torch.float32)

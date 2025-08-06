@@ -12,6 +12,7 @@ from lightx2v.models.networks.cogvideox.infer.transformer_infer import Cogvideox
 from lightx2v.models.networks.cogvideox.weights.post_weights import CogvideoxPostWeights
 from lightx2v.models.networks.cogvideox.weights.pre_weights import CogvideoxPreWeights
 from lightx2v.models.networks.cogvideox.weights.transformers_weights import CogvideoxTransformerWeights
+from lightx2v.utils.envs import *
 
 
 class CogvideoxModel:
@@ -33,7 +34,7 @@ class CogvideoxModel:
 
     def _load_safetensor_to_dict(self, file_path):
         with safe_open(file_path, framework="pt") as f:
-            tensor_dict = {key: f.get_tensor(key).to(torch.bfloat16).cuda() for key in f.keys()}
+            tensor_dict = {key: f.get_tensor(key).to(GET_DTYPE()).cuda() for key in f.keys()}
         return tensor_dict
 
     def _load_ckpt(self):

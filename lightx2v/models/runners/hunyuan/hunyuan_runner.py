@@ -12,6 +12,7 @@ from lightx2v.models.runners.default_runner import DefaultRunner
 from lightx2v.models.schedulers.hunyuan.feature_caching.scheduler import HunyuanSchedulerAdaCaching, HunyuanSchedulerCustomCaching, HunyuanSchedulerTaylorCaching, HunyuanSchedulerTeaCaching
 from lightx2v.models.schedulers.hunyuan.scheduler import HunyuanScheduler
 from lightx2v.models.video_encoders.hf.autoencoder_kl_causal_3d.model import VideoEncoderKLCausal3DModel
+from lightx2v.utils.envs import *
 from lightx2v.utils.registry_factory import RUNNER_REGISTER
 from lightx2v.utils.utils import save_videos_grid
 
@@ -62,7 +63,7 @@ class HunyuanRunner(DefaultRunner):
                 text_state, attention_mask = encoder.infer(text, img, self.config)
             else:
                 text_state, attention_mask = encoder.infer(text, self.config)
-            text_encoder_output[f"text_encoder_{i + 1}_text_states"] = text_state.to(dtype=torch.bfloat16)
+            text_encoder_output[f"text_encoder_{i + 1}_text_states"] = text_state.to(dtype=GET_DTYPE())
             text_encoder_output[f"text_encoder_{i + 1}_attention_mask"] = attention_mask
         return text_encoder_output
 

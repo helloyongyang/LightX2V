@@ -13,6 +13,8 @@ from diffusers.models.embeddings import TimestepEmbedding, Timesteps
 from einops import rearrange
 from transformers import AutoModel
 
+from lightx2v.utils.envs import *
+
 
 def load_safetensors(in_path: str):
     if os.path.isdir(in_path):
@@ -57,7 +59,7 @@ def rank0_load_state_dict_from_path(model, in_path: str, strict: bool = True):
         model.load_state_dict(state_dict, strict=strict)
     if dist.is_initialized():
         dist.barrier()
-    return model.to(dtype=torch.bfloat16, device="cuda")
+    return model.to(dtype=GET_DTYPE(), device="cuda")
 
 
 def linear_interpolation(features, output_len: int):

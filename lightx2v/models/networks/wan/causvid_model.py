@@ -31,23 +31,25 @@ class WanCausVidModel(WanModel):
         self.post_infer_class = WanPostInfer
         self.transformer_infer_class = WanTransformerInferCausVid
 
-    def _load_ckpt(self, use_bf16, skip_bf16):
+    def _load_ckpt(self, unified_dtype, sensitive_layer):
         ckpt_folder = "causvid_models"
         safetensors_path = os.path.join(self.model_path, f"{ckpt_folder}/causal_model.safetensors")
         if os.path.exists(safetensors_path):
             with safe_open(safetensors_path, framework="pt") as f:
-                weight_dict = {key: (f.get_tensor(key).to(torch.bfloat16) if use_bf16 or all(s not in key for s in skip_bf16) else f.get_tensor(key)).pin_memory().to(self.device) for key in f.keys()}
+                weight_dict = {
+                    key: (f.get_tensor(key).to(GET_DTYPE()) if unified_dtype or all(s not in key for s in sensitive_layer) else f.get_tensor(key)).pin_memory().to(self.device) for key in f.keys()
+                }
                 return weight_dict
 
         ckpt_path = os.path.join(self.model_path, f"{ckpt_folder}/causal_model.pt")
         if os.path.exists(ckpt_path):
             weight_dict = torch.load(ckpt_path, map_location="cpu", weights_only=True)
             weight_dict = {
-                key: (weight_dict[key].to(torch.bfloat16) if use_bf16 or all(s not in key for s in skip_bf16) else weight_dict[key]).pin_memory().to(self.device) for key in weight_dict.keys()
+                key: (weight_dict[key].to(GET_DTYPE()) if unified_dtype or all(s not in key for s in sensitive_layer) else weight_dict[key]).pin_memory().to(self.device) for key in weight_dict.keys()
             }
             return weight_dict
 
-        return super()._load_ckpt(use_bf16, skip_bf16)
+        return super()._load_ckpt(unified_dtype, sensitive_layer)
 
     @torch.no_grad()
     def infer(self, inputs, kv_start, kv_end):

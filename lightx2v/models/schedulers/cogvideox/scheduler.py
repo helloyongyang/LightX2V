@@ -269,5 +269,3 @@ class CogvideoxXDPMScheduler(BaseScheduler):
             x_advanced = mult[0] * self.latents - mult[1] * denoised_d + mult_noise * noise
             self.latents = x_advanced
             self.old_pred_original_sample = pred_original_sample
-
-        self.latents = self.latents.to(torch.bfloat16)
