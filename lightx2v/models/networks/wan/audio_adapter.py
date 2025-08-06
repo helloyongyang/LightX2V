@@ -7,14 +7,12 @@ import os
 
 import safetensors
 import torch
+import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
 from diffusers.models.embeddings import TimestepEmbedding, Timesteps
 from einops import rearrange
 from transformers import AutoModel
-import torch.distributed as dist
-
-from loguru import logger
 
 from lightx2v.utils.envs import *
 

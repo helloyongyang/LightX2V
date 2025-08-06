@@ -113,7 +113,7 @@ class DefaultRunner(BaseRunner):
             with ProfilingContext4Debug("step_pre"):
                 self.model.scheduler.step_pre(step_index=step_index)
 
-            with ProfilingContext4Debug("infer"):
+            with ProfilingContext4Debug("infer_main"):
                 self.model.infer(self.inputs)
 
             with ProfilingContext4Debug("step_post"):
@@ -239,6 +239,7 @@ class DefaultRunner(BaseRunner):
                     save_to_video(images, self.config.save_video_path, fps=fps, method="ffmpeg")  # type: ignore
                 else:
                     cache_video(tensor=images, save_file=self.config.save_video_path, fps=fps, nrow=1, normalize=True, value_range=(-1, 1))
+                logger.info(f"Video saved successfully.")
 
         del latents, generator
         torch.cuda.empty_cache()
