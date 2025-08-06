@@ -1,5 +1,6 @@
-import os
 import json
+import os
+
 import torch
 import torch.distributed as dist
 from loguru import logger
@@ -103,7 +104,10 @@ class WanModel:
 
     def _load_safetensor_to_dict(self, file_path, unified_dtype, sensitive_layer):
         with safe_open(file_path, framework="pt") as f:
-            return {key: (f.get_tensor(key).to(GET_DTYPE()) if unified_dtype or all(s not in key for s in sensitive_layer) else f.get_tensor(key).to(GET_SENSITIVE_DTYPE())).pin_memory().to(self.device) for key in f.keys()}
+            return {
+                key: (f.get_tensor(key).to(GET_DTYPE()) if unified_dtype or all(s not in key for s in sensitive_layer) else f.get_tensor(key).to(GET_SENSITIVE_DTYPE())).pin_memory().to(self.device)
+                for key in f.keys()
+            }
 
     def _load_ckpt(self, unified_dtype, sensitive_layer):
         safetensors_path = find_hf_model_path(self.config, self.model_path, "dit_original_ckpt", subdir="original")

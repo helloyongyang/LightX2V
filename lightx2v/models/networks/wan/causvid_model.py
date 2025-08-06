@@ -37,7 +37,10 @@ class WanCausVidModel(WanModel):
         if os.path.exists(safetensors_path):
             with safe_open(safetensors_path, framework="pt") as f:
                 weight_dict = {
-                    key: (f.get_tensor(key).to(GET_DTYPE()) if unified_dtype or all(s not in key for s in sensitive_layer) else f.get_tensor(key).to(GET_SENSITIVE_DTYPE())).pin_memory().to(self.device) for key in f.keys()
+                    key: (f.get_tensor(key).to(GET_DTYPE()) if unified_dtype or all(s not in key for s in sensitive_layer) else f.get_tensor(key).to(GET_SENSITIVE_DTYPE()))
+                    .pin_memory()
+                    .to(self.device)
+                    for key in f.keys()
                 }
                 return weight_dict
 

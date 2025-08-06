@@ -42,6 +42,7 @@ try:
 except ModuleNotFoundError:
     marlin_cuda_quant = None
 
+
 class MMWeightTemplate(metaclass=ABCMeta):
     def __init__(self, weight_name, bias_name, lazy_load=False, lazy_load_file=None):
         self.weight_name = weight_name
@@ -687,6 +688,7 @@ class MMWeightGGUFQ4K(MMWeightGGUFTemplate):
     def __init__(self, weight_name, bias_name, lazy_load=False, lazy_load_file=None):
         super().__init__(weight_name, bias_name, lazy_load, lazy_load_file)
 
+
 @MM_WEIGHT_REGISTER("W-int4-group128-sym-Marlin")
 class MMWeightWint4group128Marlin(MMWeightQuantTemplate):
     """
@@ -710,14 +712,15 @@ class MMWeightWint4group128Marlin(MMWeightQuantTemplate):
             self.pinned_bias = torch.empty(self.bias.shape, pin_memory=True, dtype=self.bias.dtype)
         else:
             self.bias = None
-    
+
     def apply(self, input_tensor):
         output_tensor = torch.empty(input_tensor.shape[:-1] + (self.weight_scale.shape[1],), dtype=input_tensor.dtype, device=input_tensor.device)
         marlin_cuda_quant.mul(input_tensor, self.weight, output_tensor, self.weight_scale.half(), self.workspace, -1, -1, -1, -1)
         if hasattr(self, "bias") and self.bias is not None:
             output_tensor.add_(self.bias)
         return output_tensor
-    
+
+
 if __name__ == "__main__":
     weight_dict = {
         "xx.weight": torch.randn(8192, 4096).to(torch.float8_e4m3fn),
