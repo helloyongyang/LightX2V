@@ -11,7 +11,7 @@ from loguru import logger
 from lightx2v.models.input_encoders.hf.t5.model import T5EncoderModel
 from lightx2v.models.input_encoders.hf.xlm_roberta.model import CLIPModel
 from lightx2v.models.networks.wan.lora_adapter import WanLoraWrapper
-from lightx2v.models.networks.wan.model import Wan22MoeModel, WanModel
+from lightx2v.models.networks.wan.model import WanModel
 from lightx2v.models.runners.default_runner import DefaultRunner
 from lightx2v.models.schedulers.wan.changing_resolution.scheduler import (
     WanScheduler4ChangingResolutionInterface,
@@ -370,12 +370,12 @@ class Wan22MoeRunner(WanRunner):
 
     def load_transformer(self):
         # encoder -> high_noise_model -> low_noise_model -> vae -> video_output
-        high_noise_model = Wan22MoeModel(
+        high_noise_model = WanModel(
             os.path.join(self.config.model_path, "high_noise_model"),
             self.config,
             self.init_device,
         )
-        low_noise_model = Wan22MoeModel(
+        low_noise_model = WanModel(
             os.path.join(self.config.model_path, "low_noise_model"),
             self.config,
             self.init_device,

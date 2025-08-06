@@ -4,7 +4,7 @@ from loguru import logger
 
 from lightx2v.models.networks.wan.distill_model import Wan22MoeDistillModel, WanDistillModel
 from lightx2v.models.networks.wan.lora_adapter import WanLoraWrapper
-from lightx2v.models.networks.wan.model import Wan22MoeModel, WanModel
+from lightx2v.models.networks.wan.model import WanModel
 from lightx2v.models.runners.wan.wan_runner import MultiModelStruct, WanRunner
 from lightx2v.models.schedulers.wan.step_distill.scheduler import Wan22StepDistillScheduler, WanStepDistillScheduler
 from lightx2v.utils.registry_factory import RUNNER_REGISTER
@@ -86,7 +86,7 @@ class Wan22MoeDistillRunner(WanDistillRunner):
                     use_low_lora = True
 
         if use_high_lora:
-            high_noise_model = Wan22MoeModel(
+            high_noise_model = WanModel(
                 os.path.join(self.config.model_path, "high_noise_model"),
                 self.config,
                 self.init_device,
@@ -107,7 +107,7 @@ class Wan22MoeDistillRunner(WanDistillRunner):
             )
 
         if use_low_lora:
-            low_noise_model = Wan22MoeModel(
+            low_noise_model = WanModel(
                 os.path.join(self.config.model_path, "low_noise_model"),
                 self.config,
                 self.init_device,

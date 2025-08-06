@@ -55,7 +55,7 @@ class WanModel:
                 self.dit_quantized_ckpt = find_gguf_model_path(config, "dit_quantized_ckpt", subdir=dit_quant_scheme)
                 self.config.use_gguf = True
             else:
-                self.dit_quantized_ckpt = find_hf_model_path(config, "dit_quantized_ckpt", subdir=dit_quant_scheme)
+                self.dit_quantized_ckpt = find_hf_model_path(config, self.model_path, "dit_quantized_ckpt", subdir=dit_quant_scheme)
             quant_config_path = os.path.join(self.dit_quantized_ckpt, "config.json")
             if os.path.exists(quant_config_path):
                 with open(quant_config_path, "r") as f:
@@ -106,7 +106,7 @@ class WanModel:
             return {key: (f.get_tensor(key).to(GET_DTYPE()) if unified_dtype or all(s not in key for s in sensitive_layer) else f.get_tensor(key)).pin_memory().to(self.device) for key in f.keys()}
 
     def _load_ckpt(self, unified_dtype, sensitive_layer):
-        safetensors_path = find_hf_model_path(self.config, "dit_original_ckpt", subdir="original")
+        safetensors_path = find_hf_model_path(self.config, self.model_path, "dit_original_ckpt", subdir="original")
         safetensors_files = glob.glob(os.path.join(safetensors_path, "*.safetensors"))
         weight_dict = {}
         for file_path in safetensors_files:
@@ -293,36 +293,3 @@ class WanModel:
         noise_pred_cond = noise_pred_list[0]  # cfg_p_rank == 0
         noise_pred_uncond = noise_pred_list[1]  # cfg_p_rank == 1
         self.scheduler.noise_pred = noise_pred_uncond + self.scheduler.sample_guide_scale * (noise_pred_cond - noise_pred_uncond)
-
-
-class Wan22MoeModel(WanModel):
-    def _load_ckpt(self, unified_dtype, sensitive_layer):
-        safetensors_files = glob.glob(os.path.join(self.model_path, "*.safetensors"))
-        weight_dict = {}
-        for file_path in safetensors_files:
-            file_weights = self._load_safetensor_to_dict(file_path, unified_dtype, sensitive_layer)
-            weight_dict.update(file_weights)
-        return weight_dict
-
-    @torch.no_grad()
-    def infer(self, inputs):
-        if self.cpu_offload and self.offload_granularity != "model":
-            self.pre_weight.to_cuda()
-            self.post_weight.to_cuda()
-
-        embed, grid_sizes, pre_infer_out = self.pre_infer.infer(self.pre_weight, inputs, positive=True)
-        x = self.transformer_infer.infer(self.transformer_weights, grid_sizes, embed, *pre_infer_out)
-        noise_pred_cond = self.post_infer.infer(self.post_weight, x, embed, grid_sizes)[0]
-
-        self.scheduler.noise_pred = noise_pred_cond
-
-        if self.config["enable_cfg"]:
-            embed, grid_sizes, pre_infer_out = self.pre_infer.infer(self.pre_weight, inputs, positive=False)
-            x = self.transformer_infer.infer(self.transformer_weights, grid_sizes, embed, *pre_infer_out)
-            noise_pred_uncond = self.post_infer.infer(self.post_weight, x, embed, grid_sizes)[0]
-
-            self.scheduler.noise_pred = noise_pred_uncond + self.scheduler.sample_guide_scale * (self.scheduler.noise_pred - noise_pred_uncond)
-
-        if self.cpu_offload and self.offload_granularity != "model":
-            self.pre_weight.to_cpu()
-            self.post_weight.to_cpu()
