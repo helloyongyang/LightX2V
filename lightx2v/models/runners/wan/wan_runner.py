@@ -24,6 +24,7 @@ from lightx2v.models.schedulers.wan.scheduler import WanScheduler
 from lightx2v.models.video_encoders.hf.wan.vae import WanVAE
 from lightx2v.models.video_encoders.hf.wan.vae_2_2 import Wan2_2_VAE
 from lightx2v.models.video_encoders.hf.wan.vae_tiny import WanVAE_tiny
+from lightx2v.utils.envs import *
 from lightx2v.utils.registry_factory import RUNNER_REGISTER
 from lightx2v.utils.utils import *
 from lightx2v.utils.utils import best_output_size, cache_video
@@ -207,7 +208,7 @@ class WanRunner(DefaultRunner):
         if self.config.get("lazy_load", False) or self.config.get("unload_modules", False):
             self.image_encoder = self.load_image_encoder()
         img = TF.to_tensor(img).sub_(0.5).div_(0.5).cuda()
-        clip_encoder_out = self.image_encoder.visual([img[None, :, :, :]], self.config).squeeze(0).to(torch.bfloat16)
+        clip_encoder_out = self.image_encoder.visual([img[None, :, :, :]], self.config).squeeze(0).to(GET_DTYPE())
         if self.config.get("lazy_load", False) or self.config.get("unload_modules", False):
             del self.image_encoder
             torch.cuda.empty_cache()
@@ -271,7 +272,7 @@ class WanRunner(DefaultRunner):
             del self.vae_encoder
             torch.cuda.empty_cache()
             gc.collect()
-        vae_encoder_out = torch.concat([msk, vae_encoder_out]).to(torch.bfloat16)
+        vae_encoder_out = torch.concat([msk, vae_encoder_out]).to(GET_DTYPE())
         return vae_encoder_out
 
     def get_encoder_output_i2v(self, clip_encoder_out, vae_encoder_out, text_encoder_output, img):

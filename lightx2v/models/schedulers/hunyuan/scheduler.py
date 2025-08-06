@@ -5,6 +5,7 @@ import torch
 from diffusers.utils.torch_utils import randn_tensor
 
 from lightx2v.models.schedulers.scheduler import BaseScheduler
+from lightx2v.utils.envs import *
 
 
 def _to_tuple(x, dim=2):
@@ -247,12 +248,12 @@ class HunyuanScheduler(BaseScheduler):
 
     def prepare(self, image_encoder_output):
         self.image_encoder_output = image_encoder_output
-        self.prepare_latents(shape=self.config.target_shape, dtype=torch.float16, image_encoder_output=image_encoder_output)
+        self.prepare_latents(shape=self.config.target_shape, dtype=torch.float32, image_encoder_output=image_encoder_output)
         self.prepare_guidance()
         self.prepare_rotary_pos_embedding(video_length=self.config.target_video_length, height=self.config.target_height, width=self.config.target_width)
 
     def prepare_guidance(self):
-        self.guidance = torch.tensor([self.embedded_guidance_scale], dtype=torch.bfloat16, device=torch.device("cuda")) * 1000.0
+        self.guidance = torch.tensor([self.embedded_guidance_scale], dtype=GET_DTYPE(), device=torch.device("cuda")) * 1000.0
 
     def step_post(self):
         if self.config.task == "t2v":
@@ -316,8 +317,8 @@ class HunyuanScheduler(BaseScheduler):
                 use_real=True,
                 theta_rescale_factor=1,
             )
-            self.freqs_cos = self.freqs_cos.to(dtype=torch.bfloat16, device=torch.device("cuda"))
-            self.freqs_sin = self.freqs_sin.to(dtype=torch.bfloat16, device=torch.device("cuda"))
+            self.freqs_cos = self.freqs_cos.to(dtype=GET_DTYPE(), device=torch.device("cuda"))
+            self.freqs_sin = self.freqs_sin.to(dtype=GET_DTYPE(), device=torch.device("cuda"))
 
         else:
             L_test = rope_sizes[0]  # Latent frames
@@ -359,5 +360,5 @@ class HunyuanScheduler(BaseScheduler):
                     theta_rescale_factor=1,
                 )
 
-            self.freqs_cos = freqs_cos.to(dtype=torch.bfloat16, device=torch.device("cuda"))
-            self.freqs_sin = freqs_sin.to(dtype=torch.bfloat16, device=torch.device("cuda"))
+            self.freqs_cos = freqs_cos.to(dtype=GET_DTYPE(), device=torch.device("cuda"))
+            self.freqs_sin = freqs_sin.to(dtype=GET_DTYPE(), device=torch.device("cuda"))

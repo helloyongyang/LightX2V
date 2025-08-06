@@ -20,27 +20,27 @@ class WanDistillModel(WanModel):
     def __init__(self, model_path, config, device):
         super().__init__(model_path, config, device)
 
-    def _load_ckpt(self, use_bf16, skip_bf16):
+    def _load_ckpt(self, unified_dtype, sensitive_layer):
         if self.config.get("enable_dynamic_cfg", False):
             ckpt_path = os.path.join(self.model_path, "distill_cfg_models", "distill_model.safetensors")
         else:
             ckpt_path = os.path.join(self.model_path, "distill_models", "distill_model.safetensors")
         if os.path.exists(ckpt_path):
             logger.info(f"Loading weights from {ckpt_path}")
-            return self._load_safetensor_to_dict(ckpt_path, use_bf16, skip_bf16)
+            return self._load_safetensor_to_dict(ckpt_path, unified_dtype, sensitive_layer)
 
-        return super()._load_ckpt(use_bf16, skip_bf16)
+        return super()._load_ckpt(unified_dtype, sensitive_layer)
 
 
 class Wan22MoeDistillModel(WanDistillModel, Wan22MoeModel):
     def __init__(self, model_path, config, device):
         WanDistillModel.__init__(self, model_path, config, device)
 
-    def _load_ckpt(self, use_bf16, skip_bf16):
+    def _load_ckpt(self, unified_dtype, sensitive_layer):
         ckpt_path = os.path.join(self.model_path, "distill_model.safetensors")
         if os.path.exists(ckpt_path):
             logger.info(f"Loading weights from {ckpt_path}")
-            return self._load_safetensor_to_dict(ckpt_path, use_bf16, skip_bf16)
+            return self._load_safetensor_to_dict(ckpt_path, unified_dtype, sensitive_layer)
 
     @torch.no_grad()
     def infer(self, inputs):

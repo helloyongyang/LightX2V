@@ -156,7 +156,7 @@ class UpsampleCausal3D(nn.Module):
 
         # Cast to float32 to as 'upsample_nearest2d_out_frame' op does not support bfloat16
         dtype = hidden_states.dtype
-        if dtype == torch.bfloat16:
+        if dtype in [torch.bfloat16, torch.float16]:
             hidden_states = hidden_states.to(torch.float32)
 
         # upsample_nearest_nhwc fails with large batch sizes. see https://github.com/huggingface/diffusers/issues/984
@@ -185,7 +185,7 @@ class UpsampleCausal3D(nn.Module):
                 hidden_states = first_h
 
         # If the input is bfloat16, we cast back to bfloat16
-        if dtype == torch.bfloat16:
+        if dtype in [torch.bfloat16, torch.float16]:
             hidden_states = hidden_states.to(dtype)
 
         if self.use_conv:

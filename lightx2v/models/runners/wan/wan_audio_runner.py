@@ -20,6 +20,7 @@ from lightx2v.models.networks.wan.audio_model import Wan22MoeAudioModel, WanAudi
 from lightx2v.models.networks.wan.lora_adapter import WanLoraWrapper
 from lightx2v.models.runners.wan.wan_runner import MultiModelStruct, WanRunner
 from lightx2v.models.schedulers.wan.audio.scheduler import ConsistencyModelScheduler
+from lightx2v.utils.envs import *
 from lightx2v.utils.profiler import ProfilingContext, ProfilingContext4Debug
 from lightx2v.utils.registry_factory import RUNNER_REGISTER
 from lightx2v.utils.utils import save_to_video, vae_to_comfyui_image
@@ -259,7 +260,7 @@ class VideoGenerator:
             return None
 
         device = torch.device("cuda")
-        dtype = torch.bfloat16
+        dtype = GET_DTYPE()
         vae_dtype = torch.float
 
         tgt_h, tgt_w = self.config.tgt_h, self.config.tgt_w
@@ -312,7 +313,7 @@ class VideoGenerator:
 
         # Prepare previous latents - ALWAYS needed, even for first segment
         device = torch.device("cuda")
-        dtype = torch.bfloat16
+        dtype = GET_DTYPE()
         vae_dtype = torch.float
         tgt_h, tgt_w = self.config.tgt_h, self.config.tgt_w
         max_num_frames = self.config.target_video_length
@@ -425,7 +426,7 @@ class WanAudioRunner(WanRunner):  # type:ignore
         else:
             device = torch.device("cuda")
         audio_encoder_repo = self.config["model_path"] + "/audio_encoder"
-        self._audio_adapter_pipe = AudioAdapterPipe(audio_adapter, audio_encoder_repo=audio_encoder_repo, dtype=torch.bfloat16, device=device, weight=1.0, cpu_offload=cpu_offload)
+        self._audio_adapter_pipe = AudioAdapterPipe(audio_adapter, audio_encoder_repo=audio_encoder_repo, dtype=GET_DTYPE(), device=device, weight=1.0, cpu_offload=cpu_offload)
 
         return self._audio_adapter_pipe
 
@@ -655,13 +656,13 @@ class WanAudioRunner(WanRunner):  # type:ignore
         cond_frms = torch.nn.functional.interpolate(ref_img, size=(config.tgt_h, config.tgt_w), mode="bicubic")
 
         # clip encoder
-        clip_encoder_out = self.image_encoder.visual([cond_frms], self.config).squeeze(0).to(torch.bfloat16) if self.config.get("use_image_encoder", True) else None
+        clip_encoder_out = self.image_encoder.visual([cond_frms], self.config).squeeze(0).to(GET_DTYPE()) if self.config.get("use_image_encoder", True) else None
 
         # vae encode
         cond_frms = rearrange(cond_frms, "1 C H W -> 1 C 1 H W")
         vae_encoder_out = vae_model.encode(cond_frms.to(torch.float), config)
         if isinstance(vae_encoder_out, list):
-            vae_encoder_out = torch.stack(vae_encoder_out, dim=0).to(torch.bfloat16)
+            vae_encoder_out = torch.stack(vae_encoder_out, dim=0).to(GET_DTYPE())
 
         return vae_encoder_out, clip_encoder_out
 

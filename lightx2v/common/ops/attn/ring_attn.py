@@ -3,6 +3,7 @@ import torch.distributed as dist
 import torch.nn.functional as F
 from loguru import logger
 
+from lightx2v.utils.envs import *
 from lightx2v.utils.registry_factory import ATTN_WEIGHT_REGISTER
 
 from .template import AttnWeightTemplate
@@ -114,7 +115,7 @@ class RingAttnWeight(AttnWeightTemplate):
                 k = next_k
                 v = next_v
 
-        attn1 = out.to(torch.bfloat16).squeeze(0).reshape(img_qkv_len + txt_qkv_len, -1)
+        attn1 = out.to(GET_DTYPE()).squeeze(0).reshape(img_qkv_len + txt_qkv_len, -1)
 
         if txt_mask_len > 0:
             attn2, *_ = flash_attn.flash_attn_interface._flash_attn_forward(
@@ -131,7 +132,7 @@ class RingAttnWeight(AttnWeightTemplate):
                 return_softmax=False,
             )
 
-            attn2 = attn2.to(torch.bfloat16).squeeze(0).reshape((txt_mask_len - txt_qkv_len), -1)
+            attn2 = attn2.to(GET_DTYPE()).squeeze(0).reshape((txt_mask_len - txt_qkv_len), -1)
             attn1 = torch.cat([attn1, attn2], dim=0)
 
         return attn1

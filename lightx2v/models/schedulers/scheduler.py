@@ -1,5 +1,3 @@
-import torch
-
 from lightx2v.utils.envs import *
 
 
@@ -15,8 +13,8 @@ class BaseScheduler:
 
     def step_pre(self, step_index):
         self.step_index = step_index
-        if GET_DTYPE() == "BF16":
-            self.latents = self.latents.to(dtype=torch.bfloat16)
+        if GET_DTYPE() == GET_SENSITIVE_DTYPE():
+            self.latents = self.latents.to(GET_DTYPE())
 
     def clear(self):
         pass

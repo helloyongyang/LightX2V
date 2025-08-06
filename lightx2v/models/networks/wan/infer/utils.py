@@ -68,7 +68,7 @@ def apply_rotary_emb(x, freqs_i):
     # Apply rotary embedding
     x_i = torch.view_as_real(x_i * freqs_i).flatten(2)
     x_i = torch.cat([x_i, x[seq_len:]])
-    return x_i.to(torch.bfloat16)
+    return x_i.to(GET_DTYPE())
 
 
 def apply_rotary_emb_chunk(x, freqs_i, chunk_size, remaining_chunk_size=100):
@@ -82,7 +82,7 @@ def apply_rotary_emb_chunk(x, freqs_i, chunk_size, remaining_chunk_size=100):
         freqs_chunk = freqs_i[start:end]
 
         x_chunk_complex = torch.view_as_complex(x_chunk.to(torch.float32).reshape(end - start, n, -1, 2))
-        x_chunk_embedded = torch.view_as_real(x_chunk_complex * freqs_chunk).flatten(2).to(torch.bfloat16)
+        x_chunk_embedded = torch.view_as_real(x_chunk_complex * freqs_chunk).flatten(2).to(GET_DTYPE())
         output_chunks.append(x_chunk_embedded)
         del x_chunk_complex, x_chunk_embedded
         torch.cuda.empty_cache()
@@ -101,7 +101,7 @@ def apply_rotary_emb_chunk(x, freqs_i, chunk_size, remaining_chunk_size=100):
     del result
     torch.cuda.empty_cache()
 
-    return x_i.to(torch.bfloat16)
+    return x_i.to(GET_DTYPE())
 
 
 def rope_params(max_seq_len, dim, theta=10000):
@@ -123,8 +123,7 @@ def sinusoidal_embedding_1d(dim, position):
     # calculation
     sinusoid = torch.outer(position, torch.pow(10000, -torch.arange(half).to(position).div(half)))
     x = torch.cat([torch.cos(sinusoid), torch.sin(sinusoid)], dim=1)
-    if GET_DTYPE() == "BF16":
-        x = x.to(torch.bfloat16)
+    x = x.to(GET_SENSITIVE_DTYPE())
     return x
 
 
@@ -140,15 +139,15 @@ def guidance_scale_embedding(w, embedding_dim=256, cfg_range=(1.0, 6.0), target_
     """
     assert len(w.shape) == 1
     cfg_min, cfg_max = cfg_range
-    # w = torch.round(w)
-    # w = torch.clamp(w, min=cfg_min, max=cfg_max)
+    w = torch.round(w)
+    w = torch.clamp(w, min=cfg_min, max=cfg_max)
     w = (w - cfg_min) / (cfg_max - cfg_min)  # [0, 1]
     w = w * target_range
     half_dim = embedding_dim // 2
     emb = torch.log(torch.tensor(10000.0)) / (half_dim - 1)
     emb = torch.exp(torch.arange(half_dim, dtype=dtype).to(w.device) * -emb).to(w.device)
     emb = w.to(dtype)[:, None] * emb[None, :]
-    emb = torch.cat([torch.cos(emb), torch.sin(emb)], dim=1)
+    emb = torch.cat([torch.sin(emb), torch.cos(emb)], dim=1)
     if embedding_dim % 2 == 1:  # zero pad
         emb = torch.nn.functional.pad(emb, (0, 1).to(w.device))
     assert emb.shape == (w.shape[0], embedding_dim)

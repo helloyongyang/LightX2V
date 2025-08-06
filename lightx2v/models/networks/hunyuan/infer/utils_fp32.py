@@ -2,11 +2,13 @@ from typing import Tuple, Union
 
 import torch
 
+from lightx2v.utils.envs import *
+
 
 def rms_norm(x, weight, eps):
     x = x.float()
     x = x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + eps)
-    x = x.to(torch.bfloat16)
+    x = x.to(GET_DTYPE())
     x = x * weight
     return x
 
@@ -18,7 +20,7 @@ def rotate_half(x, shape_0, shape_1):
 
 def rotary_emb(x, shape_0, shape_1, cos, sin):
     x_out = x * cos + rotate_half(x, shape_0, shape_1) * sin
-    return x_out.to(torch.bfloat16)
+    return x_out.to(GET_DTYPE())
 
 
 def apply_rotary_emb(

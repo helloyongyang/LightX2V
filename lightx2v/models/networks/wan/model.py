@@ -1,5 +1,3 @@
-import glob
-import json
 import os
 
 import torch
@@ -103,20 +101,20 @@ class WanModel:
             else:
                 raise NotImplementedError(f"Unsupported feature_caching type: {self.config['feature_caching']}")
 
-    def _load_safetensor_to_dict(self, file_path, use_bf16, skip_bf16):
+    def _load_safetensor_to_dict(self, file_path, unified_dtype, sensitive_layer):
         with safe_open(file_path, framework="pt") as f:
-            return {key: (f.get_tensor(key).to(torch.bfloat16) if use_bf16 or all(s not in key for s in skip_bf16) else f.get_tensor(key)).pin_memory().to(self.device) for key in f.keys()}
+            return {key: (f.get_tensor(key).to(GET_DTYPE()) if unified_dtype or all(s not in key for s in sensitive_layer) else f.get_tensor(key)).pin_memory().to(self.device) for key in f.keys()}
 
-    def _load_ckpt(self, use_bf16, skip_bf16):
+    def _load_ckpt(self, unified_dtype, sensitive_layer):
         safetensors_path = find_hf_model_path(self.config, "dit_original_ckpt", subdir="original")
         safetensors_files = glob.glob(os.path.join(safetensors_path, "*.safetensors"))
         weight_dict = {}
         for file_path in safetensors_files:
-            file_weights = self._load_safetensor_to_dict(file_path, use_bf16, skip_bf16)
+            file_weights = self._load_safetensor_to_dict(file_path, unified_dtype, sensitive_layer)
             weight_dict.update(file_weights)
         return weight_dict
 
-    def _load_quant_ckpt(self, use_bf16, skip_bf16):
+    def _load_quant_ckpt(self, unified_dtype, sensitive_layer):
         ckpt_path = self.dit_quantized_ckpt
         logger.info(f"Loading quant dit model from {ckpt_path}")
 
@@ -137,8 +135,8 @@ class WanModel:
                 logger.info(f"Loading weights from {safetensor_path}")
                 for k in f.keys():
                     if f.get_tensor(k).dtype == torch.float:
-                        if use_bf16 or all(s not in k for s in skip_bf16):
-                            weight_dict[k] = f.get_tensor(k).pin_memory().to(torch.bfloat16).to(self.device)
+                        if unified_dtype or all(s not in k for s in sensitive_layer):
+                            weight_dict[k] = f.get_tensor(k).pin_memory().to(GET_DTYPE()).to(self.device)
                         else:
                             weight_dict[k] = f.get_tensor(k).pin_memory().to(self.device)
                     else:
@@ -146,7 +144,7 @@ class WanModel:
 
         return weight_dict
 
-    def _load_quant_split_ckpt(self, use_bf16, skip_bf16):
+    def _load_quant_split_ckpt(self, unified_dtype, sensitive_layer):
         lazy_load_model_path = self.dit_quantized_ckpt
         logger.info(f"Loading splited quant model from {lazy_load_model_path}")
         pre_post_weight_dict = {}
@@ -155,8 +153,8 @@ class WanModel:
         with safe_open(safetensor_path, framework="pt", device="cpu") as f:
             for k in f.keys():
                 if f.get_tensor(k).dtype == torch.float:
-                    if use_bf16 or all(s not in k for s in skip_bf16):
-                        pre_post_weight_dict[k] = f.get_tensor(k).pin_memory().to(torch.bfloat16).to(self.device)
+                    if unified_dtype or all(s not in k for s in sensitive_layer):
+                        pre_post_weight_dict[k] = f.get_tensor(k).pin_memory().to(GET_DTYPE()).to(self.device)
                     else:
                         pre_post_weight_dict[k] = f.get_tensor(k).pin_memory().to(self.device)
                 else:
@@ -173,9 +171,9 @@ class WanModel:
             pass
 
     def _init_weights(self, weight_dict=None):
-        use_bf16 = GET_DTYPE() == "BF16"
+        unified_dtype = GET_DTYPE() == GET_SENSITIVE_DTYPE()
         # Some layers run with float32 to achieve high accuracy
-        skip_bf16 = {
+        sensitive_layer = {
             "norm",
             "embedding",
             "modulation",
@@ -185,14 +183,12 @@ class WanModel:
         }
         if weight_dict is None:
             if not self.dit_quantized or self.weight_auto_quant:
-                self.original_weight_dict = self._load_ckpt(use_bf16, skip_bf16)
-            elif self.config.get("use_gguf", False):
-                self.original_weight_dict = self._load_gguf_ckpt()
+                self.original_weight_dict = self._load_ckpt(unified_dtype, sensitive_layer)
             else:
                 if not self.config.get("lazy_load", False):
-                    self.original_weight_dict = self._load_quant_ckpt(use_bf16, skip_bf16)
+                    self.original_weight_dict = self._load_quant_ckpt(unified_dtype, sensitive_layer)
                 else:
-                    self.original_weight_dict = self._load_quant_split_ckpt(use_bf16, skip_bf16)
+                    self.original_weight_dict = self._load_quant_split_ckpt(unified_dtype, sensitive_layer)
         else:
             self.original_weight_dict = weight_dict
         # init weights
@@ -300,11 +296,11 @@ class WanModel:
 
 
 class Wan22MoeModel(WanModel):
-    def _load_ckpt(self, use_bf16, skip_bf16):
+    def _load_ckpt(self, unified_dtype, sensitive_layer):
         safetensors_files = glob.glob(os.path.join(self.model_path, "*.safetensors"))
         weight_dict = {}
         for file_path in safetensors_files:
-            file_weights = self._load_safetensor_to_dict(file_path, use_bf16, skip_bf16)
+            file_weights = self._load_safetensor_to_dict(file_path, unified_dtype, sensitive_layer)
             weight_dict.update(file_weights)
         return weight_dict
 

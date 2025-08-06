@@ -5,6 +5,7 @@ import numpy as np
 import torch
 
 from lightx2v.models.schedulers.wan.scheduler import WanScheduler
+from lightx2v.utils.envs import *
 
 
 class WanSkyreelsV2DFScheduler(WanScheduler):
@@ -132,7 +133,8 @@ class WanSkyreelsV2DFScheduler(WanScheduler):
 
     def step_pre(self, step_index):
         self.step_index = step_index
-        self.latents = self.latents.to(dtype=torch.bfloat16)
+        if GET_DTYPE() == GET_SENSITIVE_DTYPE():
+            self.latents = self.latents.to(GET_DTYPE())
 
         valid_interval_start, valid_interval_end = self.valid_interval[step_index]
         timestep = self.step_matrix[step_index][None, valid_interval_start:valid_interval_end].clone()

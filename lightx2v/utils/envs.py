@@ -1,6 +1,20 @@
 import os
 from functools import lru_cache
 
+import torch
+
+DTYPE_MAP = {
+    "BF16": torch.bfloat16,
+    "FP16": torch.float16,
+    "FP32": torch.float32,
+    "bf16": torch.bfloat16,
+    "fp16": torch.float16,
+    "fp32": torch.float32,
+    "torch.bfloat16": torch.bfloat16,
+    "torch.float16": torch.float16,
+    "torch.float32": torch.float32,
+}
+
 
 @lru_cache(maxsize=None)
 def CHECK_ENABLE_PROFILING_DEBUG():
@@ -22,5 +36,14 @@ def GET_RUNNING_FLAG():
 
 @lru_cache(maxsize=None)
 def GET_DTYPE():
-    RUNNING_FLAG = os.getenv("DTYPE")
-    return RUNNING_FLAG
+    RUNNING_FLAG = os.getenv("DTYPE", "BF16")
+    assert RUNNING_FLAG in ["BF16", "FP16"]
+    return DTYPE_MAP[RUNNING_FLAG]
+
+
+@lru_cache(maxsize=None)
+def GET_SENSITIVE_DTYPE():
+    RUNNING_FLAG = os.getenv("SENSITIVE_LAYER_DTYPE", None)
+    if RUNNING_FLAG is None:
+        return GET_DTYPE()
+    return DTYPE_MAP[RUNNING_FLAG]

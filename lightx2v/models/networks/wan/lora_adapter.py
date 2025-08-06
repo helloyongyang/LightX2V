@@ -33,7 +33,7 @@ class WanLoraWrapper:
             use_bfloat16 = self.model.config.get("use_bfloat16", True)
         with safe_open(file_path, framework="pt") as f:
             if use_bfloat16:
-                tensor_dict = {key: f.get_tensor(key).to(torch.bfloat16) for key in f.keys()}
+                tensor_dict = {key: f.get_tensor(key).to(GET_DTYPE()) for key in f.keys()}
             else:
                 tensor_dict = {key: f.get_tensor(key) for key in f.keys()}
         return tensor_dict

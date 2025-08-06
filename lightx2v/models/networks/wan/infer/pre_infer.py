@@ -25,6 +25,8 @@ class WanPreInfer:
         self.text_len = config["text_len"]
         self.enable_dynamic_cfg = config.get("enable_dynamic_cfg", False)
         self.cfg_scale = config.get("cfg_scale", 4.0)
+        self.infer_dtype = GET_DTYPE()
+        self.sensitive_layer_dtype = GET_SENSITIVE_DTYPE()
 
     def set_scheduler(self, scheduler):
         self.scheduler = scheduler
@@ -79,8 +81,8 @@ class WanPreInfer:
             cfg_embed = torch.nn.functional.silu(cfg_embed)
             cfg_embed = weights.cfg_cond_proj_2.apply(cfg_embed)
             embed = embed + cfg_embed
-        if GET_DTYPE() != "BF16":
-            embed = weights.time_embedding_0.apply(embed.float())
+        if self.sensitive_layer_dtype != self.infer_dtype:
+            embed = weights.time_embedding_0.apply(embed.to(self.sensitive_layer_dtype))
         else:
             embed = weights.time_embedding_0.apply(embed)
         embed = torch.nn.functional.silu(embed)
@@ -100,8 +102,8 @@ class WanPreInfer:
 
         # text embeddings
         stacked = torch.stack([torch.cat([u, u.new_zeros(self.text_len - u.size(0), u.size(1))]) for u in context])
-        if GET_DTYPE() != "BF16":
-            out = weights.text_embedding_0.apply(stacked.squeeze(0).float())
+        if self.sensitive_layer_dtype != self.infer_dtype:
+            out = weights.text_embedding_0.apply(stacked.squeeze(0).to(self.sensitive_layer_dtype))
         else:
             out = weights.text_embedding_0.apply(stacked.squeeze(0))
         out = torch.nn.functional.gelu(out, approximate="tanh")

@@ -9,6 +9,7 @@ from loguru import logger
 
 from lightx2v.models.runners.wan.wan_runner import WanRunner
 from lightx2v.models.schedulers.wan.df.skyreels_v2_df_scheduler import WanSkyreelsV2DFScheduler
+from lightx2v.utils.envs import *
 from lightx2v.utils.profiler import ProfilingContext, ProfilingContext4Debug
 from lightx2v.utils.registry_factory import RUNNER_REGISTER
 
@@ -37,7 +38,7 @@ class WanSkyreelsV2DFRunner(WanRunner):  # Diffustion foring for SkyReelsV2 DF I
         config.lat_w = lat_w
 
         vae_encoder_out = vae_model.encode([torch.nn.functional.interpolate(img[None].cpu(), size=(h, w), mode="bicubic").transpose(0, 1).cuda()], config)[0]
-        vae_encoder_out = vae_encoder_out.to(torch.bfloat16)
+        vae_encoder_out = vae_encoder_out.to(GET_DTYPE())
         return vae_encoder_out
 
     def set_target_shape(self):

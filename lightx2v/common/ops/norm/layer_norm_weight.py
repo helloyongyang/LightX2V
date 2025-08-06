@@ -14,6 +14,8 @@ class LNWeightTemplate(metaclass=ABCMeta):
         self.lazy_load = lazy_load
         self.lazy_load_file = lazy_load_file
         self.config = {}
+        self.infer_dtype = GET_DTYPE()
+        self.sensitive_layer_dtype = GET_SENSITIVE_DTYPE()
 
     def load(self, weight_dict):
         if not self.lazy_load:
@@ -85,29 +87,30 @@ class LNWeight(LNWeightTemplate):
     def load_from_disk(self):
         if self.weight_name is not None:
             if not torch._dynamo.is_compiling():
-                self.weight = self.lazy_load_file.get_tensor(self.weight_name).to(torch.bfloat16).pin_memory()
+                self.weight = self.lazy_load_file.get_tensor(self.weight_name).to(GET_DTYPE()).pin_memory()
             else:
-                self.weight = self.lazy_load_file.get_tensor(self.weight_name).to(torch.bfloat16)
+                self.weight = self.lazy_load_file.get_tensor(self.weight_name).to(GET_DTYPE())
         else:
             self.weight = None
 
         if self.bias_name is not None:
             if not torch._dynamo.is_compiling():
-                self.bias = self.lazy_load_file.get_tensor(self.bias_name).to(torch.bfloat16).pin_memory()
+                self.bias = self.lazy_load_file.get_tensor(self.bias_name).to(GET_DTYPE()).pin_memory()
             else:
-                self.bias = self.lazy_load_file.get_tensor(self.bias_name).to(torch.bfloat16)
+                self.bias = self.lazy_load_file.get_tensor(self.bias_name).to(GET_DTYPE())
         else:
             self.bias = None
 
     def apply(self, input_tensor):
-        if GET_DTYPE() != "BF16":
+        if self.sensitive_layer_dtype != self.infer_dtype:
             input_tensor = torch.nn.functional.layer_norm(
                 input_tensor.float(),
                 (input_tensor.shape[-1],),
                 self.weight,
                 self.bias,
                 self.eps,
-            ).to(torch.bfloat16)
+            ).to(self.infer_dtype)
         else:
             input_tensor = torch.nn.functional.layer_norm(input_tensor, (input_tensor.shape[-1],), self.weight, self.bias, self.eps)
+
         return input_tensor
