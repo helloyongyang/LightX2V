@@ -8,7 +8,7 @@ from lightx2v.models.schedulers.scheduler import BaseScheduler
 from lightx2v.utils.envs import *
 
 
-def unsqueeze_to_ndim(in_tensor: Tensor, tgt_n_dim: int):
+def unsqueeze_to_ndim(in_tensor, tgt_n_dim):
     if in_tensor.ndim > tgt_n_dim:
         warnings.warn(f"the given tensor of shape {in_tensor.shape} is expected to unsqueeze to {tgt_n_dim}, the original tensor will be returned")
         return in_tensor
