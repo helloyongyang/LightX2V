@@ -11,6 +11,7 @@ from lightx2v.utils.envs import *
 
 from .utils import apply_rotary_emb, apply_rotary_emb_chunk, compute_freqs, compute_freqs_audio
 
+
 class WanTransformerInfer(BaseTransformerInfer):
     def __init__(self, config):
         self.config = config

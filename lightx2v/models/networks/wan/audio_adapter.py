@@ -7,14 +7,12 @@ import os
 
 import safetensors
 import torch
+import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
 from diffusers.models.embeddings import TimestepEmbedding, Timesteps
 from einops import rearrange
 from transformers import AutoModel
-import torch.distributed as dist
-
-from loguru import logger
 
 from lightx2v.utils.envs import *
 
@@ -54,15 +52,40 @@ def load_pt_safetensors(in_path: str):
     return state_dict
 
 
-def rank0_load_state_dict_from_path(model, in_path: str, strict: bool = True):
-    import torch.distributed as dist
+def rank0_load_state_dict_from_path(model, in_path: str, strict: bool = True, seq_p_group=None):
+    model = model.to("cuda")
+    # 确定当前进程是否是（负责加载权重）
+    is_leader = False
+    if seq_p_group is not None and dist.is_initialized():
+        group_rank = dist.get_rank(group=seq_p_group)
+        if group_rank == 0:
+            is_leader = True
+    elif not dist.is_initialized() or dist.get_rank() == 0:
+        is_leader = True
 
-    if (dist.is_initialized() and dist.get_rank() == 0) or (not dist.is_initialized()):
+    if is_leader:
         state_dict = load_pt_safetensors(in_path)
         model.load_state_dict(state_dict, strict=strict)
-    if dist.is_initialized():
+
+    # 将模型状态从领导者同步到组内所有其他进程
+    if seq_p_group is not None and dist.is_initialized():
+        dist.barrier(group=seq_p_group)
+
+        src_global_rank = dist.get_process_group_ranks(seq_p_group)[0]
+
+        for param in model.parameters():
+            dist.broadcast(param.data, src=src_global_rank, group=seq_p_group)
+
+        for buffer in model.buffers():
+            dist.broadcast(buffer.data, src=src_global_rank, group=seq_p_group)
+    elif dist.is_initialized():
         dist.barrier()
-    return model.to(dtype=GET_DTYPE(), device="cuda")
+        for param in model.parameters():
+            dist.broadcast(param.data, src=0)
+        for buffer in model.buffers():
+            dist.broadcast(buffer.data, src=0)
+
+    return model.to(dtype=GET_DTYPE())
 
 
 def linear_interpolation(features, output_len: int):

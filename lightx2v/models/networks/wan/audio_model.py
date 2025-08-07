@@ -13,8 +13,6 @@ from lightx2v.models.networks.wan.weights.transformer_weights import (
     WanTransformerWeights,
 )
 
-from loguru import logger
-
 
 class WanAudioModel(WanModel):
     pre_weight_class = WanPreWeights

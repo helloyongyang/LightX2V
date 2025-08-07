@@ -27,9 +27,9 @@ def compute_freqs_audio(c, grid_sizes, freqs):
     seq_len = f * h * w
     freqs_i = torch.cat(
         [
-            freqs[0][:f].view(f, 1, 1, -1).expand(f, h, w, -1),
-            freqs[1][:h].view(1, h, 1, -1).expand(f, h, w, -1),
-            freqs[2][:w].view(1, 1, w, -1).expand(f, h, w, -1),
+            freqs[0][:f].view(f, 1, 1, -1).expand(f, h, w, -1),  # 时间(帧)编码
+            freqs[1][:h].view(1, h, 1, -1).expand(f, h, w, -1),  # 空间(高度)编码
+            freqs[2][:w].view(1, 1, w, -1).expand(f, h, w, -1),  # 空间(宽度)编码
         ],
         dim=-1,
     ).reshape(seq_len, 1, -1)

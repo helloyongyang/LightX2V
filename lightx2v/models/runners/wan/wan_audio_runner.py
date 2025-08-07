@@ -417,7 +417,6 @@ class WanAudioRunner(WanRunner):  # type:ignore
             time_freq_dim=256,
             projection_transformer_layers=4,
         )
-        audio_adapter = rank0_load_state_dict_from_path(audio_adapter, audio_adapter_path, strict=False)
 
         # Audio encoder
         cpu_offload = self.config.get("cpu_offload", False)
@@ -431,6 +430,8 @@ class WanAudioRunner(WanRunner):  # type:ignore
             seq_p_group = self.model.transformer_infer.seq_p_group
         else:
             seq_p_group = None
+
+        audio_adapter = rank0_load_state_dict_from_path(audio_adapter, audio_adapter_path, strict=False, seq_p_group=seq_p_group)
 
         self._audio_adapter_pipe = AudioAdapterPipe(
             audio_adapter, audio_encoder_repo=audio_encoder_repo, dtype=GET_DTYPE(), device=device, weight=1.0, cpu_offload=cpu_offload, seq_p_group=seq_p_group
