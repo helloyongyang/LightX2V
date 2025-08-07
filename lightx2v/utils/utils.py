@@ -286,7 +286,7 @@ def find_hf_model_path(config, model_path, ckpt_config_key=None, subdir=["origin
         for sub in subdir:
             paths_to_check.append(os.path.join(model_path, sub))
     else:
-        paths_to_check.append(os.path.join(config.model_path, subdir))
+        paths_to_check.append(os.path.join(model_path, subdir))
 
     for path in paths_to_check:
         safetensors_pattern = os.path.join(path, "*.safetensors")

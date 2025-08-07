@@ -9,10 +9,16 @@ class GraphRunner:
         self.compile()
 
     def compile(self):
-        logger.info("start compile...")
+        logger.info("=" * 60)
+        logger.info("🚀 Starting Model Compilation - Please wait, this may take a while... 🚀")
+        logger.info("=" * 60)
+
         with ProfilingContext4Debug("compile"):
             self.runner.run_step()
-        logger.info("end compile...")
+
+        logger.info("=" * 60)
+        logger.info("✅ Model Compilation Completed ✅")
+        logger.info("=" * 60)
 
     def run_pipeline(self):
         return self.runner.run_pipeline()

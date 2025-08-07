@@ -55,7 +55,7 @@ class WanTransformerDistInfer(WanTransformerInfer):
         world_size = dist.get_world_size(self.seq_p_group)
         cur_rank = dist.get_rank(self.seq_p_group)
         freqs = freqs.split([c - 2 * (c // 3), c // 3, c // 3], dim=1)
-        f, h, w = grid_sizes[0].tolist()
+        f, h, w = grid_sizes[0]
         seq_len = f * h * w
         freqs_i = torch.cat(
             [
@@ -75,7 +75,7 @@ class WanTransformerDistInfer(WanTransformerInfer):
         world_size = dist.get_world_size(self.seq_p_group)
         cur_rank = dist.get_rank(self.seq_p_group)
         freqs = freqs.split([c - 2 * (c // 3), c // 3, c // 3], dim=1)
-        f, h, w = grid_sizes[0].tolist()
+        f, h, w = grid_sizes[0]
         valid_token_length = f * h * w
         f = f + 1
         seq_len = f * h * w

@@ -3,7 +3,7 @@ import os
 import subprocess
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
@@ -302,7 +302,7 @@ class VideoGenerator:
         return mask.transpose(0, 1)
 
     @torch.no_grad()
-    def generate_segment(self, inputs: Dict[str, Any], audio_features: torch.Tensor, prev_video: Optional[torch.Tensor] = None, prev_frame_length: int = 5, segment_idx: int = 0) -> torch.Tensor:
+    def generate_segment(self, inputs, audio_features, prev_video=None, prev_frame_length=5, segment_idx=0, total_steps=None):
         """Generate video segment"""
         # Update inputs with audio features
         inputs["audio_encoder_output"] = audio_features
@@ -352,14 +352,15 @@ class VideoGenerator:
         inputs["previmg_encoder_output"] = {"prev_latents": prev_latents, "prev_mask": prev_mask}
 
         # Run inference loop
-        total_steps = self.model.scheduler.infer_steps
+        if total_steps is None:
+            total_steps = self.model.scheduler.infer_steps
         for step_index in range(total_steps):
             logger.info(f"==> Segment {segment_idx}, Step {step_index}/{total_steps}")
 
             with ProfilingContext4Debug("step_pre"):
                 self.model.scheduler.step_pre(step_index=step_index)
 
-            with ProfilingContext4Debug("infer"):
+            with ProfilingContext4Debug("🚀 infer_main"):
                 self.model.infer(inputs)
 
             with ProfilingContext4Debug("step_post"):
@@ -694,6 +695,62 @@ class WanAudioRunner(WanRunner):  # type:ignore
 
         ret["target_shape"] = self.config.target_shape
         return ret
+
+    def run_step(self):
+        """Optimized pipeline with modular components"""
+
+        self.initialize()
+
+        assert self._audio_processor is not None
+        assert self._audio_preprocess is not None
+
+        self._video_generator = VideoGenerator(self.model, self.vae_encoder, self.vae_decoder, self.config, self.progress_callback)
+
+        with memory_efficient_inference():
+            if self.config["use_prompt_enhancer"]:
+                self.config["prompt_enhanced"] = self.post_prompt_enhancer()
+
+            self.inputs = self.prepare_inputs()
+            # Re-initialize scheduler after image encoding sets correct dimensions
+            self.init_scheduler()
+            self.model.scheduler.prepare(self.inputs["image_encoder_output"])
+
+        # Re-create video generator with updated model/scheduler
+        self._video_generator = VideoGenerator(self.model, self.vae_encoder, self.vae_decoder, self.config, self.progress_callback)
+
+        # Process audio
+        audio_array = self._audio_processor.load_audio(self.config["audio_path"])
+        video_duration = self.config.get("video_duration", 5)
+        target_fps = self.config.get("target_fps", 16)
+        max_num_frames = self.config.get("target_video_length", 81)
+
+        audio_len = int(audio_array.shape[0] / self._audio_processor.audio_sr * target_fps)
+        expected_frames = min(max(1, int(video_duration * target_fps)), audio_len)
+
+        # Segment audio
+        audio_segments = self._audio_processor.segment_audio(audio_array, expected_frames, max_num_frames)
+
+        self._video_generator.total_segments = len(audio_segments)
+
+        # Generate video segments
+        prev_video = None
+
+        torch.manual_seed(self.config.seed)
+        # Process audio features
+        audio_features = self._audio_preprocess(audio_segments[0].audio_array, sampling_rate=self._audio_processor.audio_sr, return_tensors="pt").input_values.squeeze(0).to(self.model.device)
+
+        # Generate video segment
+        with memory_efficient_inference():
+            self._video_generator.generate_segment(
+                self.inputs.copy(),  # Copy to avoid modifying original
+                audio_features,
+                prev_video=prev_video,
+                prev_frame_length=5,
+                segment_idx=0,
+                total_steps=1,
+            )
+            # Final cleanup
+            self.end_run()
 
 
 @RUNNER_REGISTER("wan2.2_moe_audio")

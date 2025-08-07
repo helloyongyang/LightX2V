@@ -52,6 +52,8 @@ class WanModel:
 
         if self.dit_quantized:
             dit_quant_scheme = self.config.mm_config.get("mm_type").split("-")[1]
+            if self.config.model_cls == "wan2.1_distill":
+                dit_quant_scheme = "distill_" + dit_quant_scheme
             if dit_quant_scheme == "gguf":
                 self.dit_quantized_ckpt = find_gguf_model_path(config, "dit_quantized_ckpt", subdir=dit_quant_scheme)
                 self.config.use_gguf = True

@@ -27,11 +27,11 @@
 
 #### 1. 拉取镜像
 
-访问 LightX2V 的 [Docker Hub](https://hub.docker.com/r/lightx2v/lightx2v/tags)，选择一个最新日期的 tag，比如 `25080104`：
+访问 LightX2V 的 [Docker Hub](https://hub.docker.com/r/lightx2v/lightx2v/tags)，选择一个最新日期的 tag，比如 `25080601-cu128`：
 
 ```bash
-# 拉取最新版本的 LightX2V 镜像
-docker pull lightx2v/lightx2v:25080104
+# 拉取最新版本的 LightX2V 镜像，此镜像没有安装 SageAttention
+docker pull lightx2v/lightx2v:25080601-cu128
 ```
 
 如果需要使用`SageAttention`，可以使用带`-SageSmXX`后缀的镜像版本，`SageAttention`的使用需要针对GPU类型进行选择，其中：
@@ -45,10 +45,21 @@ docker pull lightx2v/lightx2v:25080104
 比如要在4090或者H100上使用`SageAttention`，则拉取镜像命令为：
 
 ```bash
-# 对于4090
-docker pull lightx2v/lightx2v:25080104-SageSm89
-# 对于H100
-docker pull lightx2v/lightx2v:25080104-SageSm90
+# 对于4090，安装了 SageAttention
+docker pull lightx2v/lightx2v:25080601-cu128-SageSm89
+# 对于H100，安装了 SageAttention
+docker pull lightx2v/lightx2v:25080601-cu128-SageSm90
+```
+
+我们推荐使用`cuda128`环境，以获得更快的推理速度，若需要使用`cuda124`环境，可以使用带`-cu124`后缀的镜像版本：
+
+```bash
+# cuda124版本，没有安装 SageAttention
+docker pull lightx2v/lightx2v:25080601-cu124
+# 对于4090，cuda124版本，安装了 SageAttention
+docker pull lightx2v/lightx2v:25080601-cu124-SageSm89
+# 对于H100，cuda124版本，安装了 SageAttention
+docker pull lightx2v/lightx2v:25080601-cu124-SageSm90
 ```
 
 #### 2. 运行容器
@@ -65,14 +76,23 @@ docker run --gpus all -itd --ipc=host --name [容器名] -v [挂载设置] --ent
 # 修改[tag]为所需下载的镜像tag
 docker pull registry.cn-hangzhou.aliyuncs.com/yongyang/lightx2v:[tag]
 
-# 比如下载 25080104
-docker pull registry.cn-hangzhou.aliyuncs.com/yongyang/lightx2v:25080104
+# 比如下载 25080601-cu128
+docker pull registry.cn-hangzhou.aliyuncs.com/yongyang/lightx2v:25080601-cu128
 
-# 比如下载 25080104-SageSm89
-docker pull registry.cn-hangzhou.aliyuncs.com/yongyang/lightx2v:25080104-SageSm89
+# 比如下载 25080601-cu128-SageSm89
+docker pull registry.cn-hangzhou.aliyuncs.com/yongyang/lightx2v:25080601-cu128-SageSm89
 
-# 比如下载 25080104-SageSm90
-docker pull registry.cn-hangzhou.aliyuncs.com/yongyang/lightx2v:25080104-SageSm90
+# 比如下载 25080601-cu128-SageSm90
+docker pull registry.cn-hangzhou.aliyuncs.com/yongyang/lightx2v:25080601-cu128-SageSm90
+
+# 比如下载 25080601-cu124
+docker pull registry.cn-hangzhou.aliyuncs.com/yongyang/lightx2v:25080601-cu124
+
+# 比如下载 25080601-cu124-SageSm89
+docker pull registry.cn-hangzhou.aliyuncs.com/yongyang/lightx2v:25080601-cu124-SageSm89
+
+# 比如下载 25080601-cu124-SageSm90
+docker pull registry.cn-hangzhou.aliyuncs.com/yongyang/lightx2v:25080601-cu124-SageSm90
 ```
 
 ### 🐍 Conda 环境搭建
@@ -91,7 +111,7 @@ cd LightX2V
 
 ```bash
 # 创建并激活 conda 环境
-conda create -n lightx2v python=3.12 -y
+conda create -n lightx2v python=3.11 -y
 conda activate lightx2v
 ```
 

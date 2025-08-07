@@ -89,7 +89,7 @@ class WanCausVidRunner(WanRunner):
                     self.model.scheduler.latents = self.model.scheduler.last_sample
                     self.model.scheduler.step_pre(step_index=self.model.scheduler.infer_steps - 1)
 
-                with ProfilingContext4Debug("infer"):
+                with ProfilingContext4Debug("🚀 infer_main"):
                     self.model.infer(self.inputs, kv_start, kv_end)
 
                 kv_start += self.num_frame_per_block * self.frame_seq_length
@@ -108,7 +108,7 @@ class WanCausVidRunner(WanRunner):
                     with ProfilingContext4Debug("step_pre"):
                         self.model.scheduler.step_pre(step_index=step_index)
 
-                    with ProfilingContext4Debug("infer"):
+                    with ProfilingContext4Debug("🚀 infer_main"):
                         self.model.infer(self.inputs, kv_start, kv_end)
 
                     with ProfilingContext4Debug("step_post"):

@@ -113,7 +113,7 @@ class DefaultRunner(BaseRunner):
             with ProfilingContext4Debug("step_pre"):
                 self.model.scheduler.step_pre(step_index=step_index)
 
-            with ProfilingContext4Debug("infer"):
+            with ProfilingContext4Debug("🚀 infer_main"):
                 self.model.infer(self.inputs)
 
             with ProfilingContext4Debug("step_post"):
@@ -233,12 +233,13 @@ class DefaultRunner(BaseRunner):
                 fps = self.config.get("fps", 16)
 
             if not dist.is_initialized() or dist.get_rank() == 0:
-                logger.info(f"Saving video to {self.config.save_video_path}")
+                logger.info(f"🎬 Start to save video 🎬")
 
                 if self.config["model_cls"] != "wan2.2":
                     save_to_video(images, self.config.save_video_path, fps=fps, method="ffmpeg")  # type: ignore
                 else:
                     cache_video(tensor=images, save_file=self.config.save_video_path, fps=fps, nrow=1, normalize=True, value_range=(-1, 1))
+                logger.info(f"✅ Video saved successfully to: {self.config.save_video_path} ✅")
 
         del latents, generator
         torch.cuda.empty_cache()
