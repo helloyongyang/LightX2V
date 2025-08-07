@@ -83,7 +83,14 @@ class WanTransformerInfer(BaseTransformerInfer):
         cu_seqlens_q = torch.cat([q_lens.new_zeros([1]), q_lens]).cumsum(0, dtype=torch.int32)
         cu_seqlens_k = torch.cat([k_lens.new_zeros([1]), k_lens]).cumsum(0, dtype=torch.int32)
         return cu_seqlens_q, cu_seqlens_k
-
+    
+    def compute_freqs(self, q, grid_sizes, freqs):
+        if "audio" in self.config.get("model_cls", ""):
+            freqs_i = compute_freqs_audio(q.size(2) // 2, grid_sizes, freqs)
+        else:
+            freqs_i = compute_freqs(q.size(2) // 2, grid_sizes, freqs)
+        return freqs_i
+    
     @torch.compile(disable=not CHECK_ENABLE_GRAPH_MODE())
     def infer(self, weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context, audio_dit_blocks=None):
         return self.infer_func(weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context, audio_dit_blocks)
@@ -108,6 +115,8 @@ class WanTransformerInfer(BaseTransformerInfer):
                     freqs,
                     context,
                 )
+                if audio_dit_blocks:
+                    x = self._apply_audio_dit(x, block_idx, grid_sizes, audio_dit_blocks)
 
             self.weights_stream_mgr.swap_weights()
 
@@ -136,13 +145,16 @@ class WanTransformerInfer(BaseTransformerInfer):
                     freqs,
                     context,
                 )
-
+                if audio_dit_blocks:
+                    x = self._apply_audio_dit(x, block_idx, grid_sizes, audio_dit_blocks)
+    
             self.weights_stream_mgr.swap_weights()
 
             if block_idx == self.blocks_num - 1:
                 self.weights_stream_mgr.pin_memory_buffer.pop_front()
 
             self.weights_stream_mgr._async_prefetch_block(weights.blocks)
+
 
         if self.clean_cuda_cache:
             del grid_sizes, embed, embed0, seq_lens, freqs, context
@@ -178,6 +190,8 @@ class WanTransformerInfer(BaseTransformerInfer):
                     elif cur_phase_idx == 3:
                         y = self.infer_ffn(cur_phase, x, attn_out, c_shift_msa, c_scale_msa)
                         x = self.post_process(x, y, c_gate_msa)
+                        if audio_dit_blocks:
+                            x = self._apply_audio_dit(x, block_idx, grid_sizes, audio_dit_blocks)
 
                 is_last_phase = block_idx == weights.blocks_num - 1 and phase_idx == self.phases_num - 1
                 if not is_last_phase:
@@ -238,6 +252,8 @@ class WanTransformerInfer(BaseTransformerInfer):
                     elif cur_phase_idx == 3:
                         y = self.infer_ffn(cur_phase, x, attn_out, c_shift_msa, c_scale_msa)
                         x = self.post_process(x, y, c_gate_msa)
+                        if audio_dit_blocks:
+                            x = self._apply_audio_dit(x, block_idx, grid_sizes, audio_dit_blocks)
 
                 if not (block_idx == weights.blocks_num - 1 and phase_idx == self.phases_num - 1):
                     next_block_idx = block_idx + 1 if phase_idx == self.phases_num - 1 else block_idx
@@ -274,6 +290,16 @@ class WanTransformerInfer(BaseTransformerInfer):
             freqs_cis[valid_token_length:, :, : rope_t_dim // 2] = 0
             return freqs_cis
 
+    @torch._dynamo.disable
+    def _apply_audio_dit(self, x, block_idx, grid_sizes, audio_dit_blocks):
+        for ipa_out in audio_dit_blocks:
+            if block_idx in ipa_out:
+                cur_modify = ipa_out[block_idx]
+                x = cur_modify["modify_func"](x,
+                                            grid_sizes,
+                                            **cur_modify["kwargs"])
+        return x
+
     def _infer_without_offload(self, weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context, audio_dit_blocks=None):
         for block_idx in range(self.blocks_num):
             x = self.infer_block(
@@ -286,12 +312,9 @@ class WanTransformerInfer(BaseTransformerInfer):
                 freqs,
                 context,
             )
+            if audio_dit_blocks:
+                x = self._apply_audio_dit(x, block_idx, grid_sizes, audio_dit_blocks)
 
-            if audio_dit_blocks is not None and len(audio_dit_blocks) > 0:
-                for ipa_out in audio_dit_blocks:
-                    if block_idx in ipa_out:
-                        cur_modify = ipa_out[block_idx]
-                        x = cur_modify["modify_func"](x, grid_sizes, **cur_modify["kwargs"])
         return x
 
     def infer_block(self, weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context):
@@ -326,13 +349,6 @@ class WanTransformerInfer(BaseTransformerInfer):
             torch.cuda.empty_cache()
 
         return shift_msa, scale_msa, gate_msa, c_shift_msa, c_scale_msa, c_gate_msa
-
-    def compute_freqs(self, q, grid_sizes, freqs):
-        if "audio" in self.config.get("model_cls", ""):
-            freqs_i = compute_freqs_audio(q.size(2) // 2, grid_sizes, freqs)
-        else:
-            freqs_i = compute_freqs(q.size(2) // 2, grid_sizes, freqs)
-        return freqs_i
 
     def infer_self_attn(self, weights, grid_sizes, x, seq_lens, freqs, shift_msa, scale_msa):
         if hasattr(weights, "smooth_norm1_weight"):
