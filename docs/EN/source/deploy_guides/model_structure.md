@@ -12,10 +12,10 @@ View all available models: [LightX2V Official Model Repository](https://huggingf
 
 ### Standard Directory Structure
 
-Using `Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V` as an example, the standard file structure is as follows:
+Using `Wan2.1-I2V-14B-480P-LightX2V` as an example, the standard file structure is as follows:
 
 ```
-Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V/
+Wan2.1-I2V-14B-480P-LightX2V/
 ├── fp8/                                          # FP8 quantized version (DIT/T5/CLIP)
 │   ├── block_xx.safetensors                      # DIT model FP8 quantized version
 │   ├── models_t5_umt5-xxl-enc-fp8.pth            # T5 encoder FP8 quantized version
@@ -31,6 +31,33 @@ Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V/
 │   ├── taew2_1.pth                               # Lightweight VAE (optional)
 │   └── config.json                               # Model configuration file
 ├── original/                                     # Original precision version (DIT/T5/CLIP)
+│   ├── xx.safetensors                            # DIT model original precision version
+│   ├── models_t5_umt5-xxl-enc-bf16.pth           # T5 encoder original precision version
+│   ├── models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth  # CLIP encoder original precision version
+│   ├── Wan2.1_VAE.pth                            # VAE variational autoencoder
+│   ├── taew2_1.pth                               # Lightweight VAE (optional)
+│   └── config.json                               # Model configuration file
+```
+
+Using `Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V` as an example, the standard file structure is as follows:
+
+```
+Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V/
+├── distill_fp8/                                          # FP8 quantized version (DIT/T5/CLIP)
+│   ├── block_xx.safetensors                      # DIT model FP8 quantized version
+│   ├── models_t5_umt5-xxl-enc-fp8.pth            # T5 encoder FP8 quantized version
+│   ├── clip-fp8.pth                              # CLIP encoder FP8 quantized version
+│   ├── Wan2.1_VAE.pth                            # VAE variational autoencoder
+│   ├── taew2_1.pth                               # Lightweight VAE (optional)
+│   └── config.json                               # Model configuration file
+├── distill_int8/                                         # INT8 quantized version (DIT/T5/CLIP)
+│   ├── block_xx.safetensors                      # DIT model INT8 quantized version
+│   ├── models_t5_umt5-xxl-enc-int8.pth           # T5 encoder INT8 quantized version
+│   ├── clip-int8.pth                             # CLIP encoder INT8 quantized version
+│   ├── Wan2.1_VAE.pth                            # VAE variational autoencoder
+│   ├── taew2_1.pth                               # Lightweight VAE (optional)
+│   └── config.json                               # Model configuration file
+├── distill_models/                                     # Original precision version (DIT/T5/CLIP)
 │   ├── distill_model.safetensors                 # DIT model original precision version
 │   ├── models_t5_umt5-xxl-enc-bf16.pth           # T5 encoder original precision version
 │   ├── models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth  # CLIP encoder original precision version
@@ -148,24 +175,24 @@ python gradio_demo.py \
 # Use Hugging Face CLI to selectively download non-quantized version
 huggingface-cli download lightx2v/Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V \
     --local-dir ./Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V \
-    --include "original/*"
+    --include "distill_models/*"
 ```
 
 ```bash
 # Use Hugging Face CLI to selectively download FP8 quantized version
 huggingface-cli download lightx2v/Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V \
     --local-dir ./Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V \
-    --include "fp8/*"
+    --include "distill_fp8/*"
 ```
 
 ```bash
 # Use Hugging Face CLI to selectively download INT8 quantized version
 huggingface-cli download lightx2v/Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V \
     --local-dir ./Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V \
-    --include "int8/*"
+    --include "distill_int8/*"
 ```
 
-> **Important Note**: When starting inference scripts or Gradio, the `model_path` parameter still needs to be specified as the complete path without the `--include` parameter. For example: `model_path=./Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V`, not `./Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V/int8`.
+> **Important Note**: When starting inference scripts or Gradio, the `model_path` parameter still needs to be specified as the complete path without the `--include` parameter. For example: `model_path=./Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V`, not `./Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V/distill_int8`.
 
 #### 2. Start Inference
 

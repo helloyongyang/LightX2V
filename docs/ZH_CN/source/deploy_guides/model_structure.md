@@ -12,10 +12,10 @@
 
 ### 标准目录结构
 
-以 `Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V` 为例，标准文件结构如下：
+以 `Wan2.1-I2V-14B-480P-LightX2V` 为例，标准文件结构如下：
 
 ```
-Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V/
+Wan2.1-I2V-14B-480P-LightX2V/
 ├── fp8/                                          # FP8 量化版本 (DIT/T5/CLIP)
 │   ├── block_xx.safetensors                      # DIT 模型 FP8 量化版本
 │   ├── models_t5_umt5-xxl-enc-fp8.pth            # T5 编码器 FP8 量化版本
@@ -31,6 +31,34 @@ Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V/
 │   ├── taew2_1.pth                               # 轻量级 VAE (可选)
 │   └── config.json                               # 模型配置文件
 ├── original/                                     # 原始精度版本 (DIT/T5/CLIP)
+│   ├── xx.safetensors                            # DIT 模型原始精度版本
+│   ├── models_t5_umt5-xxl-enc-bf16.pth           # T5 编码器原始精度版本
+│   ├── models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth  # CLIP 编码器原始精度版本
+│   ├── Wan2.1_VAE.pth                            # VAE 变分自编码器
+│   ├── taew2_1.pth                               # 轻量级 VAE (可选)
+│   └── config.json                               # 模型配置文件
+```
+
+以 `Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V` 为例，标准文件结构如下：
+
+
+```
+Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V/
+├── distill_fp8/                                          # FP8 量化版本 (DIT/T5/CLIP)
+│   ├── block_xx.safetensors                      # DIT 模型 FP8 量化版本
+│   ├── models_t5_umt5-xxl-enc-fp8.pth            # T5 编码器 FP8 量化版本
+│   ├── clip-fp8.pth                              # CLIP 编码器 FP8 量化版本
+│   ├── Wan2.1_VAE.pth                            # VAE 变分自编码器
+│   ├── taew2_1.pth                               # 轻量级 VAE (可选)
+│   └── config.json                               # 模型配置文件
+├── distill_int8/                                         # INT8 量化版本 (DIT/T5/CLIP)
+│   ├── block_xx.safetensors                      # DIT 模型 INT8 量化版本
+│   ├── models_t5_umt5-xxl-enc-int8.pth           # T5 编码器 INT8 量化版本
+│   ├── clip-int8.pth                             # CLIP 编码器 INT8 量化版本
+│   ├── Wan2.1_VAE.pth                            # VAE 变分自编码器
+│   ├── taew2_1.pth                               # 轻量级 VAE (可选)
+│   └── config.json                               # 模型配置文件
+├── distill_models/                                     # 原始精度版本 (DIT/T5/CLIP)
 │   ├── distill_model.safetensors                 # DIT 模型原始精度版本
 │   ├── models_t5_umt5-xxl-enc-bf16.pth           # T5 编码器原始精度版本
 │   ├── models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth  # CLIP 编码器原始精度版本
@@ -148,24 +176,24 @@ python gradio_demo_zh.py \
 # 使用 Hugging Face CLI 选择性下载非量化版本
 huggingface-cli download lightx2v/Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V \
     --local-dir ./Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V \
-    --include "original/*"
+    --include "distill_models/*"
 ```
 
 ```bash
 # 使用 Hugging Face CLI 选择性下载 FP8 量化版本
 huggingface-cli download lightx2v/Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V \
     --local-dir ./Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V \
-    --include "fp8/*"
+    --include "distill_fp8/*"
 ```
 
 ```bash
 # 使用 Hugging Face CLI 选择性下载 INT8 量化版本
 huggingface-cli download lightx2v/Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V \
     --local-dir ./Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V \
-    --include "int8/*"
+    --include "distill_int8/*"
 ```
 
-> **重要提示**：当启动推理脚本或Gradio时，`model_path` 参数仍需要指定为不包含 `--include` 的完整路径。例如：`model_path=./Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V`，而不是 `./Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V/int8`。
+> **重要提示**：当启动推理脚本或Gradio时，`model_path` 参数仍需要指定为不包含 `--include` 的完整路径。例如：`model_path=./Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V`，而不是 `./Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V/distill_int8`。
 
 #### 2. 启动推理
 
