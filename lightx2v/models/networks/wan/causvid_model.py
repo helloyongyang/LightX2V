@@ -1,7 +1,6 @@
 import os
 
 import torch
-from lightx2v.utils.utils import find_torch_model_path
 
 from lightx2v.common.ops.attn.radial_attn import MaskMap
 from lightx2v.models.networks.wan.infer.causvid.transformer_infer import (
@@ -16,6 +15,7 @@ from lightx2v.models.networks.wan.weights.transformer_weights import (
     WanTransformerWeights,
 )
 from lightx2v.utils.envs import *
+from lightx2v.utils.utils import find_torch_model_path
 
 
 class WanCausVidModel(WanModel):
