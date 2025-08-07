@@ -28,14 +28,8 @@ class WanLoraWrapper:
         return lora_name
 
     def _load_lora_file(self, file_path):
-        use_bfloat16 = GET_DTYPE() == "BF16"
-        if self.model.config and hasattr(self.model.config, "get"):
-            use_bfloat16 = self.model.config.get("use_bfloat16", True)
         with safe_open(file_path, framework="pt") as f:
-            if use_bfloat16:
-                tensor_dict = {key: f.get_tensor(key).to(GET_DTYPE()) for key in f.keys()}
-            else:
-                tensor_dict = {key: f.get_tensor(key) for key in f.keys()}
+            tensor_dict = {key: f.get_tensor(key).to(GET_DTYPE()) for key in f.keys()}
         return tensor_dict
 
     def apply_lora(self, lora_name, alpha=1.0):
@@ -52,7 +46,7 @@ class WanLoraWrapper:
         self.model._init_weights(weight_dict)
 
         logger.info(f"Applied LoRA: {lora_name} with alpha={alpha}")
-        del lora_weights  # 删除节约显存
+        del lora_weights
         return True
 
     @torch.no_grad()

@@ -1,7 +1,7 @@
 import os
 
 import torch
-from safetensors import safe_open
+from LightX2V.lightx2v.utils.utils import find_torch_model_path
 
 from lightx2v.common.ops.attn.radial_attn import MaskMap
 from lightx2v.models.networks.wan.infer.causvid.transformer_infer import (
@@ -32,23 +32,12 @@ class WanCausVidModel(WanModel):
         self.transformer_infer_class = WanTransformerInferCausVid
 
     def _load_ckpt(self, unified_dtype, sensitive_layer):
-        ckpt_folder = "causvid_models"
-        safetensors_path = os.path.join(self.model_path, f"{ckpt_folder}/causal_model.safetensors")
-        if os.path.exists(safetensors_path):
-            with safe_open(safetensors_path, framework="pt") as f:
-                weight_dict = {
-                    key: (f.get_tensor(key).to(GET_DTYPE()) if unified_dtype or all(s not in key for s in sensitive_layer) else f.get_tensor(key).to(GET_SENSITIVE_DTYPE()))
-                    .pin_memory()
-                    .to(self.device)
-                    for key in f.keys()
-                }
-                return weight_dict
-
-        ckpt_path = os.path.join(self.model_path, f"{ckpt_folder}/causal_model.pt")
+        ckpt_path = find_torch_model_path(self.config, self.model_path, "causvid_model.pt")
         if os.path.exists(ckpt_path):
             weight_dict = torch.load(ckpt_path, map_location="cpu", weights_only=True)
             weight_dict = {
-                key: (weight_dict[key].to(GET_DTYPE()) if unified_dtype or all(s not in key for s in sensitive_layer) else weight_dict[key]).pin_memory().to(self.device) for key in weight_dict.keys()
+                key: (weight_dict[key].to(GET_DTYPE()) if unified_dtype or all(s not in key for s in sensitive_layer) else weight_dict[key].to(GET_SENSITIVE_DTYPE())).pin_memory().to(self.device)
+                for key in weight_dict.keys()
             }
             return weight_dict
 
