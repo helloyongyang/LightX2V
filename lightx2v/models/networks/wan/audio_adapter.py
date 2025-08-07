@@ -113,7 +113,7 @@ class PerceiverAttentionCA(nn.Module):
             shift_scale_gate = torch.zeros((1, 3, inner_dim))
             shift_scale_gate[:, 2] = 1
             self.register_buffer("shift_scale_gate", shift_scale_gate, persistent=False)
-    
+
     def forward(self, x, latents, t_emb, q_lens, k_lens):
         """x shape (batchsize, latent_frame, audio_tokens_per_latent,
         model_dim) latents (batchsize, length, model_dim)"""

@@ -83,14 +83,14 @@ class WanTransformerInfer(BaseTransformerInfer):
         cu_seqlens_q = torch.cat([q_lens.new_zeros([1]), q_lens]).cumsum(0, dtype=torch.int32)
         cu_seqlens_k = torch.cat([k_lens.new_zeros([1]), k_lens]).cumsum(0, dtype=torch.int32)
         return cu_seqlens_q, cu_seqlens_k
-    
+
     def compute_freqs(self, q, grid_sizes, freqs):
         if "audio" in self.config.get("model_cls", ""):
             freqs_i = compute_freqs_audio(q.size(2) // 2, grid_sizes, freqs)
         else:
             freqs_i = compute_freqs(q.size(2) // 2, grid_sizes, freqs)
         return freqs_i
-    
+
     @torch.compile(disable=not CHECK_ENABLE_GRAPH_MODE())
     def infer(self, weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context, audio_dit_blocks=None):
         return self.infer_func(weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context, audio_dit_blocks)
@@ -147,14 +147,13 @@ class WanTransformerInfer(BaseTransformerInfer):
                 )
                 if audio_dit_blocks:
                     x = self._apply_audio_dit(x, block_idx, grid_sizes, audio_dit_blocks)
-    
+
             self.weights_stream_mgr.swap_weights()
 
             if block_idx == self.blocks_num - 1:
                 self.weights_stream_mgr.pin_memory_buffer.pop_front()
 
             self.weights_stream_mgr._async_prefetch_block(weights.blocks)
-
 
         if self.clean_cuda_cache:
             del grid_sizes, embed, embed0, seq_lens, freqs, context
@@ -295,9 +294,7 @@ class WanTransformerInfer(BaseTransformerInfer):
         for ipa_out in audio_dit_blocks:
             if block_idx in ipa_out:
                 cur_modify = ipa_out[block_idx]
-                x = cur_modify["modify_func"](x,
-                                            grid_sizes,
-                                            **cur_modify["kwargs"])
+                x = cur_modify["modify_func"](x, grid_sizes, **cur_modify["kwargs"])
         return x
 
     def _infer_without_offload(self, weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context, audio_dit_blocks=None):

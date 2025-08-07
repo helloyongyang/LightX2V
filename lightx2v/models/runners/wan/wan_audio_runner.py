@@ -3,7 +3,7 @@ import os
 import subprocess
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
@@ -738,7 +738,7 @@ class WanAudioRunner(WanRunner):  # type:ignore
                 prev_video=prev_video,
                 prev_frame_length=5,
                 segment_idx=0,
-                total_steps=1
+                total_steps=1,
             )
             # Final cleanup
             self.end_run()
