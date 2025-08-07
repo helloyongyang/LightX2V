@@ -43,27 +43,29 @@ Using `Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V` as an example, the s
 
 ```
 Wan2.1-I2V-14B-480P-StepDistill-CfgDistill-LightX2V/
-├── distill_fp8/                                          # FP8 quantized version (DIT/T5/CLIP)
+├── distill_fp8/                                  # FP8 quantized version (DIT/T5/CLIP)
 │   ├── block_xx.safetensors                      # DIT model FP8 quantized version
 │   ├── models_t5_umt5-xxl-enc-fp8.pth            # T5 encoder FP8 quantized version
 │   ├── clip-fp8.pth                              # CLIP encoder FP8 quantized version
 │   ├── Wan2.1_VAE.pth                            # VAE variational autoencoder
 │   ├── taew2_1.pth                               # Lightweight VAE (optional)
 │   └── config.json                               # Model configuration file
-├── distill_int8/                                         # INT8 quantized version (DIT/T5/CLIP)
+├── distill_int8/                                 # INT8 quantized version (DIT/T5/CLIP)
 │   ├── block_xx.safetensors                      # DIT model INT8 quantized version
 │   ├── models_t5_umt5-xxl-enc-int8.pth           # T5 encoder INT8 quantized version
 │   ├── clip-int8.pth                             # CLIP encoder INT8 quantized version
 │   ├── Wan2.1_VAE.pth                            # VAE variational autoencoder
 │   ├── taew2_1.pth                               # Lightweight VAE (optional)
 │   └── config.json                               # Model configuration file
-├── distill_models/                                     # Original precision version (DIT/T5/CLIP)
+├── distill_models/                               # Original precision version (DIT/T5/CLIP)
 │   ├── distill_model.safetensors                 # DIT model original precision version
 │   ├── models_t5_umt5-xxl-enc-bf16.pth           # T5 encoder original precision version
 │   ├── models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth  # CLIP encoder original precision version
 │   ├── Wan2.1_VAE.pth                            # VAE variational autoencoder
 │   ├── taew2_1.pth                               # Lightweight VAE (optional)
 │   └── config.json                               # Model configuration file
+├── loras/
+│   ├── Wan21_I2V_14B_lightx2v_cfg_step_distill_lora_rank64.safetensors  # Distillation model lora
 ```
 
 ### 💾 Storage Recommendations
