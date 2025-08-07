@@ -113,7 +113,7 @@ class DefaultRunner(BaseRunner):
             with ProfilingContext4Debug("step_pre"):
                 self.model.scheduler.step_pre(step_index=step_index)
 
-            with ProfilingContext4Debug("infer_main"):
+            with ProfilingContext4Debug("🚀 infer_main"):
                 self.model.infer(self.inputs)
 
             with ProfilingContext4Debug("step_post"):
