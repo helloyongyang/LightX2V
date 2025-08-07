@@ -111,7 +111,7 @@ cd LightX2V
 
 ```bash
 # Create and activate conda environment
-conda create -n lightx2v python=3.12 -y
+conda create -n lightx2v python=3.11 -y
 conda activate lightx2v
 ```
 
