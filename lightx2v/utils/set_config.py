@@ -25,6 +25,7 @@ def get_default_config():
         "seq_parallel": False,
         "cfg_parallel": False,
         "enable_cfg": False,
+        "use_image_encoder": True,
     }
     return default_config
 
