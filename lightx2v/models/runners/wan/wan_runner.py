@@ -68,13 +68,13 @@ class WanRunner(DefaultRunner):
                 assert clip_quant_scheme is not None
                 tmp_clip_quant_scheme = clip_quant_scheme.split("-")[0]
                 clip_model_name = f"clip-{tmp_clip_quant_scheme}.pth"
-                clip_quantized_ckpt = find_torch_model_path(self.config, "clip_quantized_ckpt", clip_model_name, tmp_clip_quant_scheme)
+                clip_quantized_ckpt = find_torch_model_path(self.config, "clip_quantized_ckpt", clip_model_name)
                 clip_original_ckpt = None
             else:
                 clip_quantized_ckpt = None
                 clip_quant_scheme = None
                 clip_model_name = "models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth"
-                clip_original_ckpt = find_torch_model_path(self.config, "clip_original_ckpt", clip_model_name, "original")
+                clip_original_ckpt = find_torch_model_path(self.config, "clip_original_ckpt", clip_model_name)
 
             image_encoder = CLIPModel(
                 dtype=torch.float16,
@@ -90,7 +90,7 @@ class WanRunner(DefaultRunner):
 
     def load_text_encoder(self):
         # offload config
-        t5_offload = self.config.get("t5_cpu_offload", False)
+        t5_offload = self.config.get("t5_cpu_offload", self.config.get("cpu_offload"))
         if t5_offload:
             t5_device = torch.device("cpu")
         else:
@@ -103,14 +103,14 @@ class WanRunner(DefaultRunner):
             assert t5_quant_scheme is not None
             tmp_t5_quant_scheme = t5_quant_scheme.split("-")[0]
             t5_model_name = f"models_t5_umt5-xxl-enc-{tmp_t5_quant_scheme}.pth"
-            t5_quantized_ckpt = find_torch_model_path(self.config, "t5_quantized_ckpt", t5_model_name, tmp_t5_quant_scheme)
+            t5_quantized_ckpt = find_torch_model_path(self.config, "t5_quantized_ckpt", t5_model_name)
             t5_original_ckpt = None
             tokenizer_path = os.path.join(os.path.dirname(t5_quantized_ckpt), "google/umt5-xxl")
         else:
             t5_quant_scheme = None
             t5_quantized_ckpt = None
             t5_model_name = "models_t5_umt5-xxl-enc-bf16.pth"
-            t5_original_ckpt = find_torch_model_path(self.config, "t5_original_ckpt", t5_model_name, "original")
+            t5_original_ckpt = find_torch_model_path(self.config, "t5_original_ckpt", t5_model_name)
             tokenizer_path = os.path.join(os.path.dirname(t5_original_ckpt), "google/umt5-xxl")
 
         text_encoder = T5EncoderModel(
@@ -121,7 +121,7 @@ class WanRunner(DefaultRunner):
             tokenizer_path=tokenizer_path,
             shard_fn=None,
             cpu_offload=t5_offload,
-            offload_granularity=self.config.get("t5_offload_granularity", "model"),
+            offload_granularity=self.config.get("t5_offload_granularity", "model"),  # support ['model', 'block']
             t5_quantized=t5_quantized,
             t5_quantized_ckpt=t5_quantized_ckpt,
             quant_scheme=t5_quant_scheme,
@@ -131,12 +131,20 @@ class WanRunner(DefaultRunner):
         return text_encoders
 
     def load_vae_encoder(self):
+        # offload config
+        vae_offload = self.config.get("vae_cpu_offload", self.config.get("cpu_offload"))
+        if vae_offload:
+            vae_device = torch.device("cpu")
+        else:
+            vae_device = torch.device("cuda")
+
         vae_config = {
             "vae_pth": find_torch_model_path(self.config, "vae_pth", "Wan2.1_VAE.pth"),
-            "device": self.init_device,
+            "device": vae_device,
             "parallel": self.config.parallel and self.config.parallel.get("vae_p_size", False) and self.config.parallel.vae_p_size > 1,
             "use_tiling": self.config.get("use_tiling_vae", False),
             "seq_p_group": self.seq_p_group,
+            "cpu_offload": vae_offload,
         }
         if self.config.task != "i2v":
             return None
@@ -144,11 +152,19 @@ class WanRunner(DefaultRunner):
             return WanVAE(**vae_config)
 
     def load_vae_decoder(self):
+        # offload config
+        vae_offload = self.config.get("vae_cpu_offload", self.config.get("cpu_offload"))
+        if vae_offload:
+            vae_device = torch.device("cpu")
+        else:
+            vae_device = torch.device("cuda")
+
         vae_config = {
             "vae_pth": find_torch_model_path(self.config, "vae_pth", "Wan2.1_VAE.pth"),
-            "device": self.init_device,
+            "device": vae_device,
             "parallel": self.config.parallel and self.config.parallel.get("vae_p_size", False) and self.config.parallel.vae_p_size > 1,
             "use_tiling": self.config.get("use_tiling_vae", False),
+            "cpu_offload": vae_offload,
         }
         if self.config.get("use_tiny_vae", False):
             tiny_vae_path = find_torch_model_path(self.config, "tiny_vae_path", "taew2_1.pth")
@@ -398,17 +414,33 @@ class Wan22DenseRunner(WanRunner):
         super().__init__(config)
 
     def load_vae_decoder(self):
+        # offload config
+        vae_offload = self.config.get("vae_cpu_offload", self.config.get("cpu_offload"))
+        if vae_offload:
+            vae_device = torch.device("cpu")
+        else:
+            vae_device = torch.device("cuda")
         vae_config = {
             "vae_pth": find_torch_model_path(self.config, "vae_pth", "Wan2.2_VAE.pth"),
-            "device": self.init_device,
+            "device": vae_device,
+            "cpu_offload": vae_offload,
+            "offload_cache": self.config.get("vae_offload_cache", False),
         }
         vae_decoder = Wan2_2_VAE(**vae_config)
         return vae_decoder
 
     def load_vae_encoder(self):
+        # offload config
+        vae_offload = self.config.get("vae_cpu_offload", self.config.get("cpu_offload"))
+        if vae_offload:
+            vae_device = torch.device("cpu")
+        else:
+            vae_device = torch.device("cuda")
         vae_config = {
             "vae_pth": find_torch_model_path(self.config, "vae_pth", "Wan2.2_VAE.pth"),
-            "device": self.init_device,
+            "device": vae_device,
+            "cpu_offload": vae_offload,
+            "offload_cache": self.config.get("vae_offload_cache", False),
         }
         if self.config.task != "i2v":
             return None
