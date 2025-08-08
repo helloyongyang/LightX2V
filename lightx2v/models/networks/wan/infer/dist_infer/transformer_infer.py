@@ -12,7 +12,7 @@ class WanTransformerDistInfer(WanTransformerInfer):
         self.seq_p_group = self.config["device_mesh"].get_group(mesh_dim="seq_p")
 
     def infer(self, weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context, audio_dit_blocks=None):
-        x = self.dist_pre_process(x)
+        x, embed0 = self.dist_pre_process(x, embed0)
         x = super().infer(weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context, audio_dit_blocks)
         x = self.dist_post_process(x)
         return x
@@ -24,7 +24,7 @@ class WanTransformerDistInfer(WanTransformerInfer):
             freqs_i = self.compute_freqs_dist(q.size(0), q.size(2) // 2, grid_sizes, freqs)
         return freqs_i
 
-    def dist_pre_process(self, x):
+    def dist_pre_process(self, x, embed0):
         world_size = dist.get_world_size(self.seq_p_group)
         cur_rank = dist.get_rank(self.seq_p_group)
 
@@ -35,7 +35,9 @@ class WanTransformerDistInfer(WanTransformerInfer):
             x = F.pad(x, (0, 0, 0, padding_size))  # (后维度填充, 前维度填充)
 
         x = torch.chunk(x, world_size, dim=0)[cur_rank]
-        return x
+        if self.config["model_cls"].startswith("wan2.2"):
+            embed0 = torch.chunk(embed0, world_size, dim=0)[cur_rank]
+        return x, embed0
 
     def dist_post_process(self, x):
         world_size = dist.get_world_size(self.seq_p_group)

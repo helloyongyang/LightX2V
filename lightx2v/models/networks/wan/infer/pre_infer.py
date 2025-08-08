@@ -73,6 +73,10 @@ class WanPreInfer:
         x = x.flatten(2).transpose(1, 2).contiguous()
         seq_lens = torch.tensor(x.size(1), dtype=torch.long).cuda().unsqueeze(0)
 
+        # wan2.2_moe会对t做扩展，我们发现这里做不做影响不大，而且做了拓展会增加耗时，目前忠实原作代码，后续可以考虑去掉
+        if self.config["model_cls"] == "wan2.2_moe":
+            t = t.expand(seq_lens[0])
+
         embed = sinusoidal_embedding_1d(self.freq_dim, t.flatten())
         if self.enable_dynamic_cfg:
             s = torch.tensor([self.cfg_scale], dtype=torch.float32).to(x.device)
