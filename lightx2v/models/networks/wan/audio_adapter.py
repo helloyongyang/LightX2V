@@ -12,6 +12,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from diffusers.models.embeddings import TimestepEmbedding, Timesteps
 from einops import rearrange
+from loguru import logger
 from transformers import AutoModel
 
 from lightx2v.utils.envs import *
@@ -64,12 +65,13 @@ def rank0_load_state_dict_from_path(model, in_path: str, strict: bool = True, se
         is_leader = True
 
     if is_leader:
+        logger.info(f"Loading model state from {in_path}")
         state_dict = load_pt_safetensors(in_path)
         model.load_state_dict(state_dict, strict=strict)
 
     # 将模型状态从领导者同步到组内所有其他进程
     if seq_p_group is not None and dist.is_initialized():
-        dist.barrier(group=seq_p_group)
+        dist.barrier(group=seq_p_group, device_ids=[torch.cuda.current_device()])
 
         src_global_rank = dist.get_process_group_ranks(seq_p_group)[0]
 
@@ -79,7 +81,7 @@ def rank0_load_state_dict_from_path(model, in_path: str, strict: bool = True, se
         for buffer in model.buffers():
             dist.broadcast(buffer.data, src=src_global_rank, group=seq_p_group)
     elif dist.is_initialized():
-        dist.barrier()
+        dist.barrier(device_ids=[torch.cuda.current_device()])
         for param in model.parameters():
             dist.broadcast(param.data, src=0)
         for buffer in model.buffers():

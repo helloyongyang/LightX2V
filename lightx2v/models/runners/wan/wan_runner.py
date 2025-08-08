@@ -34,12 +34,18 @@ from lightx2v.utils.utils import best_output_size, cache_video
 class WanRunner(DefaultRunner):
     def __init__(self, config):
         super().__init__(config)
+        device_mesh = self.config.get("device_mesh")
+        if device_mesh is not None:
+            self.seq_p_group = device_mesh.get_group(mesh_dim="seq_p")
+        else:
+            self.seq_p_group = None
 
     def load_transformer(self):
         model = WanModel(
             self.config.model_path,
             self.config,
             self.init_device,
+            self.seq_p_group,
         )
         if self.config.get("lora_configs") and self.config.lora_configs:
             assert not self.config.get("dit_quantized", False) or self.config.mm_config.get("weight_auto_quant", False)
@@ -77,6 +83,7 @@ class WanRunner(DefaultRunner):
                 clip_quantized=clip_quantized,
                 clip_quantized_ckpt=clip_quantized_ckpt,
                 quant_scheme=clip_quant_scheme,
+                seq_p_group=self.seq_p_group,
             )
 
         return image_encoder
@@ -118,6 +125,7 @@ class WanRunner(DefaultRunner):
             t5_quantized=t5_quantized,
             t5_quantized_ckpt=t5_quantized_ckpt,
             quant_scheme=t5_quant_scheme,
+            seq_p_group=self.seq_p_group,
         )
         text_encoders = [text_encoder]
         return text_encoders
@@ -128,6 +136,7 @@ class WanRunner(DefaultRunner):
             "device": self.init_device,
             "parallel": self.config.parallel and self.config.parallel.get("vae_p_size", False) and self.config.parallel.vae_p_size > 1,
             "use_tiling": self.config.get("use_tiling_vae", False),
+            "seq_p_group": self.seq_p_group,
         }
         if self.config.task != "i2v":
             return None

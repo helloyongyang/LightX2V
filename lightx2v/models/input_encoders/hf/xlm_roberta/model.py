@@ -11,6 +11,7 @@ from loguru import logger
 # from lightx2v.attentions import attention
 from lightx2v.common.ops.attn import TorchSDPAWeight
 from lightx2v.models.input_encoders.hf.q_linear import Q8FQuantLinearFp8, Q8FQuantLinearInt8, TorchaoQuantLinearInt8, VllmQuantLinearFp8, VllmQuantLinearInt8
+from lightx2v.utils.utils import load_weights_distributed
 
 __all__ = [
     "XLMRobertaCLIP",
@@ -417,10 +418,12 @@ def clip_xlm_roberta_vit_h_14(pretrained=False, pretrained_name="open-clip-xlm-r
 
 
 class CLIPModel:
-    def __init__(self, dtype, device, checkpoint_path, clip_quantized, clip_quantized_ckpt, quant_scheme):
+    def __init__(self, dtype, device, checkpoint_path, clip_quantized, clip_quantized_ckpt, quant_scheme, seq_p_group=None):
         self.dtype = dtype
         self.device = device
         self.quantized = clip_quantized
+        self.seq_p_group = seq_p_group
+
         if self.quantized:
             self.checkpoint_path = clip_quantized_ckpt
         else:
@@ -431,15 +434,15 @@ class CLIPModel:
             pretrained=False, return_transforms=True, return_tokenizer=False, dtype=dtype, device=device, quantized=self.quantized, quant_scheme=quant_scheme
         )
         self.model = self.model.eval().requires_grad_(False)
-        weight_dict = torch.load(self.checkpoint_path, map_location="cpu", weights_only=True)
+        weight_dict = load_weights_distributed(self.checkpoint_path, seq_p_group=self.seq_p_group)
+        # weight_dict = torch.load(self.checkpoint_path, map_location="cpu", weights_only=True)
+
         keys = list(weight_dict.keys())
         for key in keys:
             if "textual" in key:
                 weight_dict.pop(key)
 
-        logger.info(f"Start Loading weights from {self.checkpoint_path}")
         self.model.load_state_dict(weight_dict)
-        logger.info(f"End Loading weights from {self.checkpoint_path}")
 
     def visual(self, videos, args):
         if hasattr(args, "cpu_offload") and args.cpu_offload:

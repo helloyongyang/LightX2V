@@ -19,8 +19,8 @@ class WanAudioModel(WanModel):
     post_weight_class = WanPostWeights
     transformer_weight_class = WanTransformerWeights
 
-    def __init__(self, model_path, config, device):
-        super().__init__(model_path, config, device)
+    def __init__(self, model_path, config, device, seq_p_group=None):
+        super().__init__(model_path, config, device, seq_p_group)
 
     def _init_infer_class(self):
         super()._init_infer_class()

@@ -8,6 +8,7 @@ import imageio
 import imageio_ffmpeg as ffmpeg
 import numpy as np
 import torch
+import torch.distributed as dist
 import torchvision
 from einops import rearrange
 from loguru import logger
@@ -272,7 +273,6 @@ def find_torch_model_path(config, ckpt_config_key=None, filename=None, subdir=["
 
     for path in paths_to_check:
         if os.path.exists(path):
-            logger.info(f"Found PyTorch model checkpoint: {path}")
             return path
     raise FileNotFoundError(f"PyTorch model file '{filename}' not found.\nPlease download the model from https://huggingface.co/lightx2v/ or specify the model path in the configuration file.")
 
@@ -292,7 +292,6 @@ def find_hf_model_path(config, model_path, ckpt_config_key=None, subdir=["origin
         safetensors_pattern = os.path.join(path, "*.safetensors")
         safetensors_files = glob.glob(safetensors_pattern)
         if safetensors_files:
-            logger.info(f"Found Hugging Face model files in: {path}")
             return path
     raise FileNotFoundError(f"No Hugging Face model files (.safetensors) found.\nPlease download the model from: https://huggingface.co/lightx2v/ or specify the model path in the configuration file.")
 
@@ -323,6 +322,53 @@ def find_gguf_model_path(config, ckpt_config_key=None, subdir=None):
                 return gguf_file_path
 
     raise FileNotFoundError(f"No GGUF model files (.gguf) found.\nPlease download the model from: https://huggingface.co/lightx2v/ or specify the model path in the configuration file.")
+
+
+def load_weights_distributed(checkpoint_path, seq_p_group=None):
+    if seq_p_group is None or not dist.is_initialized():
+        logger.info(f"Loading weights from {checkpoint_path}")
+        return torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+
+    is_leader = False
+    current_rank = dist.get_rank(seq_p_group)
+    if current_rank == 0:
+        is_leader = True
+
+    cpu_weight_dict = {}
+    if is_leader:  ##rank0在 CPU 上加载完整的权重字典
+        logger.info(f"Loading weights from {checkpoint_path}")
+        cpu_weight_dict = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+
+    # 同步字典的结构
+    meta_dict = {}
+    if is_leader:
+        for key, tensor in cpu_weight_dict.items():
+            meta_dict[key] = {"shape": tensor.shape, "dtype": tensor.dtype}
+
+    obj_list = [meta_dict] if is_leader else [None]
+
+    # 获取rank0的全局 rank 用于广播
+    src_global_rank = dist.get_process_group_ranks(seq_p_group)[0]
+    dist.broadcast_object_list(obj_list, src=src_global_rank, group=seq_p_group)
+    synced_meta_dict = obj_list[0]
+
+    # 所有进程所在的GPU上创建空的权重字典
+    target_device = torch.device(f"cuda:{current_rank}")
+    gpu_weight_dict = {key: torch.empty(meta["shape"], dtype=meta["dtype"], device=target_device) for key, meta in synced_meta_dict.items()}
+
+    dist.barrier(group=seq_p_group, device_ids=[torch.cuda.current_device()])
+
+    for key in sorted(synced_meta_dict.keys()):
+        tensor_to_broadcast = gpu_weight_dict[key]
+        if is_leader:
+            # rank0将CPU权重拷贝到目标GPU,准备广播
+            tensor_to_broadcast.copy_(cpu_weight_dict[key], non_blocking=True)
+        dist.broadcast(tensor_to_broadcast, src=src_global_rank, group=seq_p_group)
+
+    if is_leader:
+        del cpu_weight_dict
+
+    return gpu_weight_dict
 
 
 def masks_like(tensor, zero=False, generator=None, p=0.2):

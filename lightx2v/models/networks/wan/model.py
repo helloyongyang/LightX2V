@@ -41,11 +41,12 @@ class WanModel:
     post_weight_class = WanPostWeights
     transformer_weight_class = WanTransformerWeights
 
-    def __init__(self, model_path, config, device):
+    def __init__(self, model_path, config, device, seq_p_group=None):
         self.model_path = model_path
         self.config = config
         self.cpu_offload = self.config.get("cpu_offload", False)
         self.offload_granularity = self.config.get("offload_granularity", "block")
+        self.seq_p_group = seq_p_group
 
         self.clean_cuda_cache = self.config.get("clean_cuda_cache", False)
         self.dit_quantized = self.config.mm_config.get("mm_type", "Default") != "Default"
@@ -187,16 +188,61 @@ class WanModel:
             "img_emb.proj.0",
             "img_emb.proj.4",
         }
+
         if weight_dict is None:
-            if not self.dit_quantized or self.weight_auto_quant:
-                self.original_weight_dict = self._load_ckpt(unified_dtype, sensitive_layer)
-            else:
-                if not self.config.get("lazy_load", False):
-                    self.original_weight_dict = self._load_quant_ckpt(unified_dtype, sensitive_layer)
+            is_weight_loader = False
+            if self.seq_p_group is None:
+                is_weight_loader = True
+                logger.info(f"Loading original dit model from {self.model_path}")
+            elif dist.is_initialized():
+                if dist.get_rank(group=self.seq_p_group) == 0:
+                    is_weight_loader = True
+                    logger.info(f"Loading original dit model from {self.model_path}")
+
+            cpu_weight_dict = {}
+            if is_weight_loader:
+                if not self.dit_quantized or self.weight_auto_quant:
+                    cpu_weight_dict = self._load_ckpt(unified_dtype, sensitive_layer)
                 else:
-                    self.original_weight_dict = self._load_quant_split_ckpt(unified_dtype, sensitive_layer)
+                    if not self.config.get("lazy_load", False):
+                        cpu_weight_dict = self._load_quant_ckpt(unified_dtype, sensitive_layer)
+                    else:
+                        cpu_weight_dict = self._load_quant_split_ckpt(unified_dtype, sensitive_layer)
+
+            if self.seq_p_group is None:  # 单卡模式
+                self.original_weight_dict = {}
+                for key, tensor in cpu_weight_dict.items():
+                    self.original_weight_dict[key] = tensor.to("cuda", non_blocking=True)
+            else:
+                seq_p_group = self.seq_p_group
+                global_src_rank = dist.get_process_group_ranks(seq_p_group)[0]
+
+                meta_dict = {}
+                if is_weight_loader:
+                    for key, tensor in cpu_weight_dict.items():
+                        meta_dict[key] = {"shape": tensor.shape, "dtype": tensor.dtype}
+
+                obj_list = [meta_dict] if is_weight_loader else [None]
+                dist.broadcast_object_list(obj_list, src=global_src_rank, group=seq_p_group)
+                synced_meta_dict = obj_list[0]
+
+                self.original_weight_dict = {}
+                for key, meta in synced_meta_dict.items():
+                    self.original_weight_dict[key] = torch.empty(meta["shape"], dtype=meta["dtype"], device="cuda")
+
+                dist.barrier(group=seq_p_group, device_ids=[torch.cuda.current_device()])
+                for key in sorted(synced_meta_dict.keys()):
+                    tensor_to_broadcast = self.original_weight_dict[key]
+                    if is_weight_loader:
+                        tensor_to_broadcast.copy_(cpu_weight_dict[key], non_blocking=True)
+
+                    dist.broadcast(tensor_to_broadcast, src=global_src_rank, group=seq_p_group)
+
+            if is_weight_loader:
+                del cpu_weight_dict
         else:
             self.original_weight_dict = weight_dict
+
         # init weights
         self.pre_weight = self.pre_weight_class(self.config)
         self.post_weight = self.post_weight_class(self.config)

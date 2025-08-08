@@ -610,7 +610,7 @@ class WanAudioRunner(WanRunner):  # type:ignore
 
     def load_transformer(self):
         """Load transformer with LoRA support"""
-        base_model = WanAudioModel(self.config.model_path, self.config, self.init_device)
+        base_model = WanAudioModel(self.config.model_path, self.config, self.init_device, self.seq_p_group)
 
         if self.config.get("lora_configs") and self.config.lora_configs:
             assert not self.config.get("dit_quantized", False) or self.config.mm_config.get("weight_auto_quant", False)

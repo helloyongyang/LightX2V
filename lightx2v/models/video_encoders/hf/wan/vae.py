@@ -8,6 +8,8 @@ import torch.nn.functional as F
 from einops import rearrange
 from loguru import logger
 
+from lightx2v.utils.utils import load_weights_distributed
+
 __all__ = [
     "WanVAE",
 ]
@@ -758,7 +760,7 @@ class WanVAE_(nn.Module):
         self._enc_feat_map = [None] * self._enc_conv_num
 
 
-def _video_vae(pretrained_path=None, z_dim=None, device="cpu", **kwargs):
+def _video_vae(pretrained_path=None, z_dim=None, device="cpu", seq_p_group=None, **kwargs):
     """
     Autoencoder3d adapted from Stable Diffusion 1.x, 2.x and XL.
     """
@@ -780,7 +782,9 @@ def _video_vae(pretrained_path=None, z_dim=None, device="cpu", **kwargs):
 
     # load checkpoint
     logging.info(f"loading {pretrained_path}")
-    model.load_state_dict(torch.load(pretrained_path, map_location=device, weights_only=True), assign=True)
+    weights_dict = load_weights_distributed(pretrained_path, seq_p_group)
+
+    model.load_state_dict(weights_dict, assign=True)
 
     return model
 
@@ -794,6 +798,7 @@ class WanVAE:
         device="cuda",
         parallel=False,
         use_tiling=False,
+        seq_p_group=None,
     ):
         self.dtype = dtype
         self.device = device
@@ -845,6 +850,7 @@ class WanVAE:
             _video_vae(
                 pretrained_path=vae_pth,
                 z_dim=z_dim,
+                seq_p_group=seq_p_group,
             )
             .eval()
             .requires_grad_(False)

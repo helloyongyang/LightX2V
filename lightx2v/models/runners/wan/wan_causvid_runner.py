@@ -29,6 +29,7 @@ class WanCausVidRunner(WanRunner):
                 self.config.model_path,
                 self.config,
                 self.init_device,
+                self.seq_p_group,
             )
             lora_wrapper = WanLoraWrapper(model)
             for lora_config in self.config.lora_configs:
