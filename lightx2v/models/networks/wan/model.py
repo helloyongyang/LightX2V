@@ -83,7 +83,7 @@ class WanModel:
     def _init_infer_class(self):
         self.pre_infer_class = WanPreInfer
         self.post_infer_class = WanPostInfer
-        if self.config["seq_parallel"]:
+        if self.seq_p_group is not None:
             self.transformer_infer_class = WanTransformerDistInfer
         else:
             if self.config["feature_caching"] == "NoCaching":
@@ -255,7 +255,12 @@ class WanModel:
     def _init_infer(self):
         self.pre_infer = self.pre_infer_class(self.config)
         self.post_infer = self.post_infer_class(self.config)
-        self.transformer_infer = self.transformer_infer_class(self.config)
+
+        if self.seq_p_group is not None:
+            self.transformer_infer = self.transformer_infer_class(self.config, self.seq_p_group)
+        else:
+            self.transformer_infer = self.transformer_infer_class(self.config)
+
         if self.config["cfg_parallel"]:
             self.infer_func = self.infer_with_cfg_parallel
         else:

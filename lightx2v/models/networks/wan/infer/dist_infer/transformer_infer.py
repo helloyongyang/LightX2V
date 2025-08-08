@@ -7,9 +7,9 @@ from lightx2v.models.networks.wan.infer.utils import pad_freqs
 
 
 class WanTransformerDistInfer(WanTransformerInfer):
-    def __init__(self, config):
+    def __init__(self, config, seq_p_group=None):
         super().__init__(config)
-        self.seq_p_group = self.config["device_mesh"].get_group(mesh_dim="seq_p")
+        self.seq_p_group = seq_p_group
 
     def infer(self, weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context, audio_dit_blocks=None):
         x, embed0 = self.dist_pre_process(x, embed0)
