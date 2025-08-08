@@ -799,11 +799,13 @@ class WanVAE:
         parallel=False,
         use_tiling=False,
         seq_p_group=None,
+        cpu_offload=False,
     ):
         self.dtype = dtype
         self.device = device
         self.parallel = parallel
         self.use_tiling = use_tiling
+        self.cpu_offload = cpu_offload
 
         mean = [
             -0.7571,
@@ -940,8 +942,8 @@ class WanVAE:
 
         return images
 
-    def decode(self, zs, generator, config):
-        if config.cpu_offload:
+    def decode(self, zs, **args):
+        if self.cpu_offload:
             self.to_cuda()
 
         if self.parallel:
@@ -962,7 +964,7 @@ class WanVAE:
         else:
             images = self.model.decode(zs.unsqueeze(0), self.scale).float().clamp_(-1, 1)
 
-        if config.cpu_offload:
+        if self.cpu_offload:
             images = images.cpu().float()
             self.to_cpu()
 
