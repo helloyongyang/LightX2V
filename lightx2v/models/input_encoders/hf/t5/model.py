@@ -571,7 +571,7 @@ class T5EncoderModel:
             .requires_grad_(False)
         )
 
-        weights_ditc = load_weights_distributed(self.checkpoint_path, seq_p_group)
+        weights_ditc = load_weights_distributed(self.checkpoint_path)
         model.load_state_dict(weights_ditc)
 
         self.model = model

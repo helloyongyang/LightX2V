@@ -434,8 +434,7 @@ class CLIPModel:
             pretrained=False, return_transforms=True, return_tokenizer=False, dtype=dtype, device=device, quantized=self.quantized, quant_scheme=quant_scheme
         )
         self.model = self.model.eval().requires_grad_(False)
-        weight_dict = load_weights_distributed(self.checkpoint_path, seq_p_group=self.seq_p_group)
-        # weight_dict = torch.load(self.checkpoint_path, map_location="cpu", weights_only=True)
+        weight_dict = load_weights_distributed(self.checkpoint_path)
 
         keys = list(weight_dict.keys())
         for key in keys:

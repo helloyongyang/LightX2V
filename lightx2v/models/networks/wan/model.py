@@ -191,11 +191,11 @@ class WanModel:
 
         if weight_dict is None:
             is_weight_loader = False
-            if self.seq_p_group is None:
+            if self.config.get("device_mesh") is None:
                 is_weight_loader = True
                 logger.info(f"Loading original dit model from {self.model_path}")
             elif dist.is_initialized():
-                if dist.get_rank(group=self.seq_p_group) == 0:
+                if dist.get_rank() == 0:
                     is_weight_loader = True
                     logger.info(f"Loading original dit model from {self.model_path}")
 
@@ -209,13 +209,13 @@ class WanModel:
                     else:
                         cpu_weight_dict = self._load_quant_split_ckpt(unified_dtype, sensitive_layer)
 
-            if self.seq_p_group is None:  # 单卡模式
+            if self.config.get("device_mesh") is None:  # 单卡模式
                 self.original_weight_dict = {}
+                init_device = "cpu" if self.cpu_offload else "cuda"
                 for key, tensor in cpu_weight_dict.items():
-                    self.original_weight_dict[key] = tensor.to("cuda", non_blocking=True)
+                    self.original_weight_dict[key] = tensor.to(init_device, non_blocking=True)
             else:
-                seq_p_group = self.seq_p_group
-                global_src_rank = dist.get_process_group_ranks(seq_p_group)[0]
+                global_src_rank = 0
 
                 meta_dict = {}
                 if is_weight_loader:
@@ -223,20 +223,20 @@ class WanModel:
                         meta_dict[key] = {"shape": tensor.shape, "dtype": tensor.dtype}
 
                 obj_list = [meta_dict] if is_weight_loader else [None]
-                dist.broadcast_object_list(obj_list, src=global_src_rank, group=seq_p_group)
+                dist.broadcast_object_list(obj_list, src=global_src_rank)
                 synced_meta_dict = obj_list[0]
 
                 self.original_weight_dict = {}
                 for key, meta in synced_meta_dict.items():
                     self.original_weight_dict[key] = torch.empty(meta["shape"], dtype=meta["dtype"], device="cuda")
 
-                dist.barrier(group=seq_p_group, device_ids=[torch.cuda.current_device()])
+                dist.barrier(device_ids=[torch.cuda.current_device()])
                 for key in sorted(synced_meta_dict.keys()):
                     tensor_to_broadcast = self.original_weight_dict[key]
                     if is_weight_loader:
                         tensor_to_broadcast.copy_(cpu_weight_dict[key], non_blocking=True)
 
-                    dist.broadcast(tensor_to_broadcast, src=global_src_rank, group=seq_p_group)
+                    dist.broadcast(tensor_to_broadcast, src=global_src_rank)
 
             if is_weight_loader:
                 del cpu_weight_dict
@@ -251,6 +251,9 @@ class WanModel:
         self.pre_weight.load(self.original_weight_dict)
         self.post_weight.load(self.original_weight_dict)
         self.transformer_weights.load(self.original_weight_dict)
+
+        del self.original_weight_dict
+        torch.cuda.empty_cache()
 
     def _init_infer(self):
         self.pre_infer = self.pre_infer_class(self.config)

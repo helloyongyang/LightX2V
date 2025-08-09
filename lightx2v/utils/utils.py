@@ -324,13 +324,13 @@ def find_gguf_model_path(config, ckpt_config_key=None, subdir=None):
     raise FileNotFoundError(f"No GGUF model files (.gguf) found.\nPlease download the model from: https://huggingface.co/lightx2v/ or specify the model path in the configuration file.")
 
 
-def load_weights_distributed(checkpoint_path, seq_p_group=None):
-    if seq_p_group is None or not dist.is_initialized():
+def load_weights_distributed(checkpoint_path):
+    if not dist.is_initialized():
         logger.info(f"Loading weights from {checkpoint_path}")
         return torch.load(checkpoint_path, map_location="cpu", weights_only=True)
 
     is_leader = False
-    current_rank = dist.get_rank(seq_p_group)
+    current_rank = dist.get_rank()
     if current_rank == 0:
         is_leader = True
 
@@ -348,22 +348,22 @@ def load_weights_distributed(checkpoint_path, seq_p_group=None):
     obj_list = [meta_dict] if is_leader else [None]
 
     # 获取rank0的全局 rank 用于广播
-    src_global_rank = dist.get_process_group_ranks(seq_p_group)[0]
-    dist.broadcast_object_list(obj_list, src=src_global_rank, group=seq_p_group)
+    src_global_rank = 0
+    dist.broadcast_object_list(obj_list, src=src_global_rank)
     synced_meta_dict = obj_list[0]
 
     # 所有进程所在的GPU上创建空的权重字典
     target_device = torch.device(f"cuda:{current_rank}")
     gpu_weight_dict = {key: torch.empty(meta["shape"], dtype=meta["dtype"], device=target_device) for key, meta in synced_meta_dict.items()}
 
-    dist.barrier(group=seq_p_group, device_ids=[torch.cuda.current_device()])
+    dist.barrier(device_ids=[torch.cuda.current_device()])
 
     for key in sorted(synced_meta_dict.keys()):
         tensor_to_broadcast = gpu_weight_dict[key]
         if is_leader:
             # rank0将CPU权重拷贝到目标GPU,准备广播
             tensor_to_broadcast.copy_(cpu_weight_dict[key], non_blocking=True)
-        dist.broadcast(tensor_to_broadcast, src=src_global_rank, group=seq_p_group)
+        dist.broadcast(tensor_to_broadcast, src=src_global_rank)
 
     if is_leader:
         del cpu_weight_dict

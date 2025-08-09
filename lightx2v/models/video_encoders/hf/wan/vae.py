@@ -1,5 +1,4 @@
 # Copyright 2024-2025 The Alibaba Wan Team Authors. All rights reserved.
-import logging
 
 import torch
 import torch.distributed as dist
@@ -781,8 +780,7 @@ def _video_vae(pretrained_path=None, z_dim=None, device="cpu", seq_p_group=None,
         model = WanVAE_(**cfg)
 
     # load checkpoint
-    logging.info(f"loading {pretrained_path}")
-    weights_dict = load_weights_distributed(pretrained_path, seq_p_group)
+    weights_dict = load_weights_distributed(pretrained_path)
 
     model.load_state_dict(weights_dict, assign=True)
 

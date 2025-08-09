@@ -7,6 +7,7 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
+import torch.distributed as dist
 import torchaudio as ta
 from PIL import Image
 from einops import rearrange
@@ -432,7 +433,7 @@ class WanAudioRunner(WanRunner):  # type:ignore
         else:
             seq_p_group = None
 
-        audio_adapter = rank0_load_state_dict_from_path(audio_adapter, audio_adapter_path, strict=False, seq_p_group=seq_p_group)
+        audio_adapter = rank0_load_state_dict_from_path(audio_adapter, audio_adapter_path, strict=False)
 
         self._audio_adapter_pipe = AudioAdapterPipe(
             audio_adapter, audio_encoder_repo=audio_encoder_repo, dtype=GET_DTYPE(), device=device, weight=1.0, cpu_offload=cpu_offload, seq_p_group=seq_p_group
@@ -564,8 +565,9 @@ class WanAudioRunner(WanRunner):  # type:ignore
             comfyui_audio = {"waveform": audio_waveform, "sample_rate": self._audio_processor.audio_sr}
 
             # Save video if requested
-            if save_video and self.config.get("save_video_path", None):
-                self._save_video_with_audio(comfyui_images, merge_audio, target_fps)
+            if (self.config.get("device_mesh") is not None and dist.get_rank() == 0) or self.config.get("device_mesh") is None:
+                if save_video and self.config.get("save_video_path", None):
+                    self._save_video_with_audio(comfyui_images, merge_audio, target_fps)
 
             # Final cleanup
             self.end_run()

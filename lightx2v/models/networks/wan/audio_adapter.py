@@ -53,13 +53,13 @@ def load_pt_safetensors(in_path: str):
     return state_dict
 
 
-def rank0_load_state_dict_from_path(model, in_path: str, strict: bool = True, seq_p_group=None):
+def rank0_load_state_dict_from_path(model, in_path: str, strict: bool = True):
     model = model.to("cuda")
     # 确定当前进程是否是（负责加载权重）
     is_leader = False
-    if seq_p_group is not None and dist.is_initialized():
-        group_rank = dist.get_rank(group=seq_p_group)
-        if group_rank == 0:
+    if dist.is_initialized():
+        current_rank = dist.get_rank()
+        if current_rank == 0:
             is_leader = True
     elif not dist.is_initialized() or dist.get_rank() == 0:
         is_leader = True
@@ -70,16 +70,13 @@ def rank0_load_state_dict_from_path(model, in_path: str, strict: bool = True, se
         model.load_state_dict(state_dict, strict=strict)
 
     # 将模型状态从领导者同步到组内所有其他进程
-    if seq_p_group is not None and dist.is_initialized():
-        dist.barrier(group=seq_p_group, device_ids=[torch.cuda.current_device()])
-
-        src_global_rank = dist.get_process_group_ranks(seq_p_group)[0]
-
+    if dist.is_initialized():
+        dist.barrier(device_ids=[torch.cuda.current_device()])
+        src_global_rank = 0
         for param in model.parameters():
-            dist.broadcast(param.data, src=src_global_rank, group=seq_p_group)
-
+            dist.broadcast(param.data, src=src_global_rank)
         for buffer in model.buffers():
-            dist.broadcast(buffer.data, src=src_global_rank, group=seq_p_group)
+            dist.broadcast(buffer.data, src=src_global_rank)
     elif dist.is_initialized():
         dist.barrier(device_ids=[torch.cuda.current_device()])
         for param in model.parameters():
