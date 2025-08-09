@@ -619,7 +619,7 @@ class Decoder3d(nn.Module):
             CausalConv3d(out_dim, 12, 3, padding=1),
         )
 
-    def forward(self, x, feat_cache=None, feat_idx=[0], first_chunk=False):
+    def forward(self, x, feat_cache=None, feat_idx=[0], first_chunk=False, offload_cache=False):
         if feat_cache is not None:
             idx = feat_idx[0]
             cache_x = x[:, :, -CACHE_T:, :, :].clone()
@@ -639,14 +639,24 @@ class Decoder3d(nn.Module):
 
         for layer in self.middle:
             if isinstance(layer, ResidualBlock) and feat_cache is not None:
+                idx = feat_idx[0]
                 x = layer(x, feat_cache, feat_idx)
+                if offload_cache:
+                    for _idx in range(idx, feat_idx[0]):
+                        if isinstance(feat_cache[_idx], torch.Tensor):
+                            feat_cache[_idx] = feat_cache[_idx].cpu()
             else:
                 x = layer(x)
 
         ## upsamples
         for layer in self.upsamples:
             if feat_cache is not None:
+                idx = feat_idx[0]
                 x = layer(x, feat_cache, feat_idx, first_chunk)
+                if offload_cache:
+                    for _idx in range(idx, feat_idx[0]):
+                        if isinstance(feat_cache[_idx], torch.Tensor):
+                            feat_cache[_idx] = feat_cache[_idx].cpu()
             else:
                 x = layer(x)
 
@@ -664,7 +674,7 @@ class Decoder3d(nn.Module):
                         dim=2,
                     )
                 x = layer(x, feat_cache[idx])
-                feat_cache[idx] = cache_x
+                feat_cache[idx] = cache_x.cpu() if offload_cache else cache_x
                 feat_idx[0] += 1
             else:
                 x = layer(x)
@@ -755,7 +765,7 @@ class WanVAE_(nn.Module):
         self.clear_cache()
         return mu
 
-    def decode(self, z, scale):
+    def decode(self, z, scale, offload_cache=False):
         self.clear_cache()
         if isinstance(scale[0], torch.Tensor):
             z = z / scale[1].view(1, self.z_dim, 1, 1, 1) + scale[0].view(1, self.z_dim, 1, 1, 1)
@@ -766,18 +776,9 @@ class WanVAE_(nn.Module):
         for i in range(iter_):
             self._conv_idx = [0]
             if i == 0:
-                out = self.decoder(
-                    x[:, :, i : i + 1, :, :],
-                    feat_cache=self._feat_map,
-                    feat_idx=self._conv_idx,
-                    first_chunk=True,
-                )
+                out = self.decoder(x[:, :, i : i + 1, :, :], feat_cache=self._feat_map, feat_idx=self._conv_idx, first_chunk=True, offload_cache=offload_cache)
             else:
-                out_ = self.decoder(
-                    x[:, :, i : i + 1, :, :],
-                    feat_cache=self._feat_map,
-                    feat_idx=self._conv_idx,
-                )
+                out_ = self.decoder(x[:, :, i : i + 1, :, :], feat_cache=self._feat_map, feat_idx=self._conv_idx, offload_cache=offload_cache)
                 out = torch.cat([out, out_], 2)
         out = unpatchify(out, patch_size=2)
         self.clear_cache()
@@ -830,18 +831,11 @@ def _video_vae(pretrained_path=None, z_dim=16, dim=160, device="cpu", **kwargs):
 
 
 class Wan2_2_VAE:
-    def __init__(
-        self,
-        z_dim=48,
-        c_dim=160,
-        vae_pth=None,
-        dim_mult=[1, 2, 4, 4],
-        temperal_downsample=[False, True, True],
-        dtype=torch.float,
-        device="cuda",
-    ):
+    def __init__(self, z_dim=48, c_dim=160, vae_pth=None, dim_mult=[1, 2, 4, 4], temperal_downsample=[False, True, True], dtype=torch.float, device="cuda", cpu_offload=False, offload_cache=False):
         self.dtype = dtype
         self.device = device
+        self.cpu_offload = cpu_offload
+        self.offload_cache = offload_cache
 
         self.mean = torch.tensor(
             [
@@ -991,11 +985,11 @@ class Wan2_2_VAE:
             self.to_cpu()
         return out
 
-    def decode(self, zs, generator, config):
-        if config.cpu_offload:
+    def decode(self, zs, **args):
+        if self.cpu_offload:
             self.to_cuda()
-        images = self.model.decode(zs.unsqueeze(0), self.scale).float().clamp_(-1, 1)
-        if config.cpu_offload:
+        images = self.model.decode(zs.unsqueeze(0), self.scale, offload_cache=self.offload_cache if self.cpu_offload else False).float().clamp_(-1, 1)
+        if self.cpu_offload:
             images = images.cpu().float()
             self.to_cpu()
         return images

@@ -258,7 +258,7 @@ def save_to_video(
         raise ValueError(f"Unknown save method: {method}")
 
 
-def find_torch_model_path(config, ckpt_config_key=None, filename=None, subdir=["original", "fp8", "int8"]):
+def find_torch_model_path(config, ckpt_config_key=None, filename=None, subdir=["original", "fp8", "int8", "distill_models", "distill_fp8", "distill_int8"]):
     if ckpt_config_key and config.get(ckpt_config_key, None) is not None:
         return config.get(ckpt_config_key)
 
@@ -277,7 +277,7 @@ def find_torch_model_path(config, ckpt_config_key=None, filename=None, subdir=["
     raise FileNotFoundError(f"PyTorch model file '{filename}' not found.\nPlease download the model from https://huggingface.co/lightx2v/ or specify the model path in the configuration file.")
 
 
-def find_hf_model_path(config, model_path, ckpt_config_key=None, subdir=["original", "fp8", "int8"]):
+def find_hf_model_path(config, model_path, ckpt_config_key=None, subdir=["original", "fp8", "int8", "distill_models", "distill_fp8", "distill_int8"]):
     if ckpt_config_key and config.get(ckpt_config_key, None) is not None:
         return config.get(ckpt_config_key)
 
