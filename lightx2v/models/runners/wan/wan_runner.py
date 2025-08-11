@@ -84,6 +84,8 @@ class WanRunner(DefaultRunner):
                 clip_quantized_ckpt=clip_quantized_ckpt,
                 quant_scheme=clip_quant_scheme,
                 seq_p_group=self.seq_p_group,
+                cpu_offload=self.config.get("clip_cpu_offload", self.config.get("cpu_offload", False)),
+                use_31_block=self.config.get("use_31_block", True),
             )
 
         return image_encoder
@@ -233,7 +235,7 @@ class WanRunner(DefaultRunner):
         if self.config.get("lazy_load", False) or self.config.get("unload_modules", False):
             self.image_encoder = self.load_image_encoder()
         img = TF.to_tensor(img).sub_(0.5).div_(0.5).cuda()
-        clip_encoder_out = self.image_encoder.visual([img[None, :, :, :]], self.config).squeeze(0).to(GET_DTYPE())
+        clip_encoder_out = self.image_encoder.visual([img[None, :, :, :]]).squeeze(0).to(GET_DTYPE())
         if self.config.get("lazy_load", False) or self.config.get("unload_modules", False):
             del self.image_encoder
             torch.cuda.empty_cache()

@@ -105,6 +105,18 @@ class WanModel:
             else:
                 raise NotImplementedError(f"Unsupported feature_caching type: {self.config['feature_caching']}")
 
+    def _should_load_weights(self):
+        """Determine if current rank should load weights from disk."""
+        if self.config.get("device_mesh") is None:
+            # Single GPU mode
+            return True
+        elif dist.is_initialized():
+            # Multi-GPU mode, only rank 0 loads
+            if dist.get_rank() == 0:
+                logger.info(f"Loading weights from {self.model_path}")
+                return True
+        return False
+
     def _load_safetensor_to_dict(self, file_path, unified_dtype, sensitive_layer):
         with safe_open(file_path, framework="pt") as f:
             return {
@@ -190,70 +202,83 @@ class WanModel:
         }
 
         if weight_dict is None:
-            is_weight_loader = False
-            if self.config.get("device_mesh") is None:
-                is_weight_loader = True
-                logger.info(f"Loading original dit model from {self.model_path}")
-            elif dist.is_initialized():
-                if dist.get_rank() == 0:
-                    is_weight_loader = True
-                    logger.info(f"Loading original dit model from {self.model_path}")
-
-            cpu_weight_dict = {}
+            is_weight_loader = self._should_load_weights()
             if is_weight_loader:
                 if not self.dit_quantized or self.weight_auto_quant:
-                    cpu_weight_dict = self._load_ckpt(unified_dtype, sensitive_layer)
+                    # Load original weights
+                    weight_dict = self._load_ckpt(unified_dtype, sensitive_layer)
                 else:
+                    # Load quantized weights
                     if not self.config.get("lazy_load", False):
-                        cpu_weight_dict = self._load_quant_ckpt(unified_dtype, sensitive_layer)
+                        weight_dict = self._load_quant_ckpt(unified_dtype, sensitive_layer)
                     else:
-                        cpu_weight_dict = self._load_quant_split_ckpt(unified_dtype, sensitive_layer)
+                        weight_dict = self._load_quant_split_ckpt(unified_dtype, sensitive_layer)
 
-            if self.config.get("device_mesh") is None:  # 单卡模式
-                self.original_weight_dict = {}
-                init_device = "cpu" if self.cpu_offload else "cuda"
-                for key, tensor in cpu_weight_dict.items():
-                    self.original_weight_dict[key] = tensor.to(init_device, non_blocking=True)
-            else:
-                global_src_rank = 0
+            if self.config.get("device_mesh") is not None:
+                weight_dict = self._distribute_weights_multi_gpu(weight_dict, is_weight_loader)
 
-                meta_dict = {}
-                if is_weight_loader:
-                    for key, tensor in cpu_weight_dict.items():
-                        meta_dict[key] = {"shape": tensor.shape, "dtype": tensor.dtype}
-
-                obj_list = [meta_dict] if is_weight_loader else [None]
-                dist.broadcast_object_list(obj_list, src=global_src_rank)
-                synced_meta_dict = obj_list[0]
-
-                self.original_weight_dict = {}
-                for key, meta in synced_meta_dict.items():
-                    self.original_weight_dict[key] = torch.empty(meta["shape"], dtype=meta["dtype"], device="cuda")
-
-                dist.barrier(device_ids=[torch.cuda.current_device()])
-                for key in sorted(synced_meta_dict.keys()):
-                    tensor_to_broadcast = self.original_weight_dict[key]
-                    if is_weight_loader:
-                        tensor_to_broadcast.copy_(cpu_weight_dict[key], non_blocking=True)
-
-                    dist.broadcast(tensor_to_broadcast, src=global_src_rank)
-
-            if is_weight_loader:
-                del cpu_weight_dict
+            self.original_weight_dict = weight_dict
         else:
             self.original_weight_dict = weight_dict
 
-        # init weights
+        # Initialize weight containers
         self.pre_weight = self.pre_weight_class(self.config)
         self.post_weight = self.post_weight_class(self.config)
         self.transformer_weights = self.transformer_weight_class(self.config)
-        # load weights
+
+        # Load weights into containers
         self.pre_weight.load(self.original_weight_dict)
         self.post_weight.load(self.original_weight_dict)
         self.transformer_weights.load(self.original_weight_dict)
 
         del self.original_weight_dict
         torch.cuda.empty_cache()
+
+    def _distribute_weights_multi_gpu(self, weight_dict, is_weight_loader):
+        """Distribute weights across multiple GPUs or CPUs based on offload config."""
+        global_src_rank = 0
+
+        # Determine target device for distribution
+        target_device = "cpu" if self.cpu_offload else "cuda"
+
+        if is_weight_loader:
+            # Create metadata for broadcasting
+            meta_dict = {}
+            for key, tensor in weight_dict.items():
+                meta_dict[key] = {"shape": tensor.shape, "dtype": tensor.dtype}
+
+            # Broadcast metadata to all ranks
+            obj_list = [meta_dict]
+            dist.broadcast_object_list(obj_list, src=global_src_rank)
+            synced_meta_dict = obj_list[0]
+        else:
+            # Non-loader ranks receive metadata
+            obj_list = [None]
+            dist.broadcast_object_list(obj_list, src=global_src_rank)
+            synced_meta_dict = obj_list[0]
+
+        # Create empty tensors on target device for all ranks
+        distributed_weight_dict = {}
+        for key, meta in synced_meta_dict.items():
+            distributed_weight_dict[key] = torch.empty(meta["shape"], dtype=meta["dtype"], device=target_device)
+
+        # Synchronize before broadcasting
+        if target_device == "cuda":
+            dist.barrier(device_ids=[torch.cuda.current_device()])
+        else:
+            dist.barrier()
+
+        # Broadcast weights from rank 0 to all ranks
+        for key in sorted(synced_meta_dict.keys()):
+            if is_weight_loader:
+                # Copy weights to broadcast tensor
+                distributed_weight_dict[key].copy_(weight_dict[key], non_blocking=True)
+
+            # Broadcast to all ranks
+            dist.broadcast(distributed_weight_dict[key], src=global_src_rank)
+
+        logger.info(f"Weights distributed across {dist.get_world_size()} devices on {target_device}")
+        return distributed_weight_dict
 
     def _init_infer(self):
         self.pre_infer = self.pre_infer_class(self.config)

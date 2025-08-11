@@ -10,7 +10,7 @@ from loguru import logger
 
 from lightx2v.models.input_encoders.hf.q_linear import Q8FQuantLinearFp8, Q8FQuantLinearInt8, TorchaoQuantLinearInt8, VllmQuantLinearFp8, VllmQuantLinearInt8
 from lightx2v.utils.envs import *
-from lightx2v.utils.utils import load_weights_distributed
+from lightx2v.utils.utils import load_weights
 
 from .tokenizer import HuggingfaceTokenizer
 
@@ -571,8 +571,8 @@ class T5EncoderModel:
             .requires_grad_(False)
         )
 
-        weights_ditc = load_weights_distributed(self.checkpoint_path)
-        model.load_state_dict(weights_ditc)
+        weights_dict = load_weights(self.checkpoint_path, cpu_offload=cpu_offload)
+        model.load_state_dict(weights_dict)
 
         self.model = model
         if shard_fn is not None:

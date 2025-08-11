@@ -6,6 +6,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
 
+from lightx2v.utils.utils import load_weights
+
 __all__ = [
     "Wan2_2_VAE",
 ]
@@ -806,7 +808,7 @@ class WanVAE_(nn.Module):
         self._enc_feat_map = [None] * self._enc_conv_num
 
 
-def _video_vae(pretrained_path=None, z_dim=16, dim=160, device="cpu", **kwargs):
+def _video_vae(pretrained_path=None, z_dim=16, dim=160, device="cpu", cpu_offload=False, **kwargs):
     # params
     cfg = dict(
         dim=dim,
@@ -825,7 +827,8 @@ def _video_vae(pretrained_path=None, z_dim=16, dim=160, device="cpu", **kwargs):
 
     # load checkpoint
     logging.info(f"loading {pretrained_path}")
-    model.load_state_dict(torch.load(pretrained_path, map_location=device), assign=True)
+    weights_dict = load_weights(pretrained_path, cpu_offload=cpu_offload)
+    model.load_state_dict(weights_dict)
 
     return model
 
@@ -955,6 +958,7 @@ class Wan2_2_VAE:
                 dim=c_dim,
                 dim_mult=dim_mult,
                 temperal_downsample=temperal_downsample,
+                cpu_offload=cpu_offload,
             )
             .eval()
             .requires_grad_(False)

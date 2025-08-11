@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from einops import rearrange
 from loguru import logger
 
-from lightx2v.utils.utils import load_weights_distributed
+from lightx2v.utils.utils import load_weights
 
 __all__ = [
     "WanVAE",
@@ -759,7 +759,7 @@ class WanVAE_(nn.Module):
         self._enc_feat_map = [None] * self._enc_conv_num
 
 
-def _video_vae(pretrained_path=None, z_dim=None, device="cpu", seq_p_group=None, **kwargs):
+def _video_vae(pretrained_path=None, z_dim=None, device="cpu", seq_p_group=None, cpu_offload=False, **kwargs):
     """
     Autoencoder3d adapted from Stable Diffusion 1.x, 2.x and XL.
     """
@@ -780,8 +780,7 @@ def _video_vae(pretrained_path=None, z_dim=None, device="cpu", seq_p_group=None,
         model = WanVAE_(**cfg)
 
     # load checkpoint
-    weights_dict = load_weights_distributed(pretrained_path)
-
+    weights_dict = load_weights(pretrained_path, cpu_offload=cpu_offload)
     model.load_state_dict(weights_dict, assign=True)
 
     return model
@@ -846,16 +845,7 @@ class WanVAE:
         self.scale = [self.mean, self.inv_std]
 
         # init model
-        self.model = (
-            _video_vae(
-                pretrained_path=vae_pth,
-                z_dim=z_dim,
-                seq_p_group=seq_p_group,
-            )
-            .eval()
-            .requires_grad_(False)
-            .to(device)
-        )
+        self.model = _video_vae(pretrained_path=vae_pth, z_dim=z_dim, seq_p_group=seq_p_group, cpu_offload=cpu_offload).eval().requires_grad_(False).to(device)
 
     def current_device(self):
         return next(self.model.parameters()).device
