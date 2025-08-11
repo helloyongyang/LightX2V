@@ -375,14 +375,7 @@ def load_weights(checkpoint_path, cpu_offload=False, remove_key=None):
     for key in sorted(synced_meta_dict.keys()):
         tensor_to_broadcast = distributed_weight_dict[key]
         if is_weight_loader:
-            # rank0将CPU权重拷贝到目标设备,准备广播
-            if cpu_offload:
-                # CPU模式：直接复制
-                tensor_to_broadcast.copy_(cpu_weight_dict[key], non_blocking=True)
-            else:
-                # GPU模式：先复制到当前GPU，再广播
-                tensor_to_broadcast.copy_(cpu_weight_dict[key], non_blocking=True)
-
+            tensor_to_broadcast.copy_(cpu_weight_dict[key], non_blocking=True)
         # 广播到所有ranks
         dist.broadcast(tensor_to_broadcast, src=src_global_rank)
 
