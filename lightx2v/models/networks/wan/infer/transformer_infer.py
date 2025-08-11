@@ -96,6 +96,22 @@ class WanTransformerInfer(BaseTransformerInfer):
     def infer(self, weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context, audio_dit_blocks=None):
         return self.infer_func(weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context, audio_dit_blocks)
 
+    def _infer_without_offload(self, weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context, audio_dit_blocks=None):
+        for block_idx in range(self.blocks_num):
+            self.block_idx = block_idx
+            x = self.infer_block(
+                weights.blocks[block_idx],
+                grid_sizes,
+                embed,
+                x,
+                embed0,
+                seq_lens,
+                freqs,
+                context,
+                audio_dit_blocks,
+            )
+        return x
+
     def _infer_with_offload(self, weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context, audio_dit_blocks=None):
         for block_idx in range(self.blocks_num):
             self.block_idx = block_idx
@@ -269,37 +285,6 @@ class WanTransformerInfer(BaseTransformerInfer):
             del grid_sizes, embed, embed0, seq_lens, freqs, context
             torch.cuda.empty_cache()
 
-        return x
-
-    def zero_temporal_component_in_3DRoPE(self, valid_token_length, rotary_emb=None):
-        if rotary_emb is None:
-            return None
-        self.use_real = False
-        rope_t_dim = 44
-        if self.use_real:
-            freqs_cos, freqs_sin = rotary_emb
-            freqs_cos[valid_token_length:, :, :rope_t_dim] = 0
-            freqs_sin[valid_token_length:, :, :rope_t_dim] = 0
-            return freqs_cos, freqs_sin
-        else:
-            freqs_cis = rotary_emb
-            freqs_cis[valid_token_length:, :, : rope_t_dim // 2] = 0
-            return freqs_cis
-
-    def _infer_without_offload(self, weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context, audio_dit_blocks=None):
-        for block_idx in range(self.blocks_num):
-            self.block_idx = block_idx
-            x = self.infer_block(
-                weights.blocks[block_idx],
-                grid_sizes,
-                embed,
-                x,
-                embed0,
-                seq_lens,
-                freqs,
-                context,
-                audio_dit_blocks,
-            )
         return x
 
     def infer_block(self, weights, grid_sizes, embed, x, embed0, seq_lens, freqs, context, audio_dit_blocks=None):
