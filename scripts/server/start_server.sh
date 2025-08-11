@@ -9,6 +9,9 @@ export CUDA_VISIBLE_DEVICES=0
 # set environment variables
 source ${lightx2v_path}/scripts/base/base.sh
 
+export ENABLE_GRAPH_MODE=false
+export TORCH_CUDA_ARCH_LIST="9.0"
+
 # Start API server with distributed inference service
 python -m lightx2v.api_server \
 --model_cls wan2.1_distill \

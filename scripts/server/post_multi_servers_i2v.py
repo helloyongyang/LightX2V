@@ -1,5 +1,15 @@
+import base64
+
 from loguru import logger
 from post_multi_servers import get_available_urls, process_tasks_async
+
+
+def image_to_base64(image_path):
+    """Convert an image file to base64 string"""
+    with open(image_path, "rb") as f:
+        image_data = f.read()
+    return base64.b64encode(image_data).decode("utf-8")
+
 
 if __name__ == "__main__":
     urls = [f"http://localhost:{port}" for port in range(8000, 8008)]
@@ -11,7 +21,7 @@ if __name__ == "__main__":
 
     messages = []
     for i, (image_path, prompt) in enumerate(img_prompts.items()):
-        messages.append({"prompt": prompt, "negative_prompt": negative_prompt, "image_path": image_path, "save_video_path": f"./output_lightx2v_wan_i2v_{i + 1}.mp4"})
+        messages.append({"prompt": prompt, "negative_prompt": negative_prompt, "image_path": image_to_base64(image_path), "save_video_path": f"./output_lightx2v_wan_i2v_{i + 1}.mp4"})
 
     logger.info(f"urls: {urls}")
 
