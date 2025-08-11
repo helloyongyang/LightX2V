@@ -324,51 +324,73 @@ def find_gguf_model_path(config, ckpt_config_key=None, subdir=None):
     raise FileNotFoundError(f"No GGUF model files (.gguf) found.\nPlease download the model from: https://huggingface.co/lightx2v/ or specify the model path in the configuration file.")
 
 
-def load_weights_distributed(checkpoint_path):
+def load_weights(checkpoint_path, cpu_offload=False, remove_key=None):
     if not dist.is_initialized():
+        # Single GPU mode
         logger.info(f"Loading weights from {checkpoint_path}")
         return torch.load(checkpoint_path, map_location="cpu", weights_only=True)
 
-    is_leader = False
+    # Multi-GPU mode
+    is_weight_loader = False
     current_rank = dist.get_rank()
     if current_rank == 0:
-        is_leader = True
+        is_weight_loader = True
 
     cpu_weight_dict = {}
-    if is_leader:  ##rank0在 CPU 上加载完整的权重字典
+    if is_weight_loader:  # rank0在 CPU 上加载完整的权重字典
         logger.info(f"Loading weights from {checkpoint_path}")
         cpu_weight_dict = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+        for key in list(cpu_weight_dict.keys()):
+            if remove_key and remove_key in key:
+                cpu_weight_dict.pop(key)
 
     # 同步字典的结构
     meta_dict = {}
-    if is_leader:
+    if is_weight_loader:
         for key, tensor in cpu_weight_dict.items():
             meta_dict[key] = {"shape": tensor.shape, "dtype": tensor.dtype}
 
-    obj_list = [meta_dict] if is_leader else [None]
+    obj_list = [meta_dict] if is_weight_loader else [None]
 
     # 获取rank0的全局 rank 用于广播
     src_global_rank = 0
     dist.broadcast_object_list(obj_list, src=src_global_rank)
     synced_meta_dict = obj_list[0]
 
-    # 所有进程所在的GPU上创建空的权重字典
-    target_device = torch.device(f"cuda:{current_rank}")
-    gpu_weight_dict = {key: torch.empty(meta["shape"], dtype=meta["dtype"], device=target_device) for key, meta in synced_meta_dict.items()}
+    # 根据offload配置决定目标设备
+    if cpu_offload:
+        # Multi-GPU + offload: weights on CPU
+        target_device = "cpu"
+        distributed_weight_dict = {key: torch.empty(meta["shape"], dtype=meta["dtype"], device=target_device) for key, meta in synced_meta_dict.items()}
+        # CPU分发使用普通barrier
+        dist.barrier()
+    else:
+        # Multi-GPU + non-offload: weights on GPU
+        target_device = torch.device(f"cuda:{current_rank}")
+        distributed_weight_dict = {key: torch.empty(meta["shape"], dtype=meta["dtype"], device=target_device) for key, meta in synced_meta_dict.items()}
+        # GPU分发使用CUDA barrier
+        dist.barrier(device_ids=[torch.cuda.current_device()])
 
-    dist.barrier(device_ids=[torch.cuda.current_device()])
-
+    # 广播权重
     for key in sorted(synced_meta_dict.keys()):
-        tensor_to_broadcast = gpu_weight_dict[key]
-        if is_leader:
-            # rank0将CPU权重拷贝到目标GPU,准备广播
-            tensor_to_broadcast.copy_(cpu_weight_dict[key], non_blocking=True)
+        tensor_to_broadcast = distributed_weight_dict[key]
+        if is_weight_loader:
+            # rank0将CPU权重拷贝到目标设备,准备广播
+            if cpu_offload:
+                # CPU模式：直接复制
+                tensor_to_broadcast.copy_(cpu_weight_dict[key], non_blocking=True)
+            else:
+                # GPU模式：先复制到当前GPU，再广播
+                tensor_to_broadcast.copy_(cpu_weight_dict[key], non_blocking=True)
+
+        # 广播到所有ranks
         dist.broadcast(tensor_to_broadcast, src=src_global_rank)
 
-    if is_leader:
+    if is_weight_loader:
         del cpu_weight_dict
 
-    return gpu_weight_dict
+    logger.info(f"Weights distributed across {dist.get_world_size()} devices on {target_device}")
+    return distributed_weight_dict
 
 
 def masks_like(tensor, zero=False, generator=None, p=0.2):

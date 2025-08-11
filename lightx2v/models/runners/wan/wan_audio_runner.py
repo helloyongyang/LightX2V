@@ -668,7 +668,7 @@ class WanAudioRunner(WanRunner):  # type:ignore
         cond_frms = torch.nn.functional.interpolate(ref_img, size=(config.tgt_h, config.tgt_w), mode="bicubic")
 
         # clip encoder
-        clip_encoder_out = self.image_encoder.visual([cond_frms], self.config).squeeze(0).to(GET_DTYPE()) if self.config.get("use_image_encoder", True) else None
+        clip_encoder_out = self.image_encoder.visual([cond_frms]).squeeze(0).to(GET_DTYPE()) if self.config.get("use_image_encoder", True) else None
 
         # vae encode
         cond_frms = rearrange(cond_frms, "1 C H W -> 1 C 1 H W")
