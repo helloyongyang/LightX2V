@@ -360,12 +360,10 @@ def load_weights(checkpoint_path, cpu_offload=False, remove_key=None):
     synced_meta_dict = obj_list[0]
 
     if cpu_offload:
-        # Multi-GPU + offload: weights on CPU
         target_device = "cpu"
         distributed_weight_dict = {key: torch.empty(meta["shape"], dtype=meta["dtype"], device=target_device) for key, meta in synced_meta_dict.items()}
         dist.barrier()
     else:
-        # Multi-GPU + non-offload: weights on GPU
         target_device = torch.device(f"cuda:{current_rank}")
         distributed_weight_dict = {key: torch.empty(meta["shape"], dtype=meta["dtype"], device=target_device) for key, meta in synced_meta_dict.items()}
         dist.barrier(device_ids=[torch.cuda.current_device()])
@@ -374,10 +372,28 @@ def load_weights(checkpoint_path, cpu_offload=False, remove_key=None):
         tensor_to_broadcast = distributed_weight_dict[key]
         if is_weight_loader:
             tensor_to_broadcast.copy_(cpu_weight_dict[key], non_blocking=True)
-        dist.broadcast(tensor_to_broadcast, src=src_global_rank)
+
+        if cpu_offload:
+            if is_weight_loader:
+                gpu_tensor = tensor_to_broadcast.cuda()
+                dist.broadcast(gpu_tensor, src=src_global_rank)
+                tensor_to_broadcast.copy_(gpu_tensor.cpu(), non_blocking=True)
+                del gpu_tensor
+                torch.cuda.empty_cache()
+            else:
+                gpu_tensor = torch.empty_like(tensor_to_broadcast, device="cuda")
+                dist.broadcast(gpu_tensor, src=src_global_rank)
+                tensor_to_broadcast.copy_(gpu_tensor.cpu(), non_blocking=True)
+                del gpu_tensor
+                torch.cuda.empty_cache()
+        else:
+            dist.broadcast(tensor_to_broadcast, src=src_global_rank)
 
     if is_weight_loader:
         del cpu_weight_dict
+
+    if cpu_offload:
+        torch.cuda.empty_cache()
 
     logger.info(f"Weights distributed across {dist.get_world_size()} devices on {target_device}")
     return distributed_weight_dict
@@ -388,7 +404,6 @@ def masks_like(tensor, zero=False, generator=None, p=0.2):
     out = torch.ones_like(tensor)
     if zero:
         if generator is not None:
-            # 生成随机数判断是否需要修改
             random_num = torch.rand(1, generator=generator, device=generator.device).item()
             if random_num < p:
                 out[:, 0] = torch.zeros_like(out[:, 0])
