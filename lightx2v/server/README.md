@@ -13,7 +13,7 @@ graph TB
     subgraph "Client Layer"
         Client[HTTP Client]
     end
-    
+
     subgraph "API Layer"
         FastAPI[FastAPI Application]
         ApiServer[ApiServer]
@@ -21,71 +21,71 @@ graph TB
         Router2[Files Router<br/>/v1/files]
         Router3[Service Router<br/>/v1/service]
     end
-    
+
     subgraph "Service Layer"
         TaskManager[TaskManager<br/>Thread-safe Task Queue]
         FileService[FileService<br/>File I/O & Downloads]
         VideoService[VideoGenerationService]
     end
-    
+
     subgraph "Processing Layer"
         Thread[Processing Thread<br/>Sequential Task Loop]
     end
-    
+
     subgraph "Distributed Inference Layer"
         DistService[DistributedInferenceService]
         SharedData[(Shared Data<br/>mp.Manager.dict)]
         TaskEvent[Task Event<br/>mp.Manager.Event]
         ResultEvent[Result Event<br/>mp.Manager.Event]
-        
+
         subgraph "Worker Processes"
             W0[Worker 0<br/>Master/Rank 0]
             W1[Worker 1<br/>Rank 1]
             WN[Worker N<br/>Rank N]
         end
     end
-    
+
     subgraph "Resource Management"
         GPUManager[GPUManager<br/>GPU Detection & Allocation]
         DistManager[DistributedManager<br/>PyTorch Distributed]
         Config[ServerConfig<br/>Configuration]
     end
-    
+
     Client -->|HTTP Request| FastAPI
     FastAPI --> ApiServer
     ApiServer --> Router1
     ApiServer --> Router2
     ApiServer --> Router3
-    
+
     Router1 -->|Create/Manage Tasks| TaskManager
     Router1 -->|Process Tasks| Thread
     Router2 -->|File Operations| FileService
     Router3 -->|Service Status| TaskManager
-    
+
     Thread -->|Get Pending Tasks| TaskManager
     Thread -->|Generate Video| VideoService
-    
+
     VideoService -->|Download Images| FileService
     VideoService -->|Submit Task| DistService
-    
+
     DistService -->|Update| SharedData
     DistService -->|Signal| TaskEvent
     TaskEvent -->|Notify| W0
     W0 -->|Broadcast| W1
     W0 -->|Broadcast| WN
-    
+
     W0 -->|Update Result| SharedData
     W0 -->|Signal| ResultEvent
     ResultEvent -->|Notify| DistService
-    
+
     W0 -.->|Uses| GPUManager
     W1 -.->|Uses| GPUManager
     WN -.->|Uses| GPUManager
-    
+
     W0 -.->|Setup| DistManager
     W1 -.->|Setup| DistManager
     WN -.->|Setup| DistManager
-    
+
     DistService -.->|Reads| Config
     ApiServer -.->|Reads| Config
 ```
@@ -119,23 +119,23 @@ sequenceDiagram
     participant DIS as Distributed<br/>Inference Service
     participant W0 as Worker 0<br/>(Master)
     participant W1 as Worker 1..N
-    
+
     C->>API: POST /v1/tasks<br/>(Create Task)
     API->>TM: create_task()
     TM->>TM: Generate task_id
     TM->>TM: Add to queue<br/>(status: PENDING)
     API->>PT: ensure_processing_thread()
     API-->>C: TaskResponse<br/>(task_id, status: pending)
-    
+
     Note over PT: Processing Loop
     PT->>TM: get_next_pending_task()
     TM-->>PT: task_id
-    
+
     PT->>TM: acquire_processing_lock()
     PT->>TM: start_task()<br/>(status: PROCESSING)
-    
+
     PT->>VS: generate_video_with_stop_event()
-    
+
     alt Image is URL
         VS->>FS: download_image()
         FS->>FS: HTTP download<br/>with retry
@@ -147,39 +147,39 @@ sequenceDiagram
         VS->>FS: validate_file()
         FS-->>VS: image_path
     end
-    
+
     VS->>DIS: submit_task(task_data)
     DIS->>DIS: shared_data["current_task"] = task_data
     DIS->>DIS: task_event.set()
-    
+
     Note over W0,W1: Distributed Processing
     W0->>W0: task_event.wait()
     W0->>W0: Get task from shared_data
     W0->>W1: broadcast_task_data()
-    
+
     par Parallel Inference
         W0->>W0: run_pipeline()
     and
         W1->>W1: run_pipeline()
     end
-    
+
     W0->>W0: barrier() for sync
     W0->>W0: shared_data["result"] = result
     W0->>DIS: result_event.set()
-    
+
     DIS->>DIS: result_event.wait()
     DIS->>VS: return result
     VS-->>PT: TaskResponse
-    
+
     PT->>TM: complete_task()<br/>(status: COMPLETED)
     PT->>TM: release_processing_lock()
-    
+
     Note over C: Client Polling
     C->>API: GET /v1/tasks/{task_id}/status
     API->>TM: get_task_status()
     TM-->>API: status info
     API-->>C: Task Status
-    
+
     C->>API: GET /v1/tasks/{task_id}/result
     API->>TM: get_task_status()
     API->>FS: stream_file_response()

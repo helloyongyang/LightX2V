@@ -176,7 +176,8 @@ def _distributed_inference_worker(rank, world_size, master_addr, master_port, ar
         logger.info(f"Process {rank}/{world_size - 1} distributed inference service initialization completed")
 
         while True:
-            task_event.wait(timeout=1.0)
+            if not task_event.wait(timeout=1.0):
+                continue
 
             if rank == 0:
                 if shared_data.get("stop", False):

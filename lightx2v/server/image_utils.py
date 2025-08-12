@@ -5,6 +5,8 @@ import uuid
 from pathlib import Path
 from typing import Optional, Tuple
 
+from loguru import logger
+
 
 def is_base64_image(data: str) -> bool:
     """Check if a string is a base64-encoded image"""
@@ -24,7 +26,7 @@ def is_base64_image(data: str) -> bool:
             if decoded[8:12] == b"WEBP":
                 return True
     except Exception as e:
-        print(f"Error checking base64 image: {e}")
+        logger.warning(f"Error checking base64 image: {e}")
         return False
 
     return False
@@ -45,7 +47,7 @@ def extract_base64_data(data: str) -> Tuple[str, Optional[str]]:
     return data, None
 
 
-def save_base64_image(base64_data: str, output_dir: str = "/tmp/flux_kontext_uploads") -> str:
+def save_base64_image(base64_data: str, output_dir: str) -> str:
     """
     Save a base64-encoded image to disk and return the file path
     """

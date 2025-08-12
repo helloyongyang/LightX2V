@@ -16,6 +16,8 @@ class DistributedManager:
         self.world_size = 1
         self.device = "cpu"
 
+    CHUNK_SIZE = 1024 * 1024
+
     def init_process_group(self, rank: int, world_size: int, master_addr: str, master_port: str) -> bool:
         try:
             os.environ["RANK"] = str(rank)
@@ -61,6 +63,39 @@ class DistributedManager:
     def is_rank_zero(self) -> bool:
         return self.rank == 0
 
+    def _broadcast_byte_chunks(self, data_bytes: bytes, device: torch.device) -> None:
+        total_length = len(data_bytes)
+        num_full_chunks = total_length // self.CHUNK_SIZE
+        remaining = total_length % self.CHUNK_SIZE
+
+        for i in range(num_full_chunks):
+            start_idx = i * self.CHUNK_SIZE
+            end_idx = start_idx + self.CHUNK_SIZE
+            chunk = data_bytes[start_idx:end_idx]
+            task_tensor = torch.tensor(list(chunk), dtype=torch.uint8).to(device)
+            dist.broadcast(task_tensor, src=0)
+
+        if remaining:
+            chunk = data_bytes[-remaining:]
+            task_tensor = torch.tensor(list(chunk), dtype=torch.uint8).to(device)
+            dist.broadcast(task_tensor, src=0)
+
+    def _receive_byte_chunks(self, total_length: int, device: torch.device) -> bytes:
+        if total_length <= 0:
+            return b""
+
+        received = bytearray()
+        remaining = total_length
+
+        while remaining > 0:
+            chunk_length = min(self.CHUNK_SIZE, remaining)
+            task_tensor = torch.empty(chunk_length, dtype=torch.uint8).to(device)
+            dist.broadcast(task_tensor, src=0)
+            received.extend(task_tensor.cpu().numpy())
+            remaining -= chunk_length
+
+        return bytes(received)
+
     def broadcast_task_data(self, task_data: Optional[Any] = None) -> Optional[Any]:
         if not self.is_initialized:
             return None
@@ -88,19 +123,7 @@ class DistributedManager:
                 task_length = torch.tensor([len(task_bytes)], dtype=torch.int32).to(broadcast_device)
 
                 dist.broadcast(task_length, src=0)
-
-                chunk_size = 1024 * 1024
-                if len(task_bytes) > chunk_size:
-                    num_chunks = (len(task_bytes) + chunk_size - 1) // chunk_size
-                    for i in range(num_chunks):
-                        start_idx = i * chunk_size
-                        end_idx = min((i + 1) * chunk_size, len(task_bytes))
-                        chunk = task_bytes[start_idx:end_idx]
-                        task_tensor = torch.tensor(list(chunk), dtype=torch.uint8).to(broadcast_device)
-                        dist.broadcast(task_tensor, src=0)
-                else:
-                    task_tensor = torch.tensor(list(task_bytes), dtype=torch.uint8).to(broadcast_device)
-                    dist.broadcast(task_tensor, src=0)
+                self._broadcast_byte_chunks(task_bytes, broadcast_device)
 
                 return task_data
             else:
@@ -113,25 +136,11 @@ class DistributedManager:
                 return None
             else:
                 task_length = torch.tensor([0], dtype=torch.int32).to(broadcast_device)
+
                 dist.broadcast(task_length, src=0)
-
                 total_length = int(task_length.item())
-                chunk_size = 1024 * 1024
 
-                if total_length > chunk_size:
-                    task_bytes = bytearray()
-                    num_chunks = (total_length + chunk_size - 1) // chunk_size
-                    for i in range(num_chunks):
-                        chunk_length = min(chunk_size, total_length - len(task_bytes))
-                        task_tensor = torch.empty(chunk_length, dtype=torch.uint8).to(broadcast_device)
-                        dist.broadcast(task_tensor, src=0)
-                        task_bytes.extend(task_tensor.cpu().numpy())
-                    task_bytes = bytes(task_bytes)
-                else:
-                    task_tensor = torch.empty(total_length, dtype=torch.uint8).to(broadcast_device)
-                    dist.broadcast(task_tensor, src=0)
-                    task_bytes = bytes(task_tensor.cpu().numpy())
-
+                task_bytes = self._receive_byte_chunks(total_length, broadcast_device)
                 task_data = pickle.loads(task_bytes)
                 return task_data
 

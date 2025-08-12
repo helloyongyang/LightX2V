@@ -62,9 +62,10 @@ class ServerConfig:
             except OSError:
                 continue
 
-        import random
-
-        return str(random.randint(20000, 29999))
+        raise RuntimeError(
+            f"No free port found for master in range {self.master_port_range[0]}-{self.master_port_range[1] - 1} "
+            f"on address {self.master_addr}. Please adjust 'master_port_range' or free an occupied port."
+        )
 
     def validate(self) -> bool:
         valid = True

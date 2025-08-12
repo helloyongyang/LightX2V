@@ -2,6 +2,7 @@ import base64
 import os
 import threading
 import time
+from typing import Any
 
 import requests
 from loguru import logger
@@ -15,8 +16,8 @@ def image_to_base64(image_path):
     return base64.b64encode(image_data).decode("utf-8")
 
 
-def process_image_path(image_path):
-    """处理image_path：如果是本地路径则转换为base64，如果是HTTP链接则保持不变"""
+def process_image_path(image_path) -> Any | str:
+    """Process image_path: convert to base64 if local path, keep unchanged if HTTP link"""
     if not image_path:
         return image_path
 
