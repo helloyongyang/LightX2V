@@ -12,6 +12,7 @@ from loguru import logger
 
 from ..infer import init_runner
 from ..utils.set_config import set_config
+from .audio_utils import is_base64_audio, save_base64_audio
 from .config import server_config
 from .distributed_utils import create_distributed_worker
 from .image_utils import is_base64_image, save_base64_image
@@ -133,6 +134,43 @@ class FileService:
         except Exception as e:
             logger.error(f"Unexpected error downloading image from {image_url}: {str(e)}")
             raise ValueError(f"Failed to download image from {image_url}: {str(e)}")
+
+    async def download_audio(self, audio_url: str) -> Path:
+        """Download audio with retry logic and proper error handling."""
+        try:
+            parsed_url = urlparse(audio_url)
+            if not parsed_url.scheme or not parsed_url.netloc:
+                raise ValueError(f"Invalid URL format: {audio_url}")
+
+            response = await self._download_with_retry(audio_url)
+
+            audio_name = Path(parsed_url.path).name
+            if not audio_name:
+                audio_name = f"{uuid.uuid4()}.mp3"
+
+            audio_path = self.input_audio_dir / audio_name
+            audio_path.parent.mkdir(parents=True, exist_ok=True)
+
+            with open(audio_path, "wb") as f:
+                f.write(response.content)
+
+            logger.info(f"Successfully downloaded audio from {audio_url} to {audio_path}")
+            return audio_path
+
+        except httpx.ConnectError as e:
+            logger.error(f"Connection error downloading audio from {audio_url}: {str(e)}")
+            raise ValueError(f"Failed to connect to {audio_url}: {str(e)}")
+        except httpx.TimeoutException as e:
+            logger.error(f"Timeout downloading audio from {audio_url}: {str(e)}")
+            raise ValueError(f"Download timeout for {audio_url}: {str(e)}")
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error downloading audio from {audio_url}: {str(e)}")
+            raise ValueError(f"HTTP error for {audio_url}: {str(e)}")
+        except ValueError as e:
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error downloading audio from {audio_url}: {str(e)}")
+            raise ValueError(f"Failed to download audio from {audio_url}: {str(e)}")
 
     def save_uploaded_file(self, file_content: bytes, filename: str) -> Path:
         file_extension = Path(filename).suffix
@@ -452,6 +490,16 @@ class VideoGenerationService:
                     task_data["image_path"] = str(image_path)
                 else:
                     task_data["image_path"] = message.image_path
+
+            if "audio_path" in message.model_fields_set and message.audio_path:
+                if message.audio_path.startswith("http"):
+                    audio_path = await self.file_service.download_audio(message.audio_path)
+                    task_data["audio_path"] = str(audio_path)
+                elif is_base64_audio(message.audio_path):
+                    audio_path = save_base64_audio(message.audio_path, str(self.file_service.input_audio_dir))
+                    task_data["audio_path"] = str(audio_path)
+                else:
+                    task_data["audio_path"] = message.audio_path
 
             actual_save_path = self.file_service.get_output_path(message.save_video_path)
             task_data["save_video_path"] = str(actual_save_path)
