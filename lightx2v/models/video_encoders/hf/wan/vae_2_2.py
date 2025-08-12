@@ -828,7 +828,7 @@ def _video_vae(pretrained_path=None, z_dim=16, dim=160, device="cpu", cpu_offloa
     # load checkpoint
     logging.info(f"loading {pretrained_path}")
     weights_dict = load_weights(pretrained_path, cpu_offload=cpu_offload)
-    model.load_state_dict(weights_dict)
+    model.load_state_dict(weights_dict, assign=True)
 
     return model
 
