@@ -90,22 +90,6 @@ graph TB
     ApiServer -.->|Reads| Config
 ```
 
-### Components
-
-#### Core Components
-
-| Component | File | Description |
-|-----------|------|-------------|
-| **ServerManager** | `main.py` | Orchestrates server lifecycle, startup/shutdown sequences |
-| **ApiServer** | `api.py` | FastAPI application manager with route registration |
-| **TaskManager** | `task_manager.py` | Thread-safe task queue and lifecycle management |
-| **FileService** | `service.py` | File I/O, HTTP downloads with retry logic |
-| **VideoGenerationService** | `service.py` | Video generation workflow orchestration |
-| **DistributedInferenceService** | `service.py` | Multi-process inference management |
-| **GPUManager** | `gpu_manager.py` | GPU detection, allocation, and memory management |
-| **DistributedManager** | `distributed_utils.py` | PyTorch distributed communication setup |
-| **ServerConfig** | `config.py` | Centralized configuration with environment variable support |
-
 ## Task Processing Flow
 
 ```mermaid
@@ -202,35 +186,11 @@ stateDiagram-v2
     CANCELLED --> [*]
 ```
 
-## API Endpoints
-
-see `{base_url}/docs`
-
-### Task Management
-
-- POST `/v1/tasks/`
-- POST `/v1/tasks/form`
-- GET `/v1/tasks/{task_id}/status`
-- GET `/v1/tasks/{task_id}/result`
-- DELETE `/v1/tasks/{task_id}`
-- DELETE `/v1/tasks/all/running`
-- GET `/v1/tasks/`
-- GET `/v1/tasks/queue/status`
-
 ## Configuration
 
 ### Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `LIGHTX2V_HOST` | Server host address | `0.0.0.0` |
-| `LIGHTX2V_PORT` | Server port | `8000` |
-| `LIGHTX2V_MAX_QUEUE_SIZE` | Maximum task queue size | `100` |
-| `LIGHTX2V_CACHE_DIR` | File cache directory | `/tmp/lightx2v_cache` |
-| `LIGHTX2V_TASK_TIMEOUT` | Task processing timeout (seconds) | `600` |
-| `LIGHTX2V_HTTP_TIMEOUT` | HTTP download timeout (seconds) | `30` |
-| `LIGHTX2V_HTTP_MAX_RETRIES` | HTTP download max retries | `3` |
-| `LIGHTX2V_MAX_UPLOAD_SIZE` | Maximum upload file size (bytes) | `100MB` |
+see `lightx2v/server/config.py`
 
 ### Command Line Arguments
 
@@ -254,7 +214,6 @@ python -m lightx2v.server.main \
     --config_json /path/to/xxx_dist_config.json \
     --nproc_per_node 2
 ```
-
 
 ## Key Features
 
@@ -283,22 +242,6 @@ python -m lightx2v.server.main \
 - **Cache management** with automatic cleanup
 - **File validation** and format detection
 
-### 4. Resilient Architecture
-
-- **Graceful shutdown** with signal handling
-- **Process failure recovery** mechanisms
-- **Connection pooling** for HTTP clients
-- **Timeout protection** at multiple levels
-- **Comprehensive error handling** throughout
-
-### 5. Resource Management
-
-- **GPU memory management** with cache clearing
-- **Process lifecycle management**
-- **Connection pooling** for efficiency
-- **Memory-efficient** streaming for large files
-- **Automatic resource cleanup** on shutdown
-
 ## Performance Considerations
 
 1. **Single Task Processing**: Tasks are processed sequentially to manage GPU memory effectively
@@ -307,48 +250,6 @@ python -m lightx2v.server.main \
 4. **Streaming Responses**: Large files are streamed to avoid memory issues
 5. **Queue Management**: Automatic task cleanup prevents memory leaks
 6. **Process Isolation**: Distributed workers run in separate processes for stability
-
-## Usage Examples
-
-### Client Usage
-
-```python
-import httpx
-import base64
-
-# Create a task with URL image
-response = httpx.post(
-    "http://localhost:8000/v1/tasks/",
-    json={
-        "prompt": "A cat playing piano",
-        "image_path": "https://example.com/image.jpg",
-        "use_prompt_enhancer": True,
-        "seed": 42
-    }
-)
-task_id = response.json()["task_id"]
-
-# Create a task with base64 image
-with open("image.png", "rb") as f:
-    image_base64 = base64.b64encode(f.read()).decode()
-response = httpx.post(
-    "http://localhost:8000/v1/tasks/",
-    json={
-        "prompt": "A dog dancing",
-        "image_path": f"data:image/png;base64,{image_base64}"
-    }
-)
-
-# Check task status
-status = httpx.get(f"http://localhost:8000/v1/tasks/{task_id}/status")
-print(status.json())
-
-# Download result when completed
-if status.json()["status"] == "completed":
-    video = httpx.get(f"http://localhost:8000/v1/tasks/{task_id}/result")
-    with open("output.mp4", "wb") as f:
-        f.write(video.content)
-```
 
 ## Monitoring and Debugging
 
@@ -372,15 +273,10 @@ The server uses `loguru` for structured logging. Logs include:
 1. **GPU Out of Memory**: Reduce `nproc_per_node` or adjust model batch size
 2. **Task Timeout**: Increase `LIGHTX2V_TASK_TIMEOUT` for longer videos
 3. **Queue Full**: Increase `LIGHTX2V_MAX_QUEUE_SIZE` or add rate limiting
-4. **Port Conflicts**: Change `LIGHTX2V_PORT` or `MASTER_PORT` range
 
 ## Security Considerations
 
 1. **Input Validation**: All inputs validated with Pydantic schemas
-2. **File Access**: Restricted to cache directory
-3. **Resource Limits**: Configurable queue and file size limits
-4. **Process Isolation**: Worker processes run with limited permissions
-5. **HTTP Security**: Support for proxy and authentication headers
 
 ## License
 
