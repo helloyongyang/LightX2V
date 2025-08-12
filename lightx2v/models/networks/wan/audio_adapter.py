@@ -94,17 +94,18 @@ def linear_interpolation(features, output_len: int):
 
 
 def get_q_lens_audio_range(
-    batchsize,
-    n_tokens_per_rank,
-    n_query_tokens,
-    n_tokens_per_frame,
-    sp_rank,
+    batchsize: int,
+    n_tokens_per_rank: int,
+    n_query_tokens: int,
+    n_tokens_per_frame: int,
+    sp_rank: int,
 ):
     if n_query_tokens == 0:
         q_lens = [1] * batchsize
         return q_lens, 0, 1
     idx0 = n_tokens_per_rank * sp_rank
-    first_length = idx0 - idx0 // n_tokens_per_frame * n_tokens_per_frame
+    first_length = n_tokens_per_frame - idx0 % n_tokens_per_frame
+    first_length = min(first_length, n_query_tokens)
     n_frames = (n_query_tokens - first_length) // n_tokens_per_frame
     last_length = n_query_tokens - n_frames * n_tokens_per_frame - first_length
     q_lens = []
@@ -114,8 +115,7 @@ def get_q_lens_audio_range(
     if last_length > 0:
         q_lens.append(last_length)
     t0 = idx0 // n_tokens_per_frame
-    idx1 = idx0 + n_query_tokens
-    t1 = math.ceil(idx1 / n_tokens_per_frame)
+    t1 = t0 + len(q_lens)
     return q_lens * batchsize, t0, t1
 
 
