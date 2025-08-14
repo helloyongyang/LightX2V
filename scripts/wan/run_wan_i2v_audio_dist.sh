@@ -2,8 +2,8 @@
 
 # set path and first
 
-lightx2v_path="/home/wangshankun/code/LightX2V"
-model_path="/data/nvme0/models/Wan2.1-R2V721-Audio-14B-720P"
+lightx2v_path=
+model_path=
 
 # set environment variables
 source ${lightx2v_path}/scripts/base/base.sh

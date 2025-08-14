@@ -343,7 +343,7 @@ class VideoGenerator:
             self.model.scheduler.reset()
 
         inputs["previmg_encoder_output"] = self.prepare_prev_latents(prev_video, prev_frame_length)
- 
+
         # Run inference loop
         if total_steps is None:
             total_steps = self.model.scheduler.infer_steps
@@ -384,11 +384,6 @@ class WanAudioRunner(WanRunner):  # type:ignore
         self._audio_processor = None
         self._video_generator = None
         self._audio_preprocess = None
-
-        if self.seq_p_group is None:
-            self.sp_size = 1
-        else:
-            self.sp_size = dist.get_world_size(self.seq_p_group)
 
     def initialize(self):
         """Initialize all models once for multiple runs"""
@@ -613,7 +608,7 @@ class WanAudioRunner(WanRunner):  # type:ignore
 
     def load_transformer(self):
         """Load transformer with LoRA support"""
-        base_model = WanAudioModel(self.config.model_path, self.config, self.init_device, self.seq_p_group)
+        base_model = WanAudioModel(self.config.model_path, self.config, self.init_device)
         if self.config.get("lora_configs") and self.config.lora_configs:
             assert not self.config.get("dit_quantized", False) or self.config.mm_config.get("weight_auto_quant", False)
             lora_wrapper = WanLoraWrapper(base_model)

@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # set path and first
-lightx2v_path="/home/wangshankun/code/LightX2V"
-model_path="/data/nvme0/models/Wan2.1-R2V721-Audio-14B-720P"
+lightx2v_path=
+model_path=
 
 export CUDA_VISIBLE_DEVICES=0
 
@@ -11,7 +11,6 @@ source ${lightx2v_path}/scripts/base/base.sh
 
 export TORCH_CUDA_ARCH_LIST="9.0"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-export ENABLE_GRAPH_MODE=false
 
 export ENABLE_GRAPH_MODE=false
 export SENSITIVE_LAYER_DTYPE=None
