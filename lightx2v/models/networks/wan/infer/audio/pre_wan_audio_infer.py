@@ -3,6 +3,7 @@ import torch
 from lightx2v.models.networks.wan.infer.pre_infer import WanPreInfer
 from lightx2v.utils.envs import *
 
+from ..module_io import WanPreInferModuleOutput
 from ..utils import rope_params, sinusoidal_embedding_1d
 
 
@@ -126,4 +127,14 @@ class WanAudioPreInfer(WanPreInfer):
                 del context_clip
             torch.cuda.empty_cache()
 
-        return (embed, x_grid_sizes, (x.squeeze(0), embed0.squeeze(0), seq_lens, self.freqs, context, audio_dit_blocks), valid_patch_length)
+        return WanPreInferModuleOutput(
+            embed=embed,
+            grid_sizes=x_grid_sizes,
+            x=x.squeeze(0),
+            embed0=embed0.squeeze(0),
+            seq_lens=seq_lens,
+            freqs=self.freqs,
+            context=context,
+            audio_dit_blocks=audio_dit_blocks,
+            valid_patch_length=valid_patch_length,
+        )

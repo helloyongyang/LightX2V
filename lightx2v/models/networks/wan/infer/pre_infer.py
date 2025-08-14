@@ -2,6 +2,7 @@ import torch
 
 from lightx2v.utils.envs import *
 
+from .module_io import WanPreInferModuleOutput
 from .utils import guidance_scale_embedding, rope_params, sinusoidal_embedding_1d
 
 
@@ -132,8 +133,13 @@ class WanPreInfer:
             if self.config.get("use_image_encoder", True):
                 del context_clip
             torch.cuda.empty_cache()
-        return (
-            embed,
-            grid_sizes,
-            (x.squeeze(0), embed0.squeeze(0), seq_lens, self.freqs, context),
+
+        return WanPreInferModuleOutput(
+            embed=embed,
+            grid_sizes=grid_sizes,
+            x=x.squeeze(0),
+            embed0=embed0.squeeze(0),
+            seq_lens=seq_lens,
+            freqs=self.freqs,
+            context=context,
         )
