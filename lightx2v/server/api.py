@@ -1,35 +1,38 @@
 import asyncio
 import gc
 import threading
+import time
 import uuid
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
+from urllib.parse import urlparse
 
+import httpx
 import torch
 from fastapi import APIRouter, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from loguru import logger
 
 from .schema import (
-    ServiceStatusResponse,
     StopTaskResponse,
     TaskRequest,
     TaskResponse,
 )
 from .service import DistributedInferenceService, FileService, VideoGenerationService
-from .utils import ServiceStatus
+from .task_manager import TaskStatus, task_manager
 
 
 class ApiServer:
-    def __init__(self):
-        self.app = FastAPI(title="LightX2V API", version="1.0.0")
+    def __init__(self, max_queue_size: int = 10, app: Optional[FastAPI] = None):
+        self.app = app or FastAPI(title="LightX2V API", version="1.0.0")
         self.file_service = None
         self.inference_service = None
         self.video_service = None
-        self.thread = None
-        self.stop_generation_event = threading.Event()
+        self.max_queue_size = max_queue_size
 
-        # Create routers
+        self.processing_thread = None
+        self.stop_processing = threading.Event()
+
         self.tasks_router = APIRouter(prefix="/v1/tasks", tags=["tasks"])
         self.files_router = APIRouter(prefix="/v1/files", tags=["files"])
         self.service_router = APIRouter(prefix="/v1/service", tags=["service"])
@@ -37,7 +40,6 @@ class ApiServer:
         self._setup_routes()
 
     def _setup_routes(self):
-        """Setup routes"""
         self._setup_task_routes()
         self._setup_file_routes()
         self._setup_service_routes()
@@ -48,18 +50,15 @@ class ApiServer:
         self.app.include_router(self.service_router)
 
     def _write_file_sync(self, file_path: Path, content: bytes) -> None:
-        """同步写入文件到指定路径"""
         with open(file_path, "wb") as buffer:
             buffer.write(content)
 
     def _stream_file_response(self, file_path: Path, filename: str | None = None) -> StreamingResponse:
-        """Common file streaming response method"""
         assert self.file_service is not None, "File service is not initialized"
 
         try:
             resolved_path = file_path.resolve()
 
-            # Security check: ensure file is within allowed directory
             if not str(resolved_path).startswith(str(self.file_service.output_video_dir.resolve())):
                 raise HTTPException(status_code=403, detail="Access to this file is not allowed")
 
@@ -103,24 +102,25 @@ class ApiServer:
         async def create_task(message: TaskRequest):
             """Create video generation task"""
             try:
-                task_id = ServiceStatus.start_task(message)
+                if hasattr(message, "image_path") and message.image_path and message.image_path.startswith("http"):
+                    if not await self._validate_image_url(message.image_path):
+                        raise HTTPException(status_code=400, detail=f"Image URL is not accessible: {message.image_path}")
 
-                # Use background thread to handle long-running tasks
-                self.stop_generation_event.clear()
-                self.thread = threading.Thread(
-                    target=self._process_video_generation,
-                    args=(message, self.stop_generation_event),
-                    daemon=True,
-                )
-                self.thread.start()
+                task_id = task_manager.create_task(message)
+                message.task_id = task_id
+
+                self._ensure_processing_thread_running()
 
                 return TaskResponse(
                     task_id=task_id,
-                    task_status="processing",
+                    task_status="pending",
                     save_video_path=message.save_video_path,
                 )
             except RuntimeError as e:
-                raise HTTPException(status_code=400, detail=str(e))
+                raise HTTPException(status_code=503, detail=str(e))
+            except Exception as e:
+                logger.error(f"Failed to create task: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
 
         @self.tasks_router.post("/form", response_model=TaskResponse)
         async def create_task_form(
@@ -136,11 +136,9 @@ class ApiServer:
             audio_file: Optional[UploadFile] = File(default=None),
             video_duration: int = Form(default=5),
         ):
-            """Create video generation task via form"""
             assert self.file_service is not None, "File service is not initialized"
 
             async def save_file_async(file: UploadFile, target_dir: Path) -> str:
-                """异步保存文件到指定目录"""
                 if not file or not file.filename:
                     return ""
 
@@ -177,44 +175,58 @@ class ApiServer:
             )
 
             try:
-                task_id = ServiceStatus.start_task(message)
-                self.stop_generation_event.clear()
-                self.thread = threading.Thread(
-                    target=self._process_video_generation,
-                    args=(message, self.stop_generation_event),
-                    daemon=True,
-                )
-                self.thread.start()
+                task_id = task_manager.create_task(message)
+                message.task_id = task_id
+
+                self._ensure_processing_thread_running()
 
                 return TaskResponse(
                     task_id=task_id,
-                    task_status="processing",
+                    task_status="pending",
                     save_video_path=message.save_video_path,
                 )
             except RuntimeError as e:
-                raise HTTPException(status_code=400, detail=str(e))
+                raise HTTPException(status_code=503, detail=str(e))
+            except Exception as e:
+                logger.error(f"Failed to create form task: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
 
         @self.tasks_router.get("/", response_model=dict)
         async def list_tasks():
-            """Get all task list"""
-            return ServiceStatus.get_all_tasks()
+            return task_manager.get_all_tasks()
+
+        @self.tasks_router.get("/queue/status", response_model=dict)
+        async def get_queue_status():
+            service_status = task_manager.get_service_status()
+            return {
+                "is_processing": task_manager.is_processing(),
+                "current_task": service_status.get("current_task"),
+                "pending_count": task_manager.get_pending_task_count(),
+                "active_count": task_manager.get_active_task_count(),
+                "queue_size": self.max_queue_size,
+                "queue_available": self.max_queue_size - task_manager.get_active_task_count(),
+            }
 
         @self.tasks_router.get("/{task_id}/status")
         async def get_task_status(task_id: str):
-            """Get status of specified task"""
-            return ServiceStatus.get_status_task_id(task_id)
+            status = task_manager.get_task_status(task_id)
+            if not status:
+                raise HTTPException(status_code=404, detail="Task not found")
+            return status
 
         @self.tasks_router.get("/{task_id}/result")
         async def get_task_result(task_id: str):
-            """Get result video file of specified task"""
             assert self.video_service is not None, "Video service is not initialized"
             assert self.file_service is not None, "File service is not initialized"
 
             try:
-                task_status = ServiceStatus.get_status_task_id(task_id)
+                task_status = task_manager.get_task_status(task_id)
 
-                if not task_status or task_status.get("status") != "completed":
-                    raise HTTPException(status_code=404, detail="Task not completed or does not exist")
+                if not task_status:
+                    raise HTTPException(status_code=404, detail="Task not found")
+
+                if task_status.get("status") != TaskStatus.COMPLETED.value:
+                    raise HTTPException(status_code=404, detail="Task not completed")
 
                 save_video_path = task_status.get("save_video_path")
                 if not save_video_path:
@@ -232,38 +244,37 @@ class ApiServer:
                 logger.error(f"Error occurred while getting task result: {e}")
                 raise HTTPException(status_code=500, detail="Failed to get task result")
 
-        @self.tasks_router.delete("/running", response_model=StopTaskResponse)
-        async def stop_running_task():
-            """Stop currently running task"""
-            if self.thread and self.thread.is_alive():
-                try:
-                    logger.info("Sending stop signal to running task thread...")
-                    self.stop_generation_event.set()
-                    self.thread.join(timeout=5)
-
-                    if self.thread.is_alive():
-                        logger.warning("Task thread did not stop within the specified time, manual intervention may be required.")
-                        return StopTaskResponse(
-                            stop_status="warning",
-                            reason="Task thread did not stop within the specified time, manual intervention may be required.",
-                        )
-                    else:
-                        self.thread = None
-                        ServiceStatus.clean_stopped_task()
-                        gc.collect()
+        @self.tasks_router.delete("/{task_id}", response_model=StopTaskResponse)
+        async def stop_task(task_id: str):
+            try:
+                if task_manager.cancel_task(task_id):
+                    gc.collect()
+                    if torch.cuda.is_available():
                         torch.cuda.empty_cache()
-                        logger.info("Task stopped successfully.")
-                        return StopTaskResponse(stop_status="success", reason="Task stopped successfully.")
-                except Exception as e:
-                    logger.error(f"Error occurred while stopping task: {str(e)}")
-                    return StopTaskResponse(stop_status="error", reason=str(e))
-            else:
-                return StopTaskResponse(stop_status="do_nothing", reason="No running task found.")
+                    logger.info(f"Task {task_id} stopped successfully.")
+                    return StopTaskResponse(stop_status="success", reason="Task stopped successfully.")
+                else:
+                    return StopTaskResponse(stop_status="do_nothing", reason="Task not found or already completed.")
+            except Exception as e:
+                logger.error(f"Error occurred while stopping task {task_id}: {str(e)}")
+                return StopTaskResponse(stop_status="error", reason=str(e))
+
+        @self.tasks_router.delete("/all/running", response_model=StopTaskResponse)
+        async def stop_all_running_tasks():
+            try:
+                task_manager.cancel_all_tasks()
+                gc.collect()
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                logger.info("All tasks stopped successfully.")
+                return StopTaskResponse(stop_status="success", reason="All tasks stopped successfully.")
+            except Exception as e:
+                logger.error(f"Error occurred while stopping all tasks: {str(e)}")
+                return StopTaskResponse(stop_status="error", reason=str(e))
 
     def _setup_file_routes(self):
         @self.files_router.get("/download/{file_path:path}")
         async def download_file(file_path: str):
-            """Download file"""
             assert self.file_service is not None, "File service is not initialized"
 
             try:
@@ -276,36 +287,111 @@ class ApiServer:
                 raise HTTPException(status_code=500, detail="File download failed")
 
     def _setup_service_routes(self):
-        @self.service_router.get("/status", response_model=ServiceStatusResponse)
+        @self.service_router.get("/status", response_model=dict)
         async def get_service_status():
-            """Get service status"""
-            return ServiceStatus.get_status_service()
+            return task_manager.get_service_status()
 
         @self.service_router.get("/metadata", response_model=dict)
         async def get_service_metadata():
-            """Get service metadata"""
             assert self.inference_service is not None, "Inference service is not initialized"
             return self.inference_service.server_metadata()
 
-    def _process_video_generation(self, message: TaskRequest, stop_event: threading.Event):
-        assert self.video_service is not None, "Video service is not initialized"
+    async def _validate_image_url(self, image_url: str) -> bool:
+        if not image_url or not image_url.startswith("http"):
+            return True
+
         try:
-            if stop_event.is_set():
-                logger.info(f"Task {message.task_id} received stop signal, terminating")
-                ServiceStatus.record_failed_task(message, error="Task stopped")
+            parsed_url = urlparse(image_url)
+            if not parsed_url.scheme or not parsed_url.netloc:
+                return False
+
+            timeout = httpx.Timeout(connect=5.0, read=5.0)
+            async with httpx.AsyncClient(verify=False, timeout=timeout) as client:
+                response = await client.head(image_url, follow_redirects=True)
+                return response.status_code < 400
+        except Exception as e:
+            logger.warning(f"URL validation failed for {image_url}: {str(e)}")
+            return False
+
+    def _ensure_processing_thread_running(self):
+        """Ensure the processing thread is running."""
+        if self.processing_thread is None or not self.processing_thread.is_alive():
+            self.stop_processing.clear()
+            self.processing_thread = threading.Thread(target=self._task_processing_loop, daemon=True)
+            self.processing_thread.start()
+            logger.info("Started task processing thread")
+
+    def _task_processing_loop(self):
+        """Main loop that processes tasks from the queue one by one."""
+        logger.info("Task processing loop started")
+
+        while not self.stop_processing.is_set():
+            task_id = task_manager.get_next_pending_task()
+
+            if task_id is None:
+                time.sleep(1)
+                continue
+
+            task_info = task_manager.get_task(task_id)
+            if task_info and task_info.status == TaskStatus.PENDING:
+                logger.info(f"Processing task {task_id}")
+                self._process_single_task(task_info)
+
+        logger.info("Task processing loop stopped")
+
+    def _process_single_task(self, task_info: Any):
+        """Process a single task."""
+        assert self.video_service is not None, "Video service is not initialized"
+
+        task_id = task_info.task_id
+        message = task_info.message
+
+        lock_acquired = task_manager.acquire_processing_lock(task_id, timeout=1)
+        if not lock_acquired:
+            logger.error(f"Task {task_id} failed to acquire processing lock")
+            task_manager.fail_task(task_id, "Failed to acquire processing lock")
+            return
+
+        try:
+            task_manager.start_task(task_id)
+
+            if task_info.stop_event.is_set():
+                logger.info(f"Task {task_id} cancelled before processing")
+                task_manager.fail_task(task_id, "Task cancelled")
                 return
 
-            # Use video generation service to process task
-            result = asyncio.run(self.video_service.generate_video(message))
+            result = asyncio.run(self.video_service.generate_video_with_stop_event(message, task_info.stop_event))
+
+            if result:
+                task_manager.complete_task(task_id, result.save_video_path)
+                logger.info(f"Task {task_id} completed successfully")
+            else:
+                if task_info.stop_event.is_set():
+                    task_manager.fail_task(task_id, "Task cancelled during processing")
+                    logger.info(f"Task {task_id} cancelled during processing")
+                else:
+                    task_manager.fail_task(task_id, "Generation failed")
+                    logger.error(f"Task {task_id} generation failed")
 
         except Exception as e:
-            logger.error(f"Task {message.task_id} processing failed: {str(e)}")
-            ServiceStatus.record_failed_task(message, error=str(e))
+            logger.error(f"Task {task_id} processing failed: {str(e)}")
+            task_manager.fail_task(task_id, str(e))
+        finally:
+            if lock_acquired:
+                task_manager.release_processing_lock(task_id)
 
     def initialize_services(self, cache_dir: Path, inference_service: DistributedInferenceService):
         self.file_service = FileService(cache_dir)
         self.inference_service = inference_service
         self.video_service = VideoGenerationService(self.file_service, inference_service)
+
+    async def cleanup(self):
+        self.stop_processing.set()
+        if self.processing_thread and self.processing_thread.is_alive():
+            self.processing_thread.join(timeout=5)
+
+        if self.file_service:
+            await self.file_service.cleanup()
 
     def get_app(self) -> FastAPI:
         return self.app

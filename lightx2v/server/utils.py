@@ -2,9 +2,6 @@ import base64
 import io
 import signal
 import sys
-import threading
-from datetime import datetime
-from typing import Optional
 
 import psutil
 import torch
@@ -41,81 +38,6 @@ class ProcessManager:
 
 class TaskStatusMessage(BaseModel):
     task_id: str
-
-
-class ServiceStatus:
-    _lock = threading.Lock()
-    _current_task = None
-    _result_store = {}
-
-    @classmethod
-    def start_task(cls, message):
-        with cls._lock:
-            if cls._current_task is not None:
-                raise RuntimeError("Service busy")
-            if message.task_id in cls._result_store:
-                raise RuntimeError(f"Task ID {message.task_id} already exists")
-            cls._current_task = {"message": message, "start_time": datetime.now()}
-            return message.task_id
-
-    @classmethod
-    def complete_task(cls, message):
-        with cls._lock:
-            if cls._current_task:
-                cls._result_store[message.task_id] = {
-                    "success": True,
-                    "message": message,
-                    "start_time": cls._current_task["start_time"],
-                    "completion_time": datetime.now(),
-                    "save_video_path": message.save_video_path,
-                }
-                cls._current_task = None
-
-    @classmethod
-    def record_failed_task(cls, message, error: Optional[str] = None):
-        with cls._lock:
-            if cls._current_task:
-                cls._result_store[message.task_id] = {"success": False, "message": message, "start_time": cls._current_task["start_time"], "error": error, "save_video_path": message.save_video_path}
-                cls._current_task = None
-
-    @classmethod
-    def clean_stopped_task(cls):
-        with cls._lock:
-            if cls._current_task:
-                message = cls._current_task["message"]
-                error = "Task stopped by user"
-                cls._result_store[message.task_id] = {"success": False, "message": message, "start_time": cls._current_task["start_time"], "error": error, "save_video_path": message.save_video_path}
-                cls._current_task = None
-
-    @classmethod
-    def get_status_task_id(cls, task_id: str):
-        with cls._lock:
-            if cls._current_task and cls._current_task["message"].task_id == task_id:
-                return {"status": "processing", "task_id": task_id}
-            if task_id in cls._result_store:
-                result = cls._result_store[task_id]
-                return {
-                    "status": "completed" if result["success"] else "failed",
-                    "task_id": task_id,
-                    "success": result["success"],
-                    "start_time": result["start_time"],
-                    "completion_time": result.get("completion_time"),
-                    "error": result.get("error"),
-                    "save_video_path": result.get("save_video_path"),
-                }
-            return {"status": "not_found", "task_id": task_id}
-
-    @classmethod
-    def get_status_service(cls):
-        with cls._lock:
-            if cls._current_task:
-                return {"service_status": "busy", "task_id": cls._current_task["message"].task_id, "start_time": cls._current_task["start_time"]}
-            return {"service_status": "idle"}
-
-    @classmethod
-    def get_all_tasks(cls):
-        with cls._lock:
-            return cls._result_store
 
 
 class TensorTransporter:

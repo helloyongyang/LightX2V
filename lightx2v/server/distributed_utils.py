@@ -1,8 +1,12 @@
 import os
+import pickle
+from typing import Any, Optional
 
 import torch
 import torch.distributed as dist
 from loguru import logger
+
+from .gpu_manager import gpu_manager
 
 
 class DistributedManager:
@@ -10,6 +14,9 @@ class DistributedManager:
         self.is_initialized = False
         self.rank = 0
         self.world_size = 1
+        self.device = "cpu"
+
+    CHUNK_SIZE = 1024 * 1024
 
     def init_process_group(self, rank: int, world_size: int, master_addr: str, master_port: str) -> bool:
         try:
@@ -18,10 +25,12 @@ class DistributedManager:
             os.environ["MASTER_ADDR"] = master_addr
             os.environ["MASTER_PORT"] = master_port
 
-            dist.init_process_group(backend="nccl", init_method=f"tcp://{master_addr}:{master_port}", rank=rank, world_size=world_size)
+            backend = "nccl" if torch.cuda.is_available() else "gloo"
 
-            if torch.cuda.is_available():  # type: ignore
-                torch.cuda.set_device(rank)
+            dist.init_process_group(backend=backend, init_method=f"tcp://{master_addr}:{master_port}", rank=rank, world_size=world_size)
+            logger.info(f"Setup backend: {backend}")
+
+            self.device = gpu_manager.set_device_for_rank(rank, world_size)
 
             self.is_initialized = True
             self.rank = rank
@@ -46,55 +55,93 @@ class DistributedManager:
 
     def barrier(self):
         if self.is_initialized:
-            dist.barrier()
+            if torch.cuda.is_available() and dist.get_backend() == "nccl":
+                dist.barrier(device_ids=[torch.cuda.current_device()])
+            else:
+                dist.barrier()
 
     def is_rank_zero(self) -> bool:
         return self.rank == 0
 
-    def broadcast_task_data(self, task_data=None):  # type: ignore
+    def _broadcast_byte_chunks(self, data_bytes: bytes, device: torch.device) -> None:
+        total_length = len(data_bytes)
+        num_full_chunks = total_length // self.CHUNK_SIZE
+        remaining = total_length % self.CHUNK_SIZE
+
+        for i in range(num_full_chunks):
+            start_idx = i * self.CHUNK_SIZE
+            end_idx = start_idx + self.CHUNK_SIZE
+            chunk = data_bytes[start_idx:end_idx]
+            task_tensor = torch.tensor(list(chunk), dtype=torch.uint8).to(device)
+            dist.broadcast(task_tensor, src=0)
+
+        if remaining:
+            chunk = data_bytes[-remaining:]
+            task_tensor = torch.tensor(list(chunk), dtype=torch.uint8).to(device)
+            dist.broadcast(task_tensor, src=0)
+
+    def _receive_byte_chunks(self, total_length: int, device: torch.device) -> bytes:
+        if total_length <= 0:
+            return b""
+
+        received = bytearray()
+        remaining = total_length
+
+        while remaining > 0:
+            chunk_length = min(self.CHUNK_SIZE, remaining)
+            task_tensor = torch.empty(chunk_length, dtype=torch.uint8).to(device)
+            dist.broadcast(task_tensor, src=0)
+            received.extend(task_tensor.cpu().numpy())
+            remaining -= chunk_length
+
+        return bytes(received)
+
+    def broadcast_task_data(self, task_data: Optional[Any] = None) -> Optional[Any]:
         if not self.is_initialized:
             return None
 
+        try:
+            backend = dist.get_backend() if dist.is_initialized() else "gloo"
+        except Exception:
+            backend = "gloo"
+
+        if backend == "gloo":
+            broadcast_device = torch.device("cpu")
+        else:
+            broadcast_device = torch.device(self.device if self.device != "cpu" else "cpu")
+
         if self.is_rank_zero():
             if task_data is None:
-                stop_signal = torch.tensor([1], dtype=torch.int32, device=f"cuda:{self.rank}")
+                stop_signal = torch.tensor([1], dtype=torch.int32).to(broadcast_device)
             else:
-                stop_signal = torch.tensor([0], dtype=torch.int32, device=f"cuda:{self.rank}")
+                stop_signal = torch.tensor([0], dtype=torch.int32).to(broadcast_device)
 
             dist.broadcast(stop_signal, src=0)
 
             if task_data is not None:
-                import pickle
-
                 task_bytes = pickle.dumps(task_data)
-                task_length = torch.tensor([len(task_bytes)], dtype=torch.int32, device=f"cuda:{self.rank}")
+                task_length = torch.tensor([len(task_bytes)], dtype=torch.int32).to(broadcast_device)
 
                 dist.broadcast(task_length, src=0)
-
-                task_tensor = torch.tensor(list(task_bytes), dtype=torch.uint8, device=f"cuda:{self.rank}")
-                dist.broadcast(task_tensor, src=0)
+                self._broadcast_byte_chunks(task_bytes, broadcast_device)
 
                 return task_data
             else:
                 return None
         else:
-            stop_signal = torch.tensor([0], dtype=torch.int32, device=f"cuda:{self.rank}")
+            stop_signal = torch.tensor([0], dtype=torch.int32).to(broadcast_device)
             dist.broadcast(stop_signal, src=0)
 
             if stop_signal.item() == 1:
                 return None
             else:
-                task_length = torch.tensor([0], dtype=torch.int32, device=f"cuda:{self.rank}")
+                task_length = torch.tensor([0], dtype=torch.int32).to(broadcast_device)
+
                 dist.broadcast(task_length, src=0)
+                total_length = int(task_length.item())
 
-                task_tensor = torch.empty(int(task_length.item()), dtype=torch.uint8, device=f"cuda:{self.rank}")
-                dist.broadcast(task_tensor, src=0)
-
-                import pickle
-
-                task_bytes = bytes(task_tensor.cpu().numpy())
+                task_bytes = self._receive_byte_chunks(total_length, broadcast_device)
                 task_data = pickle.loads(task_bytes)
-
                 return task_data
 
 
@@ -113,7 +160,6 @@ class DistributedWorker:
         self.dist_manager.cleanup()
 
     def sync_and_report(self, task_id: str, status: str, result_queue, **kwargs):
-        # Synchronize all processes
         self.dist_manager.barrier()
 
         if self.dist_manager.is_rank_zero():

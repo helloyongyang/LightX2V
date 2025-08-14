@@ -3,11 +3,11 @@ import os
 
 import torch
 import torch.distributed as dist
+import torch.nn.functional as F
 from loguru import logger
 from safetensors import safe_open
 
 from lightx2v.common.ops.attn import MaskMap
-from lightx2v.models.networks.wan.infer.dist_infer.transformer_infer import WanTransformerDistInfer
 from lightx2v.models.networks.wan.infer.feature_caching.transformer_infer import (
     WanTransformerInferAdaCaching,
     WanTransformerInferCustomCaching,
@@ -83,27 +83,25 @@ class WanModel:
     def _init_infer_class(self):
         self.pre_infer_class = WanPreInfer
         self.post_infer_class = WanPostInfer
-        if self.seq_p_group is not None:
-            self.transformer_infer_class = WanTransformerDistInfer
+
+        if self.config["feature_caching"] == "NoCaching":
+            self.transformer_infer_class = WanTransformerInfer
+        elif self.config["feature_caching"] == "Tea":
+            self.transformer_infer_class = WanTransformerInferTeaCaching
+        elif self.config["feature_caching"] == "TaylorSeer":
+            self.transformer_infer_class = WanTransformerInferTaylorCaching
+        elif self.config["feature_caching"] == "Ada":
+            self.transformer_infer_class = WanTransformerInferAdaCaching
+        elif self.config["feature_caching"] == "Custom":
+            self.transformer_infer_class = WanTransformerInferCustomCaching
+        elif self.config["feature_caching"] == "FirstBlock":
+            self.transformer_infer_class = WanTransformerInferFirstBlock
+        elif self.config["feature_caching"] == "DualBlock":
+            self.transformer_infer_class = WanTransformerInferDualBlock
+        elif self.config["feature_caching"] == "DynamicBlock":
+            self.transformer_infer_class = WanTransformerInferDynamicBlock
         else:
-            if self.config["feature_caching"] == "NoCaching":
-                self.transformer_infer_class = WanTransformerInfer
-            elif self.config["feature_caching"] == "Tea":
-                self.transformer_infer_class = WanTransformerInferTeaCaching
-            elif self.config["feature_caching"] == "TaylorSeer":
-                self.transformer_infer_class = WanTransformerInferTaylorCaching
-            elif self.config["feature_caching"] == "Ada":
-                self.transformer_infer_class = WanTransformerInferAdaCaching
-            elif self.config["feature_caching"] == "Custom":
-                self.transformer_infer_class = WanTransformerInferCustomCaching
-            elif self.config["feature_caching"] == "FirstBlock":
-                self.transformer_infer_class = WanTransformerInferFirstBlock
-            elif self.config["feature_caching"] == "DualBlock":
-                self.transformer_infer_class = WanTransformerInferDualBlock
-            elif self.config["feature_caching"] == "DynamicBlock":
-                self.transformer_infer_class = WanTransformerInferDynamicBlock
-            else:
-                raise NotImplementedError(f"Unsupported feature_caching type: {self.config['feature_caching']}")
+            raise NotImplementedError(f"Unsupported feature_caching type: {self.config['feature_caching']}")
 
     def _should_load_weights(self):
         """Determine if current rank should load weights from disk."""
@@ -293,16 +291,7 @@ class WanModel:
     def _init_infer(self):
         self.pre_infer = self.pre_infer_class(self.config)
         self.post_infer = self.post_infer_class(self.config)
-
-        if self.seq_p_group is not None:
-            self.transformer_infer = self.transformer_infer_class(self.config, self.seq_p_group)
-        else:
-            self.transformer_infer = self.transformer_infer_class(self.config)
-
-        if self.config["cfg_parallel"]:
-            self.infer_func = self.infer_with_cfg_parallel
-        else:
-            self.infer_func = self.infer_wo_cfg_parallel
+        self.transformer_infer = self.transformer_infer_class(self.config)
 
     def set_scheduler(self, scheduler):
         self.scheduler = scheduler
@@ -322,10 +311,6 @@ class WanModel:
 
     @torch.no_grad()
     def infer(self, inputs):
-        return self.infer_func(inputs)
-
-    @torch.no_grad()
-    def infer_wo_cfg_parallel(self, inputs):
         if self.cpu_offload:
             if self.offload_granularity == "model" and self.scheduler.step_index == 0:
                 self.to_cuda()
@@ -338,26 +323,31 @@ class WanModel:
             video_token_num = c * (h // 2) * (w // 2)
             self.transformer_infer.mask_map = MaskMap(video_token_num, c)
 
-        embed, grid_sizes, pre_infer_out = self.pre_infer.infer(self.pre_weight, inputs, positive=True)
-        x = self.transformer_infer.infer(self.transformer_weights, grid_sizes, embed, *pre_infer_out)
-        noise_pred_cond = self.post_infer.infer(self.post_weight, x, embed, grid_sizes)[0]
-
-        self.scheduler.noise_pred = noise_pred_cond
-
-        if self.clean_cuda_cache:
-            del x, embed, pre_infer_out, noise_pred_cond, grid_sizes
-            torch.cuda.empty_cache()
-
         if self.config["enable_cfg"]:
-            embed, grid_sizes, pre_infer_out = self.pre_infer.infer(self.pre_weight, inputs, positive=False)
-            x = self.transformer_infer.infer(self.transformer_weights, grid_sizes, embed, *pre_infer_out)
-            noise_pred_uncond = self.post_infer.infer(self.post_weight, x, embed, grid_sizes)[0]
+            if self.config["cfg_parallel"]:
+                # ==================== CFG Parallel Processing ====================
+                cfg_p_group = self.config["device_mesh"].get_group(mesh_dim="cfg_p")
+                assert dist.get_world_size(cfg_p_group) == 2, "cfg_p_world_size must be equal to 2"
+                cfg_p_rank = dist.get_rank(cfg_p_group)
 
-            self.scheduler.noise_pred = noise_pred_uncond + self.scheduler.sample_guide_scale * (self.scheduler.noise_pred - noise_pred_uncond)
+                if cfg_p_rank == 0:
+                    noise_pred = self._infer_cond_uncond(inputs, positive=True)
+                else:
+                    noise_pred = self._infer_cond_uncond(inputs, positive=False)
 
-            if self.clean_cuda_cache:
-                del x, embed, pre_infer_out, noise_pred_uncond, grid_sizes
-                torch.cuda.empty_cache()
+                noise_pred_list = [torch.zeros_like(noise_pred) for _ in range(2)]
+                dist.all_gather(noise_pred_list, noise_pred, group=cfg_p_group)
+                noise_pred_cond = noise_pred_list[0]  # cfg_p_rank == 0
+                noise_pred_uncond = noise_pred_list[1]  # cfg_p_rank == 1
+            else:
+                # ==================== CFG Processing ====================
+                noise_pred_cond = self._infer_cond_uncond(inputs, positive=True)
+                noise_pred_uncond = self._infer_cond_uncond(inputs, positive=False)
+
+            self.scheduler.noise_pred = noise_pred_uncond + self.scheduler.sample_guide_scale * (noise_pred_cond - noise_pred_uncond)
+        else:
+            # ==================== No CFG ====================
+            self.scheduler.noise_pred = self._infer_cond_uncond(inputs, positive=True)
 
         if self.cpu_offload:
             if self.offload_granularity == "model" and self.scheduler.step_index == self.scheduler.infer_steps - 1:
@@ -367,24 +357,62 @@ class WanModel:
                 self.post_weight.to_cpu()
 
     @torch.no_grad()
-    def infer_with_cfg_parallel(self, inputs):
-        assert self.config["enable_cfg"], "enable_cfg must be True"
-        cfg_p_group = self.config["device_mesh"].get_group(mesh_dim="cfg_p")
-        assert dist.get_world_size(cfg_p_group) == 2, f"cfg_p_world_size must be equal to 2"
-        cfg_p_rank = dist.get_rank(cfg_p_group)
+    def _infer_cond_uncond(self, inputs, positive=True):
+        pre_infer_out = self.pre_infer.infer(self.pre_weight, inputs, positive=positive)
 
-        if cfg_p_rank == 0:
-            embed, grid_sizes, pre_infer_out = self.pre_infer.infer(self.pre_weight, inputs, positive=True)
-            x = self.transformer_infer.infer(self.transformer_weights, grid_sizes, embed, *pre_infer_out)
-            noise_pred = self.post_infer.infer(self.post_weight, x, embed, grid_sizes)[0]
-        else:
-            embed, grid_sizes, pre_infer_out = self.pre_infer.infer(self.pre_weight, inputs, positive=False)
-            x = self.transformer_infer.infer(self.transformer_weights, grid_sizes, embed, *pre_infer_out)
-            noise_pred = self.post_infer.infer(self.post_weight, x, embed, grid_sizes)[0]
+        if self.config["seq_parallel"]:
+            pre_infer_out = self._seq_parallel_pre_process(pre_infer_out)
 
-        noise_pred_list = [torch.zeros_like(noise_pred) for _ in range(2)]
-        dist.all_gather(noise_pred_list, noise_pred, group=cfg_p_group)
+        x = self.transformer_infer.infer(self.transformer_weights, pre_infer_out)
 
-        noise_pred_cond = noise_pred_list[0]  # cfg_p_rank == 0
-        noise_pred_uncond = noise_pred_list[1]  # cfg_p_rank == 1
-        self.scheduler.noise_pred = noise_pred_uncond + self.scheduler.sample_guide_scale * (noise_pred_cond - noise_pred_uncond)
+        if self.config["seq_parallel"]:
+            x = self._seq_parallel_post_process(x)
+
+        noise_pred = self.post_infer.infer(self.post_weight, x, pre_infer_out)[0]
+
+        if self.clean_cuda_cache:
+            del x, pre_infer_out
+            torch.cuda.empty_cache()
+
+        return noise_pred
+
+    @torch.no_grad()
+    def _seq_parallel_pre_process(self, pre_infer_out):
+        embed, x, embed0 = pre_infer_out.embed, pre_infer_out.x, pre_infer_out.embed0
+
+        world_size = dist.get_world_size(self.seq_p_group)
+        cur_rank = dist.get_rank(self.seq_p_group)
+
+        padding_size = (world_size - (x.shape[0] % world_size)) % world_size
+
+        if padding_size > 0:
+            # 使用 F.pad 填充第一维
+            x = F.pad(x, (0, 0, 0, padding_size))  # (后维度填充, 前维度填充)
+
+        x = torch.chunk(x, world_size, dim=0)[cur_rank]
+        if self.config["model_cls"].startswith("wan2.2"):
+            padding_size = (world_size - (embed0.shape[0] % world_size)) % world_size
+            if padding_size > 0:
+                embed0 = F.pad(embed0, (0, 0, 0, 0, 0, padding_size))  # (后维度填充, 前维度填充)
+                embed = F.pad(embed, (0, 0, 0, padding_size))
+
+        pre_infer_out.x = x
+        pre_infer_out.embed = embed
+        pre_infer_out.embed0 = embed0
+
+        return pre_infer_out
+
+    @torch.no_grad()
+    def _seq_parallel_post_process(self, x):
+        world_size = dist.get_world_size(self.seq_p_group)
+
+        # 创建一个列表，用于存储所有进程的输出
+        gathered_x = [torch.empty_like(x) for _ in range(world_size)]
+
+        # 收集所有进程的输出
+        dist.all_gather(gathered_x, x, group=self.seq_p_group)
+
+        # 在指定的维度上合并所有进程的输出
+        combined_output = torch.cat(gathered_x, dim=0)
+
+        return combined_output  # 返回合并后的输出
