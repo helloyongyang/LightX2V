@@ -21,11 +21,12 @@ from lightx2v.models.networks.wan.audio_model import Wan22MoeAudioModel, WanAudi
 from lightx2v.models.networks.wan.lora_adapter import WanLoraWrapper
 from lightx2v.models.runners.wan.wan_runner import MultiModelStruct, WanRunner
 from lightx2v.models.schedulers.wan.audio.scheduler import ConsistencyModelScheduler
+from lightx2v.models.video_encoders.hf.wan.vae_2_2 import Wan2_2_VAE
 from lightx2v.utils.envs import *
 from lightx2v.utils.profiler import ProfilingContext, ProfilingContext4Debug
 from lightx2v.utils.registry_factory import RUNNER_REGISTER
-from lightx2v.utils.utils import save_to_video, vae_to_comfyui_image, find_torch_model_path
-from lightx2v.models.video_encoders.hf.wan.vae_2_2 import Wan2_2_VAE
+from lightx2v.utils.utils import find_torch_model_path, save_to_video, vae_to_comfyui_image
+
 
 @contextmanager
 def memory_efficient_inference():
@@ -322,7 +323,7 @@ class VideoGenerator:
         if segment_idx == 0:
             # First segment - create zero frames
             prev_frames = torch.zeros((1, 3, max_num_frames, tgt_h, tgt_w), device=device)
-            if self.config.model_cls == 'wan2.2_audio':
+            if self.config.model_cls == "wan2.2_audio":
                 prev_latents = self.vae_encoder.encode(prev_frames.to(vae_dtype), self.config).to(dtype)
             else:
                 prev_latents = self.vae_encoder.encode(prev_frames.to(vae_dtype), self.config)[0].to(dtype)
@@ -337,7 +338,7 @@ class VideoGenerator:
             else:
                 # Fallback to zeros if prepare_prev_latents fails
                 prev_frames = torch.zeros((1, 3, max_num_frames, tgt_h, tgt_w), device=device)
-                if self.config.model_cls == 'wan2.2_audio':
+                if self.config.model_cls == "wan2.2_audio":
                     prev_latents = self.vae_encoder.encode(prev_frames.to(vae_dtype), self.config).to(dtype)
                 else:
                     prev_latents = self.vae_encoder.encode(prev_frames.to(vae_dtype), self.config)[0].to(dtype)
@@ -695,7 +696,7 @@ class WanAudioRunner(WanRunner):  # type:ignore
         num_channels_latents = 16
         if self.config.model_cls == "wan2.2_audio":
             num_channels_latents = self.config.num_channels_latents
-            
+
         if self.config.task == "i2v":
             self.config.target_shape = (
                 num_channels_latents,
@@ -812,6 +813,7 @@ class Wan22AudioRunner(WanAudioRunner):
         vae_encoder = self.load_vae_encoder()
         vae_decoder = self.load_vae_decoder()
         return vae_encoder, vae_decoder
+
 
 @RUNNER_REGISTER("wan2.2_moe_audio")
 class Wan22MoeAudioRunner(WanAudioRunner):

@@ -7,7 +7,6 @@ import torch.nn.functional as F
 from einops import rearrange
 
 from lightx2v.utils.utils import load_weights
-from loguru import logger
 
 __all__ = [
     "Wan2_2_VAE",

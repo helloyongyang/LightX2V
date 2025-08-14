@@ -15,15 +15,9 @@ def masks_like(tensor, zero=False, generator=None, p=0.2, prev_length=1):
     if zero:
         if generator is not None:
             for u, v in zip(out1, out2):
-                random_num = torch.rand(
-                    1, generator=generator, device=generator.device).item()
+                random_num = torch.rand(1, generator=generator, device=generator.device).item()
                 if random_num < p:
-                    u[:, :prev_length] = torch.normal(
-                        mean=-3.5,
-                        std=0.5,
-                        size=(1,),
-                        device=u.device,
-                        generator=generator).expand_as(u[:, :prev_length]).exp()
+                    u[:, :prev_length] = torch.normal(mean=-3.5, std=0.5, size=(1,), device=u.device, generator=generator).expand_as(u[:, :prev_length]).exp()
                     v[:, :prev_length] = torch.zeros_like(v[:, :prev_length])
                 else:
                     u[:, :prev_length] = u[:, :prev_length]
