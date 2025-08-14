@@ -3,6 +3,7 @@ import os
 
 import torch
 import torch.distributed as dist
+import torch.nn.functional as F
 from loguru import logger
 from safetensors import safe_open
 
