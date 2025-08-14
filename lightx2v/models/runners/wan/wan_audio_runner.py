@@ -435,8 +435,8 @@ class WanAudioRunner(WanRunner):  # type:ignore
             device = torch.device("cuda")
         audio_encoder_repo = self.config["model_path"] + "/audio_encoder"
 
-        if self.model.transformer_infer.seq_p_group is not None:
-            seq_p_group = self.model.transformer_infer.seq_p_group
+        if self.config["seq_parallel"]:
+            seq_p_group = self.config.get("device_mesh").get_group(mesh_dim="seq_p")
         else:
             seq_p_group = None
 
@@ -619,7 +619,7 @@ class WanAudioRunner(WanRunner):  # type:ignore
 
     def load_transformer(self):
         """Load transformer with LoRA support"""
-        base_model = WanAudioModel(self.config.model_path, self.config, self.init_device, self.seq_p_group)
+        base_model = WanAudioModel(self.config.model_path, self.config, self.init_device)
         logger.info(f"Loaded base model: {self.config.model_path}")
         if self.config.get("lora_configs") and self.config.lora_configs:
             assert not self.config.get("dit_quantized", False) or self.config.mm_config.get("weight_auto_quant", False)
