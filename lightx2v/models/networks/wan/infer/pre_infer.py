@@ -42,7 +42,7 @@ class WanPreInfer:
         else:
             timestep = self.scheduler.timesteps[self.scheduler.step_index]
             t = torch.stack([timestep])
-            if hasattr(self.scheduler, "mask"):
+            if self.config["model_cls"] == "wan2.2" and self.config["task"] == "i2v":
                 t = (self.scheduler.mask[0][:, ::2, ::2] * t).flatten()
 
         if positive:

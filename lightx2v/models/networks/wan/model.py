@@ -380,41 +380,37 @@ class WanModel:
 
     @torch.no_grad()
     def _seq_parallel_pre_process(self, pre_infer_out):
-        embed, x, embed0 = pre_infer_out.embed, pre_infer_out.x, pre_infer_out.embed0
-
+        x = pre_infer_out.x
         world_size = dist.get_world_size(self.seq_p_group)
         cur_rank = dist.get_rank(self.seq_p_group)
 
         padding_size = (world_size - (x.shape[0] % world_size)) % world_size
-
         if padding_size > 0:
-            # 使用 F.pad 填充第一维
-            x = F.pad(x, (0, 0, 0, padding_size))  # (后维度填充, 前维度填充)
+            x = F.pad(x, (0, 0, 0, padding_size))
 
         x = torch.chunk(x, world_size, dim=0)[cur_rank]
-        # if self.config["model_cls"] == "wan2.2":
-        #     padding_size = (world_size - (embed0.shape[0] % world_size)) % world_size
-        #     if padding_size > 0:
-        #         embed0 = F.pad(embed0, (0, 0, 0, 0, 0, padding_size))  # (后维度填充, 前维度填充)
-        #         embed = F.pad(embed, (0, 0, 0, padding_size))
+
+        if self.config["model_cls"] == "wan2.2" and self.config["task"] == "i2v":
+            embed, embed0 = pre_infer_out.embed, pre_infer_out.embed0
+
+            padding_size = (world_size - (embed.shape[0] % world_size)) % world_size
+            if padding_size > 0:
+                embed = F.pad(embed, (0, 0, 0, padding_size))
+                embed0 = F.pad(embed0, (0, 0, 0, 0, 0, padding_size))
+
+            embed = torch.chunk(embed, world_size, dim=0)[cur_rank]
+            embed0 = torch.chunk(embed0, world_size, dim=0)[cur_rank]
+            pre_infer_out.embed = embed
+            pre_infer_out.embed0 = embed0
 
         pre_infer_out.x = x
-        pre_infer_out.embed = embed
-        pre_infer_out.embed0 = embed0
 
         return pre_infer_out
 
     @torch.no_grad()
     def _seq_parallel_post_process(self, x):
         world_size = dist.get_world_size(self.seq_p_group)
-
-        # 创建一个列表，用于存储所有进程的输出
         gathered_x = [torch.empty_like(x) for _ in range(world_size)]
-
-        # 收集所有进程的输出
         dist.all_gather(gathered_x, x, group=self.seq_p_group)
-
-        # 在指定的维度上合并所有进程的输出
         combined_output = torch.cat(gathered_x, dim=0)
-
-        return combined_output  # 返回合并后的输出
+        return combined_output
