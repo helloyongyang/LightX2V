@@ -343,7 +343,7 @@ class VideoGenerator:
             self.model.scheduler.reset()
 
         inputs["previmg_encoder_output"] = self.prepare_prev_latents(prev_video, prev_frame_length)
-
+ 
         # Run inference loop
         if total_steps is None:
             total_steps = self.model.scheduler.infer_steps

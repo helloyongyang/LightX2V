@@ -41,12 +41,16 @@ class WanModel:
     post_weight_class = WanPostWeights
     transformer_weight_class = WanTransformerWeights
 
-    def __init__(self, model_path, config, device, seq_p_group=None):
+    def __init__(self, model_path, config, device):
         self.model_path = model_path
         self.config = config
         self.cpu_offload = self.config.get("cpu_offload", False)
         self.offload_granularity = self.config.get("offload_granularity", "block")
-        self.seq_p_group = seq_p_group
+
+        if self.config["seq_parallel"]:
+            self.seq_p_group = self.config.get("device_mesh").get_group(mesh_dim="seq_p")
+        else:
+            self.seq_p_group = None
 
         self.clean_cuda_cache = self.config.get("clean_cuda_cache", False)
         self.dit_quantized = self.config.mm_config.get("mm_type", "Default") != "Default"
@@ -252,8 +256,6 @@ class WanModel:
 
         if target_device == "cuda":
             dist.barrier(device_ids=[torch.cuda.current_device()])
-        else:
-            dist.barrier()
 
         for key in sorted(synced_meta_dict.keys()):
             if is_weight_loader:
@@ -390,11 +392,11 @@ class WanModel:
             x = F.pad(x, (0, 0, 0, padding_size))  # (后维度填充, 前维度填充)
 
         x = torch.chunk(x, world_size, dim=0)[cur_rank]
-        if self.config["model_cls"].startswith("wan2.2"):
-            padding_size = (world_size - (embed0.shape[0] % world_size)) % world_size
-            if padding_size > 0:
-                embed0 = F.pad(embed0, (0, 0, 0, 0, 0, padding_size))  # (后维度填充, 前维度填充)
-                embed = F.pad(embed, (0, 0, 0, padding_size))
+        # if self.config["model_cls"] == "wan2.2":
+        #     padding_size = (world_size - (embed0.shape[0] % world_size)) % world_size
+        #     if padding_size > 0:
+        #         embed0 = F.pad(embed0, (0, 0, 0, 0, 0, padding_size))  # (后维度填充, 前维度填充)
+        #         embed = F.pad(embed, (0, 0, 0, padding_size))
 
         pre_infer_out.x = x
         pre_infer_out.embed = embed
