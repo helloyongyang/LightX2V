@@ -1,11 +1,13 @@
+import math
+
 import torch
 
 from lightx2v.models.networks.wan.infer.pre_infer import WanPreInfer
 from lightx2v.utils.envs import *
 
 from ..module_io import WanPreInferModuleOutput
-from ..utils import rope_params, sinusoidal_embedding_1d, masks_like
-from loguru import logger
+from ..utils import rope_params, sinusoidal_embedding_1d
+
 
 class WanAudioPreInfer(WanPreInfer):
     def __init__(self, config):
@@ -28,13 +30,17 @@ class WanAudioPreInfer(WanPreInfer):
         self.infer_dtype = GET_DTYPE()
         self.sensitive_layer_dtype = GET_SENSITIVE_DTYPE()
 
-    def infer(self, weights, inputs, positive):
+        if config.parallel:
+            self.sp_size = config.parallel.get("seq_p_size", 1)
+        else:
+            self.sp_size = 1
 
+    def infer(self, weights, inputs, positive):
         prev_latents = inputs["previmg_encoder_output"]["prev_latents"]
         if self.config.model_cls == "wan2.2_audio":
             hidden_states = self.scheduler.latents
-            mask1, mask2 = masks_like([hidden_states], zero=True, prev_length=hidden_states.shape[1])
-            hidden_states = (1. - mask2[0]) * prev_latents + mask2[0] * hidden_states
+            prev_mask = inputs["previmg_encoder_output"]["prev_mask"]
+            hidden_states = (1.0 - prev_mask[0]) * prev_latents + prev_mask[0] * hidden_states
         else:
             prev_latents = prev_latents.unsqueeze(0)
             prev_mask = inputs["previmg_encoder_output"]["prev_mask"]
@@ -45,6 +51,16 @@ class WanAudioPreInfer(WanPreInfer):
         x = [hidden_states]
         t = torch.stack([self.scheduler.timesteps[self.scheduler.step_index]])
 
+        if self.config.model_cls == "wan2.2_audio":
+            _, lat_f, lat_h, lat_w = self.scheduler.latents.shape
+            F = (lat_f - 1) * self.config.vae_stride[0] + 1
+            max_seq_len = ((F - 1) // self.config.vae_stride[0] + 1) * lat_h * lat_w // (self.config.patch_size[1] * self.config.patch_size[2])
+            max_seq_len = int(math.ceil(max_seq_len / self.sp_size)) * self.sp_size
+
+            temp_ts = (prev_mask[0][0][:, ::2, ::2] * t).flatten()
+            temp_ts = torch.cat([temp_ts, temp_ts.new_ones(max_seq_len - temp_ts.size(0)) * t])
+            t = temp_ts.unsqueeze(0)
+
         audio_dit_blocks = []
         audio_encoder_output = inputs["audio_encoder_output"]
         audio_model_input = {
@@ -53,7 +69,7 @@ class WanAudioPreInfer(WanPreInfer):
             "timestep": t,
         }
         audio_dit_blocks.append(inputs["audio_adapter_pipe"](**audio_model_input))
-        audio_dit_blocks = None##Debug Drop Audio
+        # audio_dit_blocks = None##Debug Drop Audio
 
         if positive:
             context = inputs["text_encoder_output"]["context"]
@@ -66,7 +82,7 @@ class WanAudioPreInfer(WanPreInfer):
         batch_size = len(x)
         num_channels, _, height, width = x[0].shape
         _, ref_num_channels, ref_num_frames, _, _ = ref_image_encoder.shape
-    
+
         if ref_num_channels != num_channels:
             zero_padding = torch.zeros(
                 (batch_size, num_channels - ref_num_channels, ref_num_frames, height, width),
