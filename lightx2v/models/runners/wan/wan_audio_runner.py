@@ -24,8 +24,8 @@ from lightx2v.models.schedulers.wan.audio.scheduler import ConsistencyModelSched
 from lightx2v.utils.envs import *
 from lightx2v.utils.profiler import ProfilingContext, ProfilingContext4Debug
 from lightx2v.utils.registry_factory import RUNNER_REGISTER
-from lightx2v.utils.utils import save_to_video, vae_to_comfyui_image
-
+from lightx2v.utils.utils import save_to_video, vae_to_comfyui_image, find_torch_model_path
+from lightx2v.models.video_encoders.hf.wan.vae_2_2 import Wan2_2_VAE
 
 @contextmanager
 def memory_efficient_inference():
@@ -322,7 +322,11 @@ class VideoGenerator:
         if segment_idx == 0:
             # First segment - create zero frames
             prev_frames = torch.zeros((1, 3, max_num_frames, tgt_h, tgt_w), device=device)
-            prev_latents = self.vae_encoder.encode(prev_frames.to(vae_dtype), self.config)[0].to(dtype)
+            if self.config.model_cls == 'wan2.2_audio':
+                prev_latents = self.vae_encoder.encode(prev_frames.to(vae_dtype), self.config).to(dtype)
+            else:
+                prev_latents = self.vae_encoder.encode(prev_frames.to(vae_dtype), self.config)[0].to(dtype)
+
             prev_len = 0
         else:
             # Subsequent segments - use previous video
@@ -333,7 +337,10 @@ class VideoGenerator:
             else:
                 # Fallback to zeros if prepare_prev_latents fails
                 prev_frames = torch.zeros((1, 3, max_num_frames, tgt_h, tgt_w), device=device)
-                prev_latents = self.vae_encoder.encode(prev_frames.to(vae_dtype), self.config)[0].to(dtype)
+                if self.config.model_cls == 'wan2.2_audio':
+                    prev_latents = self.vae_encoder.encode(prev_frames.to(vae_dtype), self.config).to(dtype)
+                else:
+                    prev_latents = self.vae_encoder.encode(prev_frames.to(vae_dtype), self.config)[0].to(dtype)
                 prev_len = 0
 
         # Create mask for prev_latents
@@ -613,7 +620,7 @@ class WanAudioRunner(WanRunner):  # type:ignore
     def load_transformer(self):
         """Load transformer with LoRA support"""
         base_model = WanAudioModel(self.config.model_path, self.config, self.init_device, self.seq_p_group)
-
+        logger.info(f"Loaded base model: {self.config.model_path}")
         if self.config.get("lora_configs") and self.config.lora_configs:
             assert not self.config.get("dit_quantized", False) or self.config.mm_config.get("weight_auto_quant", False)
             lora_wrapper = WanLoraWrapper(base_model)
@@ -673,8 +680,12 @@ class WanAudioRunner(WanRunner):  # type:ignore
         # vae encode
         cond_frms = rearrange(cond_frms, "1 C H W -> 1 C 1 H W")
         vae_encoder_out = vae_model.encode(cond_frms.to(torch.float), config)
-        if isinstance(vae_encoder_out, list):
-            vae_encoder_out = torch.stack(vae_encoder_out, dim=0).to(GET_DTYPE())
+
+        if self.config.model_cls == "wan2.2_audio":
+            vae_encoder_out = vae_encoder_out.unsqueeze(0).to(GET_DTYPE())
+        else:
+            if isinstance(vae_encoder_out, list):
+                vae_encoder_out = torch.stack(vae_encoder_out, dim=0).to(GET_DTYPE())
 
         return vae_encoder_out, clip_encoder_out
 
@@ -682,6 +693,9 @@ class WanAudioRunner(WanRunner):  # type:ignore
         """Set target shape for generation"""
         ret = {}
         num_channels_latents = 16
+        if self.config.model_cls == "wan2.2_audio":
+            num_channels_latents = self.config.num_channels_latents
+            
         if self.config.task == "i2v":
             self.config.target_shape = (
                 num_channels_latents,
@@ -754,6 +768,50 @@ class WanAudioRunner(WanRunner):  # type:ignore
             # Final cleanup
             self.end_run()
 
+
+@RUNNER_REGISTER("wan2.2_audio")
+class Wan22AudioRunner(WanAudioRunner):
+    def __init__(self, config):
+        super().__init__(config)
+
+    def load_vae_decoder(self):
+        # offload config
+        vae_offload = self.config.get("vae_cpu_offload", self.config.get("cpu_offload"))
+        if vae_offload:
+            vae_device = torch.device("cpu")
+        else:
+            vae_device = torch.device("cuda")
+        vae_config = {
+            "vae_pth": find_torch_model_path(self.config, "vae_pth", "Wan2.2_VAE.pth"),
+            "device": vae_device,
+            "cpu_offload": vae_offload,
+            "offload_cache": self.config.get("vae_offload_cache", False),
+        }
+        vae_decoder = Wan2_2_VAE(**vae_config)
+        return vae_decoder
+
+    def load_vae_encoder(self):
+        # offload config
+        vae_offload = self.config.get("vae_cpu_offload", self.config.get("cpu_offload"))
+        if vae_offload:
+            vae_device = torch.device("cpu")
+        else:
+            vae_device = torch.device("cuda")
+        vae_config = {
+            "vae_pth": find_torch_model_path(self.config, "vae_pth", "Wan2.2_VAE.pth"),
+            "device": vae_device,
+            "cpu_offload": vae_offload,
+            "offload_cache": self.config.get("vae_offload_cache", False),
+        }
+        if self.config.task != "i2v":
+            return None
+        else:
+            return Wan2_2_VAE(**vae_config)
+
+    def load_vae(self):
+        vae_encoder = self.load_vae_encoder()
+        vae_decoder = self.load_vae_decoder()
+        return vae_encoder, vae_decoder
 
 @RUNNER_REGISTER("wan2.2_moe_audio")
 class Wan22MoeAudioRunner(WanAudioRunner):

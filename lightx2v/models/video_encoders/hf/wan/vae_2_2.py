@@ -7,6 +7,7 @@ import torch.nn.functional as F
 from einops import rearrange
 
 from lightx2v.utils.utils import load_weights
+from loguru import logger
 
 __all__ = [
     "Wan2_2_VAE",
@@ -256,6 +257,10 @@ class AttentionBlock(nn.Module):
 def patchify(x, patch_size):
     if patch_size == 1:
         return x
+
+    if x.dim() == 6:
+        x = x.squeeze(0)
+
     if x.dim() == 4:
         x = rearrange(x, "b c (h q) (w r) -> b (c r q) h w", q=patch_size, r=patch_size)
     elif x.dim() == 5:
@@ -828,7 +833,7 @@ def _video_vae(pretrained_path=None, z_dim=16, dim=160, device="cpu", cpu_offloa
     # load checkpoint
     logging.info(f"loading {pretrained_path}")
     weights_dict = load_weights(pretrained_path, cpu_offload=cpu_offload)
-    model.load_state_dict(weights_dict)
+    model.load_state_dict(weights_dict, assign=True)
 
     return model
 

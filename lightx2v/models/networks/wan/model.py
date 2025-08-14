@@ -231,9 +231,6 @@ class WanModel:
         self.post_weight.load(self.original_weight_dict)
         self.transformer_weights.load(self.original_weight_dict)
 
-        del self.original_weight_dict
-        torch.cuda.empty_cache()
-
     def _load_weights_distribute(self, weight_dict, is_weight_loader):
         global_src_rank = 0
         target_device = "cpu" if self.cpu_offload else "cuda"
