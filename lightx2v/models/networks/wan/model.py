@@ -256,8 +256,6 @@ class WanModel:
 
         if target_device == "cuda":
             dist.barrier(device_ids=[torch.cuda.current_device()])
-        else:
-            dist.barrier()
 
         for key in sorted(synced_meta_dict.keys()):
             if is_weight_loader:
