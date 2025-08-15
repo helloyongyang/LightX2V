@@ -35,7 +35,7 @@ class WanAudioPreInfer(WanPreInfer):
         else:
             self.sp_size = 1
 
-    def infer(self, weights, inputs, positive):
+    def infer(self, weights, inputs):
         prev_latents = inputs["previmg_encoder_output"]["prev_latents"]
         if self.config.model_cls == "wan2.2_audio":
             hidden_states = self.scheduler.latents
@@ -71,7 +71,7 @@ class WanAudioPreInfer(WanPreInfer):
         audio_dit_blocks.append(inputs["audio_adapter_pipe"](**audio_model_input))
         # audio_dit_blocks = None##Debug Drop Audio
 
-        if positive:
+        if self.scheduler.infer_condition:
             context = inputs["text_encoder_output"]["context"]
         else:
             context = inputs["text_encoder_output"]["context_null"]
