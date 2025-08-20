@@ -39,6 +39,7 @@ HuggingFace: https://huggingface.co/lightx2v
    :caption: 论文分类
 
    图像视频生成基础 <papers/generation_basics.md>
+   开源模型 <papers/models.md>
    模型量化 <papers/quantization.md>
    特征缓存 <papers/cache.md>
    注意力机制 <papers/attention.md>
