@@ -9,7 +9,7 @@ class WanVaceTransformerInfer(WanOffloadTransformerInfer):
         self.vace_blocks_mapping = {orig_idx: seq_idx for seq_idx, orig_idx in enumerate(self.config.vace_layers)}
 
     def infer(self, weights, pre_infer_out):
-        pre_infer_out.hints = self.infer_vace(weights, pre_infer_out)
+        pre_infer_out.adapter_output["hints"] = self.infer_vace(weights, pre_infer_out)
         x = self.infer_main_blocks(weights, pre_infer_out)
         return self.infer_non_blocks(weights, x, pre_infer_out.embed)
 
@@ -40,6 +40,6 @@ class WanVaceTransformerInfer(WanOffloadTransformerInfer):
         x = super().post_process(x, y, c_gate_msa, pre_infer_out)
         if self.infer_state == "base" and self.block_idx in self.vace_blocks_mapping:
             hint_idx = self.vace_blocks_mapping[self.block_idx]
-            x = x + pre_infer_out.hints[hint_idx] * pre_infer_out.context_scale
+            x = x + pre_infer_out.adapter_output["hints"][hint_idx] * pre_infer_out.adapter_output.get("context_scale", 1.0)
 
         return x

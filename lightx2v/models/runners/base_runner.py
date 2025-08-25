@@ -1,33 +1,6 @@
-from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Protocol, Tuple, Union
+from abc import ABC
 
 from lightx2v.utils.utils import save_videos_grid
-
-
-class TransformerModel(Protocol):
-    """Protocol for transformer models"""
-
-    def set_scheduler(self, scheduler: Any) -> None: ...
-    def scheduler(self) -> Any: ...
-
-
-class TextEncoderModel(Protocol):
-    """Protocol for text encoder models"""
-
-    def infer(self, texts: List[str], config: Dict[str, Any]) -> Any: ...
-
-
-class ImageEncoderModel(Protocol):
-    """Protocol for image encoder models"""
-
-    def encode(self, image: Any) -> Any: ...
-
-
-class VAEModel(Protocol):
-    """Protocol for VAE models"""
-
-    def encode(self, image: Any) -> Tuple[Any, Dict[str, Any]]: ...
-    def decode(self, latents: Any, generator: Optional[Any] = None, config: Optional[Dict[str, Any]] = None) -> Any: ...
 
 
 class BaseRunner(ABC):
@@ -36,11 +9,10 @@ class BaseRunner(ABC):
     Defines interface methods that all subclasses must implement
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config):
         self.config = config
 
-    @abstractmethod
-    def load_transformer(self) -> TransformerModel:
+    def load_transformer(self):
         """Load transformer model
 
         Returns:
@@ -48,8 +20,7 @@ class BaseRunner(ABC):
         """
         pass
 
-    @abstractmethod
-    def load_text_encoder(self) -> Union[TextEncoderModel, List[TextEncoderModel]]:
+    def load_text_encoder(self):
         """Load text encoder
 
         Returns:
@@ -57,8 +28,7 @@ class BaseRunner(ABC):
         """
         pass
 
-    @abstractmethod
-    def load_image_encoder(self) -> Optional[ImageEncoderModel]:
+    def load_image_encoder(self):
         """Load image encoder
 
         Returns:
@@ -66,8 +36,7 @@ class BaseRunner(ABC):
         """
         pass
 
-    @abstractmethod
-    def load_vae(self) -> Tuple[VAEModel, VAEModel]:
+    def load_vae(self):
         """Load VAE encoder and decoder
 
         Returns:
@@ -75,8 +44,7 @@ class BaseRunner(ABC):
         """
         pass
 
-    @abstractmethod
-    def run_image_encoder(self, img: Any) -> Any:
+    def run_image_encoder(self, img):
         """Run image encoder
 
         Args:
@@ -87,8 +55,7 @@ class BaseRunner(ABC):
         """
         pass
 
-    @abstractmethod
-    def run_vae_encoder(self, img: Any) -> Tuple[Any, Dict[str, Any]]:
+    def run_vae_encoder(self, img):
         """Run VAE encoder
 
         Args:
@@ -99,8 +66,7 @@ class BaseRunner(ABC):
         """
         pass
 
-    @abstractmethod
-    def run_text_encoder(self, prompt: str, img: Optional[Any] = None) -> Any:
+    def run_text_encoder(self, prompt, img):
         """Run text encoder
 
         Args:
@@ -112,8 +78,7 @@ class BaseRunner(ABC):
         """
         pass
 
-    @abstractmethod
-    def get_encoder_output_i2v(self, clip_encoder_out: Any, vae_encoder_out: Any, text_encoder_output: Any, img: Any) -> Dict[str, Any]:
+    def get_encoder_output_i2v(self, clip_encoder_out, vae_encoder_out, text_encoder_output, img):
         """Combine encoder outputs for i2v task
 
         Args:
@@ -127,12 +92,11 @@ class BaseRunner(ABC):
         """
         pass
 
-    @abstractmethod
-    def init_scheduler(self) -> None:
+    def init_scheduler(self):
         """Initialize scheduler"""
         pass
 
-    def set_target_shape(self) -> Dict[str, Any]:
+    def set_target_shape(self):
         """Set target shape
 
         Subclasses can override this method to provide specific implementation
@@ -142,7 +106,7 @@ class BaseRunner(ABC):
         """
         return {}
 
-    def save_video_func(self, images: Any) -> None:
+    def save_video_func(self, images):
         """Save video implementation
 
         Subclasses can override this method to customize save logic
@@ -152,7 +116,7 @@ class BaseRunner(ABC):
         """
         save_videos_grid(images, self.config.get("save_video_path", "./output.mp4"), n_rows=1, fps=self.config.get("fps", 8))
 
-    def load_vae_decoder(self) -> VAEModel:
+    def load_vae_decoder(self):
         """Load VAE decoder
 
         Default implementation: get decoder from load_vae method
@@ -164,3 +128,21 @@ class BaseRunner(ABC):
         if not hasattr(self, "vae_decoder") or self.vae_decoder is None:
             _, self.vae_decoder = self.load_vae()
         return self.vae_decoder
+
+    def get_video_segment_num(self):
+        self.video_segment_num = 1
+
+    def init_run(self):
+        pass
+
+    def init_run_segment(self, segment_idx):
+        self.segment_idx = segment_idx
+
+    def run_segment(self, total_steps=None):
+        pass
+
+    def end_run_segment(self):
+        pass
+
+    def end_run(self):
+        pass

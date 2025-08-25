@@ -35,6 +35,9 @@ class WanAudioPreInfer(WanPreInfer):
         else:
             self.sp_size = 1
 
+    def set_audio_adapter(self, audio_adapter):
+        self.audio_adapter = audio_adapter
+
     def infer(self, weights, inputs):
         prev_latents = inputs["previmg_encoder_output"]["prev_latents"]
         if self.config.model_cls == "wan2.2_audio":
@@ -48,7 +51,7 @@ class WanAudioPreInfer(WanPreInfer):
             hidden_states = torch.cat([hidden_states, prev_mask, prev_latents], dim=1)
             hidden_states = hidden_states.squeeze(0)
 
-        x = [hidden_states]
+        x = hidden_states
         t = torch.stack([self.scheduler.timesteps[self.scheduler.step_index]])
 
         if self.config.model_cls == "wan2.2_audio":
@@ -61,31 +64,23 @@ class WanAudioPreInfer(WanPreInfer):
             temp_ts = torch.cat([temp_ts, temp_ts.new_ones(max_seq_len - temp_ts.size(0)) * t])
             t = temp_ts.unsqueeze(0)
 
-        audio_dit_blocks = []
-        audio_encoder_output = inputs["audio_encoder_output"]
-        audio_model_input = {
-            "audio_input_feat": audio_encoder_output.to(hidden_states.device),
-            "latent_shape": hidden_states.shape,
-            "timestep": t,
-        }
-        audio_dit_blocks.append(inputs["audio_adapter_pipe"](**audio_model_input))
-        # audio_dit_blocks = None##Debug Drop Audio
+        t_emb = self.audio_adapter.time_embedding(t).unflatten(1, (3, -1))
 
         if self.scheduler.infer_condition:
             context = inputs["text_encoder_output"]["context"]
         else:
             context = inputs["text_encoder_output"]["context_null"]
-        seq_len = self.scheduler.seq_len
+        # seq_len = self.scheduler.seq_len
 
         clip_fea = inputs["image_encoder_output"]["clip_encoder_out"]
         ref_image_encoder = inputs["image_encoder_output"]["vae_encoder_out"].to(self.scheduler.latents.dtype)
-        batch_size = len(x)
-        num_channels, _, height, width = x[0].shape
+        # batch_size = len(x)
+        num_channels, _, height, width = x.shape
         _, ref_num_channels, ref_num_frames, _, _ = ref_image_encoder.shape
 
         if ref_num_channels != num_channels:
             zero_padding = torch.zeros(
-                (batch_size, num_channels - ref_num_channels, ref_num_frames, height, width),
+                (1, num_channels - ref_num_channels, ref_num_frames, height, width),
                 dtype=self.scheduler.latents.dtype,
                 device=self.scheduler.latents.device,
             )
@@ -93,13 +88,10 @@ class WanAudioPreInfer(WanPreInfer):
         y = list(torch.unbind(ref_image_encoder, dim=0))  # 第一个batch维度变成list
 
         # embeddings
-        x = [weights.patch_embedding.apply(u.unsqueeze(0)) for u in x]
-        x_grid_sizes = torch.stack([torch.tensor(u.shape[2:], dtype=torch.long) for u in x])
-        x = [u.flatten(2).transpose(1, 2) for u in x]
-        seq_lens = torch.tensor([u.size(1) for u in x], dtype=torch.long).cuda()
-        assert seq_lens.max() <= seq_len
-        x = torch.cat([torch.cat([u, u.new_zeros(1, seq_len - u.size(1), u.size(2))], dim=1) for u in x])
-        valid_patch_length = x[0].size(0)
+        x = weights.patch_embedding.apply(x.unsqueeze(0))
+        grid_sizes = torch.tensor(x.shape[2:], dtype=torch.long).unsqueeze(0)
+        x = x.flatten(2).transpose(1, 2).contiguous()
+        seq_lens = torch.tensor(x.size(1), dtype=torch.long).cuda().unsqueeze(0)
 
         y = [weights.patch_embedding.apply(u.unsqueeze(0)) for u in y]
         # y_grid_sizes = torch.stack([torch.tensor(u.shape[2:], dtype=torch.long) for u in y])
@@ -169,12 +161,11 @@ class WanAudioPreInfer(WanPreInfer):
 
         return WanPreInferModuleOutput(
             embed=embed,
-            grid_sizes=x_grid_sizes,
+            grid_sizes=grid_sizes,
             x=x.squeeze(0),
             embed0=embed0.squeeze(0),
             seq_lens=seq_lens,
             freqs=self.freqs,
             context=context,
-            audio_dit_blocks=audio_dit_blocks,
-            valid_patch_length=valid_patch_length,
+            adapter_output={"audio_encoder_output": inputs["audio_encoder_output"], "t_emb": t_emb},
         )

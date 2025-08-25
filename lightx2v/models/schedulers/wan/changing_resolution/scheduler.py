@@ -20,6 +20,7 @@ class WanScheduler4ChangingResolution:
         assert len(config["resolution_rate"]) == len(config["changing_resolution_steps"])
 
     def prepare_latents(self, target_shape, dtype=torch.float32):
+        self.generator = torch.Generator(device=self.device).manual_seed(self.config.seed)
         self.latents_list = []
         for i in range(len(self.config["resolution_rate"])):
             self.latents_list.append(

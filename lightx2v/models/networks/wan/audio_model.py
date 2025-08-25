@@ -26,6 +26,11 @@ class WanAudioModel(WanModel):
         self.post_infer_class = WanAudioPostInfer
         self.transformer_infer_class = WanAudioTransformerInfer
 
+    def set_audio_adapter(self, audio_adapter):
+        self.audio_adapter = audio_adapter
+        self.pre_infer.set_audio_adapter(self.audio_adapter)
+        self.transformer_infer.set_audio_adapter(self.audio_adapter)
+
 
 class Wan22MoeAudioModel(WanAudioModel):
     def _load_ckpt(self, unified_dtype, sensitive_layer):

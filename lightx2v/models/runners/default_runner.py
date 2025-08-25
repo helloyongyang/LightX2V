@@ -3,6 +3,7 @@ import gc
 import requests
 import torch
 import torch.distributed as dist
+import torchvision.transforms.functional as TF
 from PIL import Image
 from loguru import logger
 from requests.exceptions import RequestException
@@ -35,8 +36,6 @@ class DefaultRunner(BaseRunner):
             self.load_model()
         elif self.config.get("lazy_load", False):
             assert self.config.get("cpu_offload", False)
-        self.run_dit = self._run_dit_local
-        self.run_vae_decoder = self._run_vae_decoder_local
         if self.config["task"] == "i2v":
             self.run_input_encoder = self._run_input_encoder_local_i2v
         elif self.config["task"] == "flf2v":
@@ -108,7 +107,7 @@ class DefaultRunner(BaseRunner):
     def set_progress_callback(self, callback):
         self.progress_callback = callback
 
-    def run(self, total_steps=None):
+    def run_segment(self, total_steps=None):
         if total_steps is None:
             total_steps = self.model.scheduler.infer_steps
         for step_index in range(total_steps):
@@ -130,8 +129,7 @@ class DefaultRunner(BaseRunner):
 
     def run_step(self):
         self.inputs = self.run_input_encoder()
-        self.set_target_shape()
-        self.run_dit(total_steps=1)
+        self.run_main(total_steps=1)
 
     def end_run(self):
         self.model.scheduler.clear()
@@ -147,10 +145,15 @@ class DefaultRunner(BaseRunner):
         torch.cuda.empty_cache()
         gc.collect()
 
+    def read_image_input(self, img_path):
+        img = Image.open(img_path).convert("RGB")
+        img = TF.to_tensor(img).sub_(0.5).div_(0.5).unsqueeze(0).cuda()
+        return img
+
     @ProfilingContext("Run Encoders")
     def _run_input_encoder_local_i2v(self):
         prompt = self.config["prompt_enhanced"] if self.config["use_prompt_enhancer"] else self.config["prompt"]
-        img = Image.open(self.config["image_path"]).convert("RGB")
+        img = self.read_image_input(self.config["image_path"])
         clip_encoder_out = self.run_image_encoder(img) if self.config.get("use_image_encoder", True) else None
         vae_encode_out = self.run_vae_encoder(img)
         text_encoder_output = self.run_text_encoder(prompt, img)
@@ -172,8 +175,8 @@ class DefaultRunner(BaseRunner):
     @ProfilingContext("Run Encoders")
     def _run_input_encoder_local_flf2v(self):
         prompt = self.config["prompt_enhanced"] if self.config["use_prompt_enhancer"] else self.config["prompt"]
-        first_frame = Image.open(self.config["image_path"]).convert("RGB")
-        last_frame = Image.open(self.config["last_frame_path"]).convert("RGB")
+        first_frame = self.read_image_input(self.config["image_path"])
+        last_frame = self.read_image_input(self.config["last_frame_path"])
         clip_encoder_out = self.run_image_encoder(first_frame, last_frame) if self.config.get("use_image_encoder", True) else None
         vae_encode_out = self.run_vae_encoder(first_frame, last_frame)
         text_encoder_output = self.run_text_encoder(prompt, first_frame)
@@ -201,20 +204,32 @@ class DefaultRunner(BaseRunner):
         gc.collect()
         return self.get_encoder_output_i2v(None, vae_encoder_out, text_encoder_output)
 
-    @ProfilingContext("Run DiT")
-    def _run_dit_local(self, total_steps=None):
+    def init_run(self):
+        self.set_target_shape()
+        self.get_video_segment_num()
         if self.config.get("lazy_load", False) or self.config.get("unload_modules", False):
             self.model = self.load_transformer()
         self.init_scheduler()
         self.model.scheduler.prepare(self.inputs["image_encoder_output"])
         if self.config.get("model_cls") == "wan2.2" and self.config["task"] == "i2v":
             self.inputs["image_encoder_output"]["vae_encoder_out"] = None
-        latents, generator = self.run(total_steps)
+
+    @ProfilingContext("Run DiT")
+    def run_main(self, total_steps=None):
+        self.init_run()
+        for segment_idx in range(self.video_segment_num):
+            # 1. default do nothing
+            self.init_run_segment(segment_idx)
+            # 2. main inference loop
+            latents, generator = self.run_segment(total_steps=total_steps)
+            # 3. vae decoder
+            self.gen_video = self.run_vae_decoder(latents, generator)
+            # 4. default do nothing
+            self.end_run_segment()
         self.end_run()
-        return latents, generator
 
     @ProfilingContext("Run VAE Decoder")
-    def _run_vae_decoder_local(self, latents, generator):
+    def run_vae_decoder(self, latents, generator):
         if self.config.get("lazy_load", False) or self.config.get("unload_modules", False):
             self.vae_decoder = self.load_vae_decoder()
         images = self.vae_decoder.decode(latents, generator=generator, config=self.config)
@@ -240,15 +255,15 @@ class DefaultRunner(BaseRunner):
                     logger.info(f"Enhanced prompt: {enhanced_prompt}")
                     return enhanced_prompt
 
-    def process_images_after_vae_decoder(self, images, save_video=True):
-        images = vae_to_comfyui_image(images)
+    def process_images_after_vae_decoder(self, save_video=True):
+        self.gen_video = vae_to_comfyui_image(self.gen_video)
 
         if "video_frame_interpolation" in self.config:
             assert self.vfi_model is not None and self.config["video_frame_interpolation"].get("target_fps", None) is not None
             target_fps = self.config["video_frame_interpolation"]["target_fps"]
             logger.info(f"Interpolating frames from {self.config.get('fps', 16)} to {target_fps}")
-            images = self.vfi_model.interpolate_frames(
-                images,
+            self.gen_video = self.vfi_model.interpolate_frames(
+                self.gen_video,
                 source_fps=self.config.get("fps", 16),
                 target_fps=target_fps,
             )
@@ -262,24 +277,21 @@ class DefaultRunner(BaseRunner):
             if not dist.is_initialized() or dist.get_rank() == 0:
                 logger.info(f"🎬 Start to save video 🎬")
 
-                save_to_video(images, self.config.save_video_path, fps=fps, method="ffmpeg")
+                save_to_video(self.gen_video, self.config.save_video_path, fps=fps, method="ffmpeg")
                 logger.info(f"✅ Video saved successfully to: {self.config.save_video_path} ✅")
+        return {"video": self.gen_video}
 
     def run_pipeline(self, save_video=True):
         if self.config["use_prompt_enhancer"]:
             self.config["prompt_enhanced"] = self.post_prompt_enhancer()
 
         self.inputs = self.run_input_encoder()
-        self.set_target_shape()
 
-        latents, generator = self.run_dit()
+        self.run_main()
 
-        images = self.run_vae_decoder(latents, generator)
-        self.process_images_after_vae_decoder(images, save_video=save_video)
+        gen_video = self.process_images_after_vae_decoder(save_video=save_video)
 
-        del latents, generator
         torch.cuda.empty_cache()
         gc.collect()
 
-        # Return (images, audio) - audio is None for default runner
-        return images, None
+        return gen_video
