@@ -9,6 +9,8 @@ export CUDA_VISIBLE_DEVICES=0
 # set environment variables
 source ${lightx2v_path}/scripts/base/base.sh
 
+export ENABLE_GRAPH_MODE=false
+export SENSITIVE_LAYER_DTYPE=None
 
 python -m lightx2v.infer \
 --model_cls wan2.2_audio \
