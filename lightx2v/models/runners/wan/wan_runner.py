@@ -138,6 +138,7 @@ class WanRunner(DefaultRunner):
             "parallel": self.config.parallel,
             "use_tiling": self.config.get("use_tiling_vae", False),
             "cpu_offload": vae_offload,
+            "dtype": GET_DTYPE(),
         }
         if self.config.task not in ["i2v", "flf2v", "vace"]:
             return None
@@ -158,6 +159,7 @@ class WanRunner(DefaultRunner):
             "parallel": self.config.parallel,
             "use_tiling": self.config.get("use_tiling_vae", False),
             "cpu_offload": vae_offload,
+            "dtype": GET_DTYPE(),
         }
         if self.config.get("use_tiny_vae", False):
             tiny_vae_path = find_torch_model_path(self.config, "tiny_vae_path", "taew2_1.pth")
@@ -309,7 +311,7 @@ class WanRunner(DefaultRunner):
                 dim=1,
             ).cuda()
 
-        vae_encoder_out = self.vae_encoder.encode(vae_input.unsqueeze(0))
+        vae_encoder_out = self.vae_encoder.encode(vae_input.unsqueeze(0).to(GET_DTYPE()))
 
         if self.config.get("lazy_load", False) or self.config.get("unload_modules", False):
             del self.vae_encoder
@@ -444,6 +446,7 @@ class Wan22DenseRunner(WanRunner):
             "device": vae_device,
             "cpu_offload": vae_offload,
             "offload_cache": self.config.get("vae_offload_cache", False),
+            "dtype": GET_DTYPE(),
         }
         vae_decoder = Wan2_2_VAE(**vae_config)
         return vae_decoder
@@ -460,6 +463,7 @@ class Wan22DenseRunner(WanRunner):
             "device": vae_device,
             "cpu_offload": vae_offload,
             "offload_cache": self.config.get("vae_offload_cache", False),
+            "dtype": GET_DTYPE(),
         }
         if self.config.task not in ["i2v", "flf2v"]:
             return None
@@ -494,5 +498,5 @@ class Wan22DenseRunner(WanRunner):
         return vae_encoder_out
 
     def get_vae_encoder_output(self, img):
-        z = self.vae_encoder.encode(img)
+        z = self.vae_encoder.encode(img.to(GET_DTYPE()))
         return z

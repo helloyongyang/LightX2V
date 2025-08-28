@@ -64,7 +64,7 @@ class Upsample(nn.Upsample):
         """
         Fix bfloat16 support for nearest neighbor interpolation.
         """
-        return super().forward(x.float()).type_as(x)
+        return super().forward(x)
 
 
 class Resample(nn.Module):
@@ -761,7 +761,7 @@ class WanVAE_(nn.Module):
         self._enc_feat_map = [None] * self._enc_conv_num
 
 
-def _video_vae(pretrained_path=None, z_dim=None, device="cpu", cpu_offload=False, **kwargs):
+def _video_vae(pretrained_path=None, z_dim=None, device="cpu", cpu_offload=False, dtype=torch.float, **kwargs):
     """
     Autoencoder3d adapted from Stable Diffusion 1.x, 2.x and XL.
     """
@@ -783,6 +783,9 @@ def _video_vae(pretrained_path=None, z_dim=None, device="cpu", cpu_offload=False
 
     # load checkpoint
     weights_dict = load_weights(pretrained_path, cpu_offload=cpu_offload)
+    for k in weights_dict.keys():
+        if weights_dict[k].dtype != dtype:
+            weights_dict[k] = weights_dict[k].to(dtype)
     model.load_state_dict(weights_dict, assign=True)
 
     return model
@@ -846,7 +849,7 @@ class WanVAE:
         self.scale = [self.mean, self.inv_std]
 
         # init model
-        self.model = _video_vae(pretrained_path=vae_pth, z_dim=z_dim, cpu_offload=cpu_offload).eval().requires_grad_(False).to(device)
+        self.model = _video_vae(pretrained_path=vae_pth, z_dim=z_dim, cpu_offload=cpu_offload, dtype=dtype).eval().requires_grad_(False).to(device).to(dtype)
 
     def current_device(self):
         return next(self.model.parameters()).device
@@ -902,9 +905,9 @@ class WanVAE:
                 video_chunk = video[:, :, :, :, start_idx:end_idx].contiguous()
 
         if self.use_tiling:
-            encoded_chunk = self.model.tiled_encode(video_chunk, self.scale).float()
+            encoded_chunk = self.model.tiled_encode(video_chunk, self.scale)
         else:
-            encoded_chunk = self.model.encode(video_chunk, self.scale).float()
+            encoded_chunk = self.model.encode(video_chunk, self.scale)
 
         if cur_rank == 0:
             if split_dim == 3:
@@ -951,14 +954,14 @@ class WanVAE:
             else:
                 logger.info("Fall back to naive encode mode")
                 if self.use_tiling:
-                    out = self.model.tiled_encode(video, self.scale).float().squeeze(0)
+                    out = self.model.tiled_encode(video, self.scale).squeeze(0)
                 else:
-                    out = self.model.encode(video, self.scale).float().squeeze(0)
+                    out = self.model.encode(video, self.scale).squeeze(0)
         else:
             if self.use_tiling:
-                out = self.model.tiled_encode(video, self.scale).float().squeeze(0)
+                out = self.model.tiled_encode(video, self.scale).squeeze(0)
             else:
-                out = self.model.encode(video, self.scale).float().squeeze(0)
+                out = self.model.encode(video, self.scale).squeeze(0)
 
         if self.cpu_offload:
             self.to_cpu()
@@ -986,7 +989,7 @@ class WanVAE:
                 zs = zs[:, :, :, cur_rank * splited_chunk_len - padding_size : (cur_rank + 1) * splited_chunk_len + padding_size].contiguous()
 
         decode_func = self.model.tiled_decode if self.use_tiling else self.model.decode
-        images = decode_func(zs.unsqueeze(0), self.scale).float().clamp_(-1, 1)
+        images = decode_func(zs.unsqueeze(0), self.scale).clamp_(-1, 1)
 
         if cur_rank == 0:
             if split_dim == 2:
@@ -1028,13 +1031,13 @@ class WanVAE:
                 images = self.decode_dist(zs, world_size, cur_rank, split_dim=2)
             else:
                 logger.info("Fall back to naive decode mode")
-                images = self.model.decode(zs.unsqueeze(0), self.scale).float().clamp_(-1, 1)
+                images = self.model.decode(zs.unsqueeze(0), self.scale).clamp_(-1, 1)
         else:
             decode_func = self.model.tiled_decode if self.use_tiling else self.model.decode
-            images = decode_func(zs.unsqueeze(0), self.scale).float().clamp_(-1, 1)
+            images = decode_func(zs.unsqueeze(0), self.scale).clamp_(-1, 1)
 
         if self.cpu_offload:
-            images = images.cpu().float()
+            images = images.cpu()
             self.to_cpu()
 
         return images
