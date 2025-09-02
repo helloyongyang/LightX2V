@@ -80,8 +80,6 @@ class WanModel:
             self.dit_quantized_ckpt = None
             assert not self.config.get("lazy_load", False)
 
-        self.config.dit_quantized_ckpt = self.dit_quantized_ckpt
-
         self.weight_auto_quant = self.config.mm_config.get("weight_auto_quant", False)
         if self.dit_quantized:
             assert self.weight_auto_quant or self.dit_quantized_ckpt is not None
