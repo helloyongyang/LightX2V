@@ -1,0 +1,4241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LightX2V 文生视频服务</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 主要图标库 -->
+    <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- 备用图标库 -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
+    <!-- 本地备用图标（如果CDN都失败） -->
+    <style>
+        /* 备用图标样式，防止CDN失败时图标不显示 */
+        .icon-fallback {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            background-color: currentColor;
+            border-radius: 50%;
+        }
+        .icon-fallback.small {
+            width: 0.75em;
+            height: 0.75em;
+        }
+        .icon-fallback.large {
+            width: 1.5em;
+            height: 1.5em;
+        }
+        .icon-fallback.xl {
+            width: 2em;
+            height: 2em;
+        }
+
+        /* 登录页面样式 */
+        .login-container {
+            min-height: 100%;
+            min-width: 100%;
+            background: linear-gradient(135deg, #0b0a20 0%, #1b1240 50%, #0f0e22 100%);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                radial-gradient(circle at 20% 80%, rgba(154, 114, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(183, 139, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(124, 106, 255, 0.05) 0%, transparent 50%);
+            animation: backgroundShift 20s ease-in-out infinite;
+        }
+
+        /* 登录页面样式 */
+        .main-container {
+            min-height: 100%;
+            min-width: 100%;
+            background: linear-gradient(135deg, #0b0a20 0%, #1b1240 50%, #0f0e22 100%);
+            overflow: hidden;
+            display: flex;
+        }
+
+        @keyframes backgroundShift {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        .login-card {
+            background: rgba(27, 18, 64, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(154, 114, 255, 0.2);
+            border-radius: 24px;
+            box-shadow:
+                0 20px 40px rgba(0, 0, 0, 0.3),
+                0 0 40px rgba(154, 114, 255, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        .login-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(154, 114, 255, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .login-card:hover::before {
+            left: 100%;
+        }
+
+        .login-card:hover {
+            transform: translateY(-5px);
+            box-shadow:
+                0 25px 50px rgba(0, 0, 0, 0.4),
+                0 0 60px rgba(154, 114, 255, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        }
+
+        .login-logo {
+            background: linear-gradient(135deg, #9a72ff, #b78bff, #7c6aff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            animation: logoGlow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes logoGlow {
+            0% {
+                filter: drop-shadow(0 0 10px rgba(154, 114, 255, 0.5));
+            }
+            100% {
+                filter: drop-shadow(0 0 20px rgba(154, 114, 255, 0.8));
+            }
+        }
+
+        .login-subtitle {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+            font-weight: 300;
+        }
+
+        .btn-github {
+            background: linear-gradient(135deg, #d2c1ff, #a88bff, #8e88ff);
+            border: 1px solid rgba(154, 114, 255, 0.3);
+            font-weight: 500;
+            font-size: 16px;
+            letter-spacing: 0.2px;
+            font-family: 'Inter', sans-serif;
+            padding: 20px 30px;
+            border-radius: 14px;
+            position: relative;
+            overflow: hidden;
+            text-decoration: none;
+            box-shadow: 0 10px 30px rgba(140, 110, 255, 0.4);
+            transition: transform 0.5s ease, box-shadow 0.15s ease;
+        }
+
+        .btn-github::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .btn-github:hover::before {
+            left: 100%;
+        }
+
+        .btn-github:hover {
+            background: linear-gradient(135deg, #c1a5ff, #8b5cf6);
+            border-color: rgba(168, 85, 247, 0.5);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(168, 85, 247, 0.3);
+        }
+
+        .btn-github:active {
+            transform: translateY(0);
+            background: linear-gradient(135deg, #c1a5ff, #8b5cf6);
+            box-shadow: 0 2px 8px rgba(124, 58, 237, 0.4);
+        }
+
+        .btn-github:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-github:disabled:hover {
+            transform: none;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .floating-particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(193, 169, 255, 0.6);
+            border-radius: 50%;
+            animation: floatParticle 15s linear infinite;
+        }
+
+        .particle:nth-child(1) { left: 10%; animation-delay: 0s; }
+        .particle:nth-child(2) { left: 20%; animation-delay: 12s; }
+        .particle:nth-child(3) { left: 30%; animation-delay: 10s; }
+        .particle:nth-child(4) { left: 40%; animation-delay: 6s; }
+        .particle:nth-child(5) { left: 50%; animation-delay: 8s; }
+        .particle:nth-child(6) { left: 60%; animation-delay: 14s; }
+        .particle:nth-child(7) { left: 70%; animation-delay: 16s; }
+        .particle:nth-child(8) { left: 80%; animation-delay: 2s; }
+        .particle:nth-child(9) { left: 90%; animation-delay: 4s; }
+
+        @keyframes floatParticle {
+            0% {
+                transform: translateY(100vh) scale(0);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100px) scale(1);
+                opacity: 0;
+            }
+        }
+
+        .login-features {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            padding-left: 10rem;
+            border-top: 1px solid rgba(154, 114, 255, 0.2);
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+        }
+
+        .feature-icon {
+            width: 20px;
+            height: 20px;
+            background: linear-gradient(135deg, #9a72ff, #b78bff);
+            border-radius: 50%;
+            margin-right: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: white;
+        }
+
+        /* 登录页面进入动画 */
+        .login-container {
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        .login-card {
+            animation: slideInUp 0.6s ease-out 0.2s both;
+        }
+
+        .login-logo {
+            animation: logoGlow 3s ease-in-out infinite alternate, fadeInScale 0.8s ease-out 0.4s both;
+        }
+
+        .login-subtitle {
+            animation: fadeIn 0.8s ease-out 0.6s both;
+        }
+
+        .btn-github {
+            animation: fadeInUp 0.8s ease-out 0.8s both;
+        }
+
+        .login-features {
+            animation: fadeIn 0.8s ease-out 1s both;
+        }
+
+        .feature-item {
+            animation: slideInLeft 0.6s ease-out both;
+        }
+
+        .feature-item:nth-child(1) { animation-delay: 1.2s; }
+        .feature-item:nth-child(2) { animation-delay: 1.4s; }
+        .feature-item:nth-child(3) { animation-delay: 1.6s; }
+        .feature-item:nth-child(4) { animation-delay: 1.8s; }
+        .feature-item:nth-child(5) { animation-delay: 2.0s; }
+        .feature-item:nth-child(6) { animation-delay: 2.2s; }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .login-logo {
+                font-size: 2.5rem;
+            }
+
+            .login-subtitle {
+                font-size: 1rem;
+            }
+
+            .btn-github {
+                padding: 14px 28px;
+                font-size: 1rem;
+            }
+
+            .login-card {
+                margin: 20px;
+                border-radius: 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .login-logo {
+                font-size: 2rem;
+            }
+
+            .login-subtitle {
+                font-size: 0.9rem;
+            }
+
+            .btn-github {
+                padding: 12px 24px;
+                font-size: 0.95rem;
+            }
+
+            .login-card .card-body {
+                padding: 2rem !important;
+            }
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#9a72ff', // 主紫色
+                        secondary: '#1b1240', // 深紫色背景
+                        accent: '#b78bff', // 亮紫色强调
+                        dark: '#0b0a20', // 深色背景
+                        'dark-light': '#0f0e22', // 稍亮的深色
+                        'laser-purple': '#9a72ff', // 激光紫色
+                        'neon-purple': '#b78bff', // 霓虹紫色
+                        'electric-purple': '#7c6aff', // 电光紫色
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'neon': '0 0 10px rgba(154, 114, 255, 0.5), 0 0 20px rgba(154, 114, 255, 0.3)',
+                        'neon-lg': '0 0 15px rgba(154, 114, 255, 0.7), 0 0 30px rgba(154, 114, 255, 0.5)',
+                        'laser': '0 0 20px rgba(154, 114, 255, 0.8), 0 0 40px rgba(154, 114, 255, 0.6), 0 0 60px rgba(154, 114, 255, 0.4), 0 0 80px rgba(154, 114, 255, 0.2)',
+                        'laser-intense': '0 0 25px rgba(154, 114, 255, 0.9), 0 0 50px rgba(154, 114, 255, 0.7), 0 0 75px rgba(154, 114, 255, 0.5), 0 0 100px rgba(154, 114, 255, 0.3), 0 0 125px rgba(154, 114, 255, 0.1)',
+                        'electric': '0 0 15px rgba(124, 106, 255, 0.8), 0 0 30px rgba(124, 106, 255, 0.6), 0 0 45px rgba(124, 106, 255, 0.4)'
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+
+        [v-cloak] { display: none; }
+        /* 确保html和body能够正确填充 */
+        html {
+            height: 100%;
+        }
+
+        /* 确保body和app容器能够正确填充 */
+        body {
+            margin: 0;
+            padding: 0;
+            width: 125vw;
+            height: 125vh;
+            overflow-x: hidden;
+            overflow-y: auto;
+            /* 整体缩放80% */
+            transform: scale(0.8);
+            transform-origin: top left;
+        }
+
+
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .text-gradient {
+                background-clip: text;
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
+            /* 新增渐变图标颜色类 */
+            .text-gradient-icon {
+                background: linear-gradient(135deg, #d2c1ff, #a88bff, #8e88ff);
+                -webkit-background-clip: text;
+                background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
+            .bg-grid {
+                background-size: 40px 40px;
+                background-image:
+                    linear-gradient(to right, rgba(210, 193, 255, 0.15) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(210, 193, 255, 0.15) 1px, transparent 1px);
+            }
+            .scrollbar-thin {
+                scrollbar-width: thin;
+            }
+            .scrollbar-thin::-webkit-scrollbar {
+                width: 4px;
+            }
+            .scrollbar-thin::-webkit-scrollbar-thumb {
+                background-color: rgba(210, 193, 255, 0.6);
+                border-radius: 2px;
+            }
+
+            /* 历史任务区域滚动条样式 - 与主内容区域保持一致 */
+            .history-tasks-scroll::-webkit-scrollbar {
+                width: 8px !important;
+            }
+
+            .history-tasks-scroll::-webkit-scrollbar-track {
+                background: rgba(27, 18, 64, 0.3) !important;
+                border-radius: 4px;
+            }
+
+            .history-tasks-scroll::-webkit-scrollbar-thumb {
+                background: linear-gradient(135deg, rgba(210, 193, 255, 0.8), rgba(168, 139, 255, 0.8)) !important;
+                border-radius: 4px;
+                border: 1px solid rgba(210, 193, 255, 0.3);
+            }
+
+            .history-tasks-scroll::-webkit-scrollbar-thumb:hover {
+                background: linear-gradient(135deg, rgba(210, 193, 255, 1), rgba(168, 139, 255, 1)) !important;
+            }
+
+            /* 确保历史任务区域可以正常滚动 */
+            .history-tasks-scroll {
+                scroll-behavior: smooth;
+                -webkit-overflow-scrolling: touch;
+                /* 移除max-height限制，让flex-1占据所有可用空间 */
+            }
+
+            /* 主内容区域滚动条样式 */
+            .content-area::-webkit-scrollbar {
+                width: 8px;
+            }
+
+            .content-area::-webkit-scrollbar-track {
+                background: rgba(27, 18, 64, 0.3);
+                border-radius: 4px;
+            }
+
+            .content-area::-webkit-scrollbar-thumb {
+                background: linear-gradient(135deg, rgba(210, 193, 255, 0.8), rgba(168, 139, 255, 0.8));
+                border-radius: 4px;
+                border: 1px solid rgba(210, 193, 255, 0.3);
+            }
+
+            .content-area::-webkit-scrollbar-thumb:hover {
+                background: linear-gradient(135deg, rgba(210, 193, 255, 1), rgba(168, 139, 255, 1));
+            }
+
+            /* 确保内容可以正常滚动 */
+            .content-area {
+                scroll-behavior: smooth;
+                -webkit-overflow-scrolling: touch;
+            }
+            .animate-pulse-slow {
+                animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 0.5) infinite;
+            }
+            .animate-float {
+                animation: float 6s ease-in-out infinite;
+            }
+            .animate-laser-glow {
+                animation: laserGlow 2s ease-in-out infinite alternate;
+            }
+            .animate-electric-pulse {
+                animation: electricPulse 1.5s ease-in-out infinite;
+            }
+            .animate-neon-flicker {
+                animation: neonFlicker 3s ease-in-out infinite;
+            }
+            @keyframes float {
+                0% { transform: translateY(0px); }
+                50% { transform: translateY(-10px); }
+                100% { transform: translateY(0px); }
+            }
+            @keyframes laserGlow {
+                0% {
+                    box-shadow: 0 0 10px rgba(210, 193, 255, 0.8), 0 0 40px rgba(210, 193, 255, 0.6), 0 0 60px rgba(210, 193, 255, 0.4);
+                    filter: brightness(0.8) saturate(0.7);
+                }
+                100% {
+                    box-shadow: 0 0 20px rgba(210, 193, 255, 1), 0 0 60px rgba(210, 193, 255, 0.8), 0 0 90px rgba(210, 193, 255, 0.6);
+                    filter: brightness(1) saturate(1);
+                }
+            }
+            @keyframes electricPulse {
+                0%, 100% {
+                    box-shadow: 0 0 15px rgba(142, 136, 255, 0.8), 0 0 30px rgba(142, 136, 255, 0.6);
+                    transform: scale(1);
+                }
+                50% {
+                    box-shadow: 0 0 25px rgba(142, 136, 255, 1), 0 0 50px rgba(142, 136, 255, 0.8), 0 0 75px rgba(142, 136, 255, 0.4);
+                    transform: scale(1.02);
+                }
+            }
+            @keyframes neonFlicker {
+                0%, 100% {
+                    box-shadow: 0 0 20px rgba(183, 139, 255, 0.8), 0 0 40px rgba(183, 139, 255, 0.6);
+                    opacity: 1;
+                }
+                25% {
+                    box-shadow: 0 0 15px rgba(183, 139, 255, 0.6), 0 0 30px rgba(183, 139, 255, 0.4);
+                    opacity: 0.8;
+                }
+                75% {
+                    box-shadow: 0 0 25px rgba(183, 139, 255, 1), 0 0 50px rgba(183, 139, 255, 0.8);
+                    opacity: 1.1;
+                }
+            }
+            .bg-laser-gradient {
+                background: linear-gradient(135deg, #d2c1ff 0%, #a88bff 25%, #8e88ff 50%, #d2c1ff 75%, #a88bff 100%);
+                background-size: 200% 200%;
+                animation: gradientShift 3s ease-in-out infinite;
+            }
+            @keyframes gradientShift {
+                0%, 100% { background-position: 0% 50%; }
+                50% { background-position: 100% 50%; }
+            }
+            .text-laser-glow {
+                text-shadow: 0 0 10px rgba(154, 114, 255, 0.8), 0 0 20px rgba(154, 114, 255, 0.6), 0 0 30px rgba(154, 114, 255, 0.4);
+            }
+            .border-laser {
+                border-color: #d2c1ff;
+                box-shadow: 0 0 15px rgba(154, 114, 255, 0.6), inset 0 0 15px rgba(154, 114, 255, 0.1);
+            }
+            .btn-primary{
+                padding: 15px 25px;
+                border-radius: 14px;
+                font-weight: 500;
+                font-size: 14px;
+                letter-spacing: 0.2px;
+                font-family: 'Inter', sans-serif;
+                background: linear-gradient(135deg, #d2c1ff, #a88bff, #8e88ff);
+                border: 0;
+                text-decoration: none;
+                box-shadow: 0 10px 30px rgba(140, 110, 255, 0.4);
+                transition: transform 0.15s ease, box-shadow 0.15s ease;
+            }
+            .btn-primary:hover{
+                transform: translateY(-1px);
+                box-shadow: 0 14px 40px rgba(140, 110, 255, 0.55);
+            }
+
+            /* 修复布局问题 */
+            .task-type-btn {
+                padding: 0.75rem 1rem;
+                font-size: 0.875rem;
+                font-weight: 500;
+                transition-property: color, background-color;
+                transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+                transition-duration: 150ms;
+            }
+
+            .task-type-btn:hover {
+                background-color: rgba(154, 114, 255, 0.1);
+            }
+
+            .model-selection {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+
+            .upload-section {
+                display: grid;
+                grid-template-columns: repeat(1, minmax(0, 1fr));
+                gap: 1.5rem;
+                margin-bottom: 1.5rem;
+            }
+
+            @media (min-width: 768px) {
+                .upload-section {
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
+            }
+
+            .upload-area {
+                position: relative;
+                border: 2px dashed rgba(154, 114, 255, 0.4);
+                border-radius: 0.75rem;
+                padding: 1.5rem;
+                text-align: center;
+                transition-property: all;
+                transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+                transition-duration: 150ms;
+                cursor: pointer;
+                background-color: rgba(27, 18, 64, 0.1);
+                min-height: 250px; /* 确保上传区域有最小高度，防止预览时高度收缩 */
+            }
+
+            .upload-area:hover {
+                border-color: rgba(154, 114, 255, 0.7);
+                box-shadow: 0 0 20px rgba(154, 114, 255, 0.8), 0 0 40px rgba(154, 114, 255, 0.6), 0 0 60px rgba(154, 114, 255, 0.4), 0 0 80px rgba(154, 114, 255, 0.2);
+            }
+
+            .upload-icon {
+                margin: 0 auto;
+                width: 4rem;
+                height: 4rem;
+                background-color: rgba(154, 114, 255, 0.2);
+                border-radius: 9999px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin-bottom: 1rem;
+                transition-property: all;
+                transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+                transition-duration: 150ms;
+            }
+
+            .upload-area:hover .upload-icon {
+                background-color: rgba(154, 114, 255, 0.3);
+            }
+
+            /* 图片预览占据整个上传区域 */
+            .image-preview {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                overflow: hidden;
+                z-index: 10;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+            }
+
+            .image-preview img {
+                height: 100%;
+                width: auto;
+                max-width: 100%;
+                display: block;
+                margin: 0 auto;
+                object-fit: contain;
+                transition: all 0.3s ease;
+            }
+
+            /* 音频预览占据整个上传区域 */
+            .audio-preview {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                border-radius: 0.75rem;
+                overflow: hidden;
+                z-index: 10;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background-color: rgba(154, 114, 255, 0.1);
+                border: 2px solid rgba(154, 114, 255, 0.3);
+                cursor: pointer;
+            }
+
+            .audio-preview audio {
+                width: 90%;
+                height: 60px;
+                max-height: 80%;
+                border-radius: 0.5rem;
+                background-color: rgba(27, 18, 64, 0.3);
+                display: block;
+            }
+
+            /* 确保音频控件在容器中正确显示 */
+            .audio-preview audio::-webkit-media-controls {
+                background-color: rgba(27, 18, 64, 0.5);
+                border-radius: 0.5rem;
+            }
+
+            /* 上传内容样式 */
+            .upload-content {
+                width: 100%;
+                height: 100%;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .btn-close {
+                position: absolute;
+                top: 0.5rem;
+                right: 0.5rem;
+                background-color: #ef4444;
+                color: white;
+                border-radius: 9999px;
+                width: 1.5rem;
+                height: 1.5rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 0.75rem;
+                cursor: pointer;
+                z-index: 20;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            }
+
+            /* 确保flexbox布局正确 */
+            #app {
+                display: flex;
+                width: 100%;
+                height: 100%;
+            }
+
+            .bg-linear-dark {
+                background-color: linear-gradient(135deg, #0b0a20 0%, #1b1240 50%, #0f0e22 100%);
+            }
+
+            aside {
+                flex-shrink: 0;
+                width: 280px; /* 默认展开宽度 */
+                min-width: 3rem; /* 最小宽度 */
+                max-width: 500px; /* 最大宽度 */
+                background-color: linear-gradient(135deg, #0b0a20 0%, #1b1240 50%, #0f0e22 100%);
+                border-right: 1px solid rgba(154, 114, 255, 0.4);
+                display: flex;
+                flex-direction: column;
+                transition-property: all;
+                transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+                transition-duration: 300ms;
+                z-index: 10;
+                position: relative;
+            }
+
+            /* 拖拽调整器 */
+            .resize-handle {
+                position: absolute;
+                top: 0;
+                right: 0;
+                width: 4px;
+                height: 100%;
+                background: transparent;
+                cursor: col-resize;
+                z-index: 20;
+                transition: background-color 0.2s ease;
+            }
+
+            .resize-handle:hover {
+                background: rgba(154, 114, 255, 0.5);
+            }
+
+            .resize-handle:active {
+                background: rgba(154, 114, 255, 0.8);
+            }
+
+            /* 拖拽时的视觉反馈 */
+            .resizing {
+                user-select: none;
+                pointer-events: none;
+            }
+
+            .resizing * {
+                pointer-events: none;
+            }
+
+            main {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                min-width: 0;
+                width: calc(100% - 280px); /* 主内容区域占据剩余宽度，适应展开的侧边栏 */
+                height: 100%;
+            }
+
+            /* 内容区域全屏显示 */
+            .content-area {
+                flex: 1;
+                overflow-y: auto;
+                background-color: #0b0a20;
+                padding: 2rem;
+                width: 100%;
+                min-height: 0; /* 确保flex子元素可以收缩 */
+            }
+
+            /* 任务创建面板全屏 */
+            #task-creator {
+                max-width: none;
+                width: 80%;
+                padding: 0 1rem;
+            }
+
+            /* 任务详情面板全屏 */
+            .task-detail-panel {
+                max-width: none;
+                width: 80%;
+                padding: 0 0rem;
+            }
+
+            /* 上传区域全屏布局 */
+            .upload-section {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 2rem;
+                margin-bottom: 2rem;
+                width: 100%;
+            }
+
+            /* 任务类型选择全屏 */
+            .task-type-selection {
+                width: 100%;
+                margin-bottom: 2rem;
+            }
+
+            .task-type-buttons {
+                display: flex;
+                width: 100%;
+                border-bottom: 1px solid rgba(154, 114, 255, 0.3);
+            }
+
+            .task-type-btn {
+                flex: 1;
+                padding: 1rem 1.5rem;
+                font-size: 1rem;
+                font-weight: 500;
+                transition-property: color, background-color;
+                transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+                transition-duration: 150ms;
+                text-align: center;
+            }
+
+            /* 模型选择全屏 */
+            .model-selection {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 1rem;
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            /* 提示词输入全屏 */
+            .prompt-input-section {
+                width: 100%;
+                margin-bottom: 2rem;
+            }
+
+            .prompt-textarea {
+                width: 100%;
+                min-height: 150px;
+                resize: vertical;
+            }
+
+            /* 侧边栏折叠样式 */
+            .sidebar-collapsed {
+                width: 3rem !important;
+            }
+
+            /* 侧边栏展开样式 */
+            aside:not(.sidebar-collapsed) {
+                width: 280px !important;
+            }
+
+            .sidebar-collapsed .sidebar-content {
+                display: none !important;
+            }
+
+            .sidebar-collapsed .resize-handle {
+                display: none !important;
+            }
+
+            .sidebar-collapsed .user-info-section {
+                display: none !important;
+            }
+
+            .sidebar-collapsed .sidebar-header {
+                justify-content: center;
+                padding: 1rem 0.5rem;
+            }
+
+            .sidebar-collapsed .sidebar-header h1 {
+                display: none;
+            }
+
+            /* 展开状态下显示所有内容 */
+            aside:not(.sidebar-collapsed) .sidebar-content {
+                display: flex !important;
+            }
+
+            aside:not(.sidebar-collapsed) .resize-handle {
+                display: block !important;
+            }
+
+            aside:not(.sidebar-collapsed) .sidebar-header {
+                justify-content: space-between;
+                padding: 1rem;
+            }
+
+            aside:not(.sidebar-collapsed) .sidebar-header h1 {
+                display: flex;
+            }
+
+            aside:not(.sidebar-collapsed) .sidebar-header .toggle-btn {
+                display: flex !important;
+                align-items: center;
+                justify-content: center;
+            }
+
+            aside:not(.sidebar-collapsed) .user-info-section {
+                display: block !important;
+            }
+
+            .sidebar-collapsed .sidebar-header .toggle-btn {
+                display: flex !important;
+                align-items: center;
+                justify-content: center;
+                width: 2rem;
+                height: 2rem;
+                border-radius: 0.375rem;
+                background-color: rgba(154, 114, 255, 0.1);
+                border: 1px solid rgba(154, 114, 255, 0.3);
+                margin: 0 auto;
+            }
+
+            /* 当侧边栏折叠时，主内容区域调整 */
+            .sidebar-collapsed + main {
+                width: calc(100% - 3rem);
+            }
+
+            /* 当侧边栏展开时，主内容区域调整 */
+            aside:not(.sidebar-collapsed) + main {
+                width: calc(100% - 280px);
+            }
+
+            /* 响应式设计 */
+            @media (max-width: 1200px) {
+                aside:not(.sidebar-collapsed) {
+                    width: 250px !important;
+                }
+
+                .sidebar-collapsed + main {
+                    width: calc(100% - 3rem);
+                }
+
+                aside:not(.sidebar-collapsed) + main {
+                    width: calc(100% - 250px);
+                }
+            }
+
+            @media (max-width: 768px) {
+                aside:not(.sidebar-collapsed) {
+                    width: 200px !important;
+                }
+
+                .sidebar-collapsed + main {
+                    width: calc(100% - 3rem);
+                }
+
+                aside:not(.sidebar-collapsed) + main {
+                    width: calc(100% - 200px);
+                }
+
+                .upload-section {
+                    grid-template-columns: 1fr;
+                }
+            }
+
+            /* 修复任务项样式 */
+            .task-item {
+                padding: 0.75rem;
+                border-radius: 0.5rem;
+                cursor: pointer;
+                transition-property: all;
+                transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+                transition-duration: 200ms;
+            }
+
+            .task-item:hover {
+                background-color: rgba(154, 114, 255, 0.15);
+                box-shadow: 0 0 20px rgba(154, 114, 255, 0.8), 0 0 40px rgba(154, 114, 255, 0.6), 0 0 60px rgba(154, 114, 255, 0.4), 0 0 80px rgba(154, 114, 255, 0.2);
+            }
+
+            /* 修复状态指示器 */
+            .status-indicator {
+                width: 0.75rem;
+                height: 0.75rem;
+                border-radius: 9999px;
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            }
+
+            /* 修复按钮样式 */
+            .btn-primary {
+                padding: 12px 22px;
+                border-radius: 14px;
+                font-weight: 700;
+                letter-spacing: 0.2px;
+                color: #0c0920;
+                background: linear-gradient(135deg, #d2c1ff, #a88bff, #8e88ff);
+                border: 0;
+                text-decoration: none;
+                box-shadow: 0 10px 30px rgba(140, 110, 255, 0.4);
+                transition: transform 0.15s ease, box-shadow 0.15s ease;
+                cursor: pointer;
+                display: inline-block;
+            }
+
+            .btn-primary:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 14px 40px rgba(140, 110, 255, 0.55);
+            }
+
+            /* 修复模型按钮样式 */
+            .model-btn {
+                padding: 0.5rem 1rem;
+                border-radius: 0.5rem;
+                font-size: 0.875rem;
+                transition-property: all;
+                transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+                transition-duration: 150ms;
+                cursor: pointer;
+                border: 1px solid;
+            }
+
+            .model-btn.active {
+                background-color: rgba(154, 114, 255, 0.2);
+                border-color: rgba(154, 114, 255, 0.4);
+                box-shadow: 0 0 20px rgba(154, 114, 255, 0.8), 0 0 40px rgba(154, 114, 255, 0.6), 0 0 60px rgba(154, 114, 255, 0.4), 0 0 80px rgba(154, 114, 255, 0.2);
+                animation: electricPulse 1.5s ease-in-out infinite;
+            }
+
+            /* 确保内容区域正确滚动 */
+            .content-scroll {
+                flex: 1;
+                overflow-y: auto;
+            }
+
+
+            /* 任务进行中面板样式 */
+            .task-running-panel .animate-pulse-slow {
+                animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 0.5) infinite;
+            }
+
+            /* 任务失败面板样式 */
+            .task-failed-panel .bg-red-500\/10 {
+                background-color: rgba(239, 68, 68, 0.1);
+            }
+
+
+            .task-detail-panel video {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+
+            /* 素材预览样式 */
+            .material-preview {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.75rem;
+            }
+
+            .material-preview img {
+                border-radius: 0.5rem;
+                transition: all 0.2s ease;
+            }
+
+            .material-preview img:hover {
+                transform: scale(1.05);
+                box-shadow: 0 0 20px rgba(154, 114, 255, 0.6);
+            }
+
+            /* 任务状态指示器增强 */
+            .status-indicator {
+                position: relative;
+            }
+
+            .status-indicator::after {
+                content: '';
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                width: 0.25rem;
+                height: 0.25rem;
+                background-color: currentColor;
+                border-radius: 50%;
+                opacity: 0.8;
+            }
+
+            /* 任务面板切换动画 */
+            .task-panel-enter-active,
+            .task-panel-leave-active {
+                transition: all 0.3s ease;
+            }
+
+            .task-panel-enter-from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            .task-panel-leave-to {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            /* 响应式任务面板 */
+            @media (max-width: 768px) {
+                .task-detail-panel {
+                    padding: 0 0.5rem;
+                }
+            }
+
+            /* 提示消息动画 */
+            .animate-slide-down {
+                animation: slideDown 0.3s ease-out;
+            }
+
+            @keyframes slideDown {
+                0% {
+                    opacity: 0;
+                    transform: translate(-50%, -100%);
+                }
+                100% {
+                    opacity: 1;
+                    transform: translate(-50%, 0);
+                }
+            }
+
+            /* 提示消息样式 - 统一浅色透明背景 */
+            .alert {
+                backdrop-filter: blur(15px);
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 0.75rem;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+                color: #333;
+            }
+        }
+    </style>
+</head>
+<body
+    class="bg-dark text-gray-100 font-inter"
+>
+    <div id="app">
+       <!-- 登录页面 -->
+       <div v-if="!isLoggedIn" class="login-container">
+        <!-- 浮动粒子背景 -->
+        <div class="floating-particles">
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+        </div>
+
+        <div class="login-card">
+                        <div class="card-body text-center p-5">
+                            <!-- Logo和标题 -->
+                            <div class="mb-4">
+                                <div class="login-logo">
+                                    <i class="fas fa-film me-3"></i>
+                                    LightX2V
+                                </div>
+                                <p class="login-subtitle">一个强大的视频生成平台</p>
+                            </div>
+
+                            <!-- 登录按钮 -->
+                            <button @click="loginWithGitHub" class="btn btn-github btn-lg w-100 mb-4" :disabled="loading">
+                                <i class="fab fa-github me-2"></i>
+                                {{ loading ? '登录中...' : '使用GitHub登录' }}
+                            </button>
+
+                            <!-- 功能特性 -->
+                            <div class="login-features">
+                                <div class="feature-item">
+                                    <div class="feature-icon">🎭</div>
+                                    <span>电影级数字人视频</span>
+                                </div>
+                                <div class="feature-item">
+                                    <div class="feature-icon">⚡</div>
+                                    <span>20倍生成提速</span>
+                                </div>
+                                <div class="feature-item">
+                                    <div class="feature-icon">💰</div>
+                                    <span>超低成本生成</span>
+                                </div>
+                                <div class="feature-item">
+                                    <div class="feature-icon">🎯</div>
+                                    <span>精准口型对齐</span>
+                                </div>
+                                <div class="feature-item">
+                                    <div class="feature-icon">📱</div>
+                                    <span>分钟级视频时长</span>
+                                </div>
+                                <div class="feature-item">
+                                    <div class="feature-icon">🎨</div>
+                                    <span>多场景应用</span>
+                                </div>
+                            </div>
+                        </div>
+        </div>
+    </div>
+
+    <!-- 主应用页面 -->
+    <div v-else class="main-container">
+        <!-- 浮动粒子背景 -->
+        <div class="floating-particles">
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+        </div>
+
+        <!-- 侧边栏 - 历史任务 -->
+        <aside class="w-64 bg-linear-dark border-r border-laser-purple/40 flex flex-col transition-all duration-300 ease-in-out z-10" ref="sidebar" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
+            <!-- 拖拽调整器 -->
+            <div class="resize-handle" @mousedown="startResize"></div>
+            <div class="p-4 border-b border-laser-purple/40 sidebar-header">
+                <div class="flex items-center justify-between">
+                    <h1 class="text-xl font-bold flex items-center">
+                        <i class="fas fa-video text-gradient-icon mr-2"></i>
+                        <span>LightX2V</span>
+                    </h1>
+                    <button
+                        @click="toggleSidebar"
+                        class="text-gray-400 hover:text-gradient-icon transition-colors flex-shrink-0 toggle-btn"
+                        title="展开/折叠侧边栏">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="sidebar-content flex flex-col flex-1 min-h-0">
+                <div class="p-3 border-b border-laser-purple/40">
+                    <button
+                        @click="showTaskCreator"
+                        class="w-full btn-primary py-2 rounded-lg flex items-center justify-center transition-all duration-200 font-medium text-sm">
+                        <i class="fas fa-plus mr-2"></i>
+                        新建任务
+                    </button>
+                <div class="relative mt-3">
+                    <input
+                        v-model="searchQuery"
+                        class="w-full bg-dark-light border border-laser-purple/30 rounded-lg py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-laser-purple/50 transition-all focus:border-laser focus:shadow-laser"
+                        placeholder="搜索"
+                        type="text"
+                    />
+                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                </div>
+
+                <!-- 状态过滤和刷新 -->
+                <div class="mt-3">
+                    <div class="flex flex-wrap gap-1 justify-between items-center">
+                    <div class="flex flex-wrap gap-1">
+                        <button
+                            @click="statusFilter = 'ALL'"
+                            class="px-2 py-1 text-xs rounded transition-all"
+                                :class="statusFilter === 'ALL' ? 'bg-dark-light bg-laser-purple/40' : 'bg-dark-light text-gray-400 hover:bg-laser-purple/20'"
+                        >
+                            全部
+                        </button>
+                        <button
+                            @click="statusFilter = 'SUCCEED'"
+                            class="px-2 py-1 text-xs rounded transition-all"
+                            :class="statusFilter === 'SUCCEED' ? 'bg-green-500/30 text-green-400' : 'bg-dark-light text-gray-400 hover:bg-green-500/20'"
+                        >
+                            成功
+                        </button>
+                        <button
+                            @click="statusFilter = 'RUNNING'"
+                            class="px-2 py-1 text-xs rounded transition-all"
+                            :class="statusFilter === 'RUNNING' ? 'bg-yellow-500/30 text-yellow-400' : 'bg-dark-light text-gray-400 hover:bg-yellow-500/20'"
+                        >
+                            进行中
+                        </button>
+                        <button
+                            @click="statusFilter = 'FAILED'"
+                            class="px-2 py-1 text-xs rounded transition-all"
+                            :class="statusFilter === 'FAILED' ? 'bg-red-500/30 text-red-400' : 'bg-dark-light text-gray-400 hover:bg-red-500/20'"
+                        >
+                            失败
+                        </button>
+                    </div>
+                        <button
+                            @click="refreshTasks"
+                            class="text-gray-400 hover:text-gradient-icon transition-colors flex-shrink-0"
+                            title="刷新任务列表"
+                        >
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                </div>
+            </div>
+            </div>
+            <div class="flex-1 overflow-y-auto history-tasks-scroll p-2 min-h-0">
+                <div class="text-xs uppercase text-gray-400 font-semibold mb-2 px-3">
+                    历史任务
+                </div>
+                <!-- 历史任务列表 -->
+                <div class="space-y-1" id="history-tasks">
+                    <div v-if="filteredTasks.length === 0" class="flex-col items-center justify-center py-12 text-center">
+                        <p class="text-gray-400 text-sm">暂无历史任务</p>
+                        <p class="text-gray-500 text-xs mt-1">开始创建你的第一个AI视频吧</p>
+                    </div>
+                    <!-- 任务项 -->
+                    <div
+                        v-for="task in filteredTasks"
+                        :key="task.task_id"
+                        class="task-item p-2 rounded-lg cursor-pointer hover:bg-laser-purple/15 hover:shadow-laser transition-all duration-200"
+                        :class="getTaskItemClass(task.status)"
+                        @click="viewTaskDetail(task)"
+                    >
+                        <div class="flex items-start gap-3 mb-2">
+                            <div class="w-16 h-12 bg-dark-light rounded overflow-hidden flex-shrink-0">
+                                <template v-for="(thumbnailInfo, index) in [getVideoThumbnailInfo(task.task_id, 'output_video')]" :key="index">
+                                    <img
+                                        v-if="thumbnailInfo.hasThumbnail"
+                                        :src="thumbnailInfo.url"
+                                        alt="任务预览"
+                                        class="w-full h-full object-cover"
+                                        @error="handleThumbnailError"
+                                    />
+                                    <div v-else class="w-full h-full bg-laser-purple/20 flex items-center justify-center">
+                                        <i class="fas fa-video text-gradient-icon text-xl"></i>
+                                    </div>
+                                </template>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between items-start mb-1 gap-2">
+                                    <h3 class="font-medium text-sm truncate max-w-[calc(100%-2rem)]">{{ task.params.prompt || '无标题任务' }}</h3>
+                                    <div
+                                        :class="getStatusIndicatorClass(task.status)"
+                                        :title="getTaskStatusDisplay(task.status)"
+                                        class="flex-shrink-0"
+                                    ></div>
+                                </div>
+                                <p class="text-xs text-gray-400 mb-2 line-clamp-1">
+                                     {{ getTaskTypeName(task) }} | {{ getRelativeTime(task.create_t) }}
+                                </p>
+                                <div class="flex items-center justify-between text-xs gap-2">
+                                    <span class="text-gray-500 truncate max-w-[calc(100%-4rem)]">{{ task.model_cls }}</span>
+                                    <span :class="getTaskStatusColor(task.status)" class="font-medium flex-shrink-0">
+                                        {{ getTaskStatusDisplay(task.status) }}
+                                    </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    </div>
+                </div>
+            </div>
+            </div>
+
+            <!-- 用户信息区域 - 任务栏底部分区 -->
+            <div class="mt-auto p-3 border-t border-laser-purple/40 user-info-section">
+                <div class="flex items-center space-x-3">
+                    <!-- 用户头像 -->
+                    <div v-if="currentUser.avatar_url" class="w-10 h-10 rounded-full border border-laser-purple/40 overflow-hidden flex-shrink-0">
+                        <img
+                            :src="currentUser.avatar_url"
+                            alt="用户头像"
+                            class="w-full h-full object-cover"
+                        />
+                    </div>
+                    <!-- 默认用户图标 -->
+                    <div v-else class="w-10 h-10 rounded-full border border-laser-purple/40 bg-laser-purple/20 flex items-center justify-center flex-shrink-0">
+                        <i class="fas fa-user text-gradient-icon"></i>
+                    </div>
+
+                    <!-- 用户信息 -->
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-medium text-gray-100 truncate">
+                            {{ currentUser.username }}
+                        </div>
+                        <div class="text-xs text-gray-400 truncate">
+                            {{ currentUser.email }}
+                        </div>
+                    </div>
+
+                    <!-- 退出按钮 -->
+                    <button @click="logout" class="text-gray-400 hover:text-gradient-icon transition-colors flex-shrink-0" title="退出登录">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- 主内容区 -->
+        <main class="flex-1 flex flex-col overflow-hidden">
+
+            <!-- 内容区域 -->
+            <div class="flex-1 overflow-y-auto bg-dark p-6 content-area">
+                <!-- 模板选择浮窗 -->
+                 <div v-cloak>
+                    <div v-if="showImageTemplates || showAudioTemplates"
+                        class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
+                        @click="showImageTemplates = false; showAudioTemplates = false">
+                        <div class="bg-secondary rounded-xl p-6 max-w-4xl w-full mx-4 max-h-[80vh] overflow-hidden"
+                            @click.stop>
+                            <!-- 浮窗头部 -->
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-lg font-medium text-white">
+                                    <i v-if="showImageTemplates" class="fas fa-image text-gradient-icon mr-2"></i>
+                                    <i v-if="showAudioTemplates" class="fas fa-music text-gradient-icon mr-2"></i>
+                                    {{ showImageTemplates ? '选择图片模板' : '选择音频模板' }}
+                                </h3>
+                                <button @click="showImageTemplates = false; showAudioTemplates = false"
+                                        class="text-gray-400 hover:text-white transition-colors">
+                                    <i class="fas fa-times text-xl"></i>
+                                </button>
+                            </div>
+
+                            <!-- 图片模板网格 -->
+                            <div v-if="showImageTemplates" class="overflow-y-auto max-h-[50vh]">
+                                <div v-if="imageTemplates.length > 0" class="grid grid-cols-4 gap-4">
+                                    <div v-for="template in imageTemplates" :key="template.filename"
+                                        @click="selectImageTemplate(template)"
+                                        class="relative group cursor-pointer rounded-lg overflow-hidden border border-gray-700 hover:border-laser-purple/50 transition-all">
+                                        <img :src="template.url" :alt="template.filename"
+                                            class="w-full h-32 object-cover">
+                                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                            <i class="fas fa-check text-white text-2xl"></i>
+                                        </div>
+                                        <div class="absolute bottom-0 left-0 right-0 bg-black/80 text-white text-xs p-2">
+                                            <div class="truncate">{{ template.filename }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div v-else class="flex flex-col items-center justify-center py-12 text-center">
+                                    <div class="w-16 h-16 bg-laser-purple/20 rounded-full flex items-center justify-center mb-4">
+                                        <i class="fas fa-image text-gradient-icon text-2xl"></i>
+                                    </div>
+                                    <p class="text-gray-400 text-lg mb-2">目前暂无图片模板</p>
+                                </div>
+                            </div>
+
+                            <!-- 音频模板列表 -->
+                            <div v-if="showAudioTemplates" class="overflow-y-auto max-h-[50vh]">
+                                <div v-if="audioTemplates.length > 0" class="space-y-3">
+                                    <div v-for="template in audioTemplates" :key="template.filename"
+                                        @click="selectAudioTemplate(template)"
+                                        class="flex items-center gap-4 p-4 rounded-lg border border-gray-700 hover:border-laser-purple/50 transition-all cursor-pointer bg-dark-light/50">
+                                        <div class="w-12 h-12 bg-laser-purple/20 rounded-lg flex items-center justify-center">
+                                            <i class="fas fa-music text-gradient-icon text-xl"></i>
+                                        </div>
+                                        <div class="flex-1">
+                                            <div class="text-white font-medium">{{ template.filename }}</div>
+                                            <div class="text-gray-400 text-sm">音频模板</div>
+                                        </div>
+                                        <button @click.stop="previewAudioTemplate(template)"
+                                                class="px-3 py-2 bg-laser-purple/20 hover:bg-laser-purple/30 text-gradient-icon rounded-lg transition-all">
+                                            <i class="fas fa-play mr-2"></i>
+                                            试听
+                                        </button>
+                                    </div>
+                                </div>
+                                <div v-else class="flex flex-col items-center justify-center py-12 text-center">
+                                    <div class="w-16 h-16 bg-laser-purple/20 rounded-full flex items-center justify-center mb-4">
+                                        <i class="fas fa-music text-gradient-icon text-2xl"></i>
+                                    </div>
+                                    <p class="text-gray-400 text-lg mb-2">目前暂无音频模板</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 任务创建面板 -->
+                <div v-if="showCreator" class="max-w-4xl mx-auto" id="task-creator">
+                    <!-- 任务类型选择 -->
+                    <div class="mb-8 task-type-selection">
+                        <div class="flex border-b border-laser-purple/30 task-type-buttons">
+                            <button
+                                v-for="taskType in availableTaskTypes"
+                                :key="taskType"
+                                @click="selectTask(taskType)"
+                                class="task-type-btn"
+                                :class="getTaskTypeBtnClass(taskType)"
+                            >
+                                <i :class="getTaskTypeIcon(taskType)" class="mr-2"></i>
+                                {{ getTaskTypeName(taskType) }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 模型选择 -->
+                    <div v-if="selectedTaskId" class="mb-6">
+                        <label class="block text-sm text-gray-400 mb-2">选择模型</label>
+                        <div class="model-selection">
+                            <button
+                                v-for="model in availableModelClasses"
+                                :key="model"
+                                @click="selectModel(model)"
+                                class="model-btn px-4 py-2 rounded-lg text-sm transition-all"
+                                :class="getModelBtnClass(model)"
+                            >
+                                <i v-if="model === getCurrentForm().model_cls" class="fas fa-star text-yellow-400 mr-1"></i>
+                                {{ model }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 上传区域 -->
+                    <div v-if="selectedTaskId === 'i2v' || selectedTaskId === 'digital_human'" class="upload-section">
+                        <!-- 上传图片 -->
+                        <div v-if="selectedTaskId === 'i2v' || selectedTaskId === 'digital_human'" class="upload-area" @click="triggerImageUpload">
+                            <!-- 默认上传界面 -->
+                            <div v-if="!getCurrentImagePreview()" class="upload-content">
+                            <div class="upload-icon">
+                                <i class="fas fa-image text-gradient-icon text-xl"></i>
+                            </div>
+                            <p class="text-xs text-gray-400 mb-4">支持JPG、PNG格式，大小不超过10MB</p>
+                            <div class="flex gap-2">
+                                <button class="btn-primary px-4 py-1.5 rounded-lg transition-all flex-1">上传图片</button>
+                                <button @click.stop="showImageTemplates = !showImageTemplates"
+                                        class="px-4 py-1.5 rounded-lg bg-laser-purple/20 hover:bg-laser-purple/30 text-gradient-icon border border-laser-purple/40 rounded-lg transition-all">
+                                    <i class="fas fa-images mr-1"></i>
+                                    模板
+                                </button>
+                            </div>
+                            </div>
+
+                            <!-- 图片预览 -->
+                            <div v-if="getCurrentImagePreview()" class="image-preview group">
+                                <img :src="getCurrentImagePreview()" alt="预览图片" class="w-full h-full object-cover rounded-lg transition-all duration-300 group-hover:brightness-50">
+
+                                <!-- 悬停时显示的操作按钮，位置在中下方 -->
+                                <div class="absolute inset-x-0 bottom-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                    <div class="flex space-x-3">
+                                        <button
+                                            @click.stop="triggerImageUpload"
+                                            class="w-12 h-12 flex items-center justify-center bg-white/15 text-white p-3 rounded-full transition-all duration-200 hover:scale-110 shadow-lg"
+                                            title="重新上传">
+                                            <i class="fas fa-upload text-lg"></i>
+                                        </button>
+                                        <button
+                                            @click.stop="removeImage"
+                                            class="w-12 h-12 flex items-center justify-center bg-white/15 text-white p-3 rounded-full transition-all duration-200 hover:scale-110 shadow-lg"
+                                            title="删除图片">
+                                            <i class="fas fa-trash text-lg"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <input
+                                type="file"
+                                ref="imageInput"
+                                @change="handleImageUpload"
+                                accept="image/*"
+                                style="display: none;">
+                        </div>
+
+                        <!-- 上传音频 -->
+                        <div v-if="selectedTaskId === 'digital_human'" class="upload-area" @click="triggerAudioUpload">
+                            <!-- 默认上传界面 -->
+                            <div v-if="!getCurrentAudioPreview()" class="upload-content">
+                            <div class="upload-icon">
+                                <i class="fas fa-microphone text-gradient-icon text-xl"></i>
+                            </div>
+                                <p class="text-xs text-gray-400 mb-4">支持MP4、WAV格式，最长支持120s</p>
+                            <div class="flex gap-2">
+                                <button class="btn-primary px-4 py-1.5 rounded-lg transition-all flex-1">上传音频</button>
+                                <button @click.stop="showAudioTemplates = !showAudioTemplates"
+                                        class="px-4 py-1.5 rounded-lg bg-laser-purple/20 hover:bg-laser-purple/30 text-gradient-icon border border-laser-purple/40 rounded-lg transition-all">
+                                    <i class="fas fa-music mr-1"></i>
+                                    模板
+                                </button>
+                            </div>
+                            </div>
+
+                            <!-- 音频预览 -->
+                            <div v-if="getCurrentAudioPreview()" class="audio-preview group" @click.stop>
+                                <audio controls class="w-full h-full">
+                                    <source :src="getCurrentAudioPreview()" :type="getAudioMimeType()">
+                                </audio>
+
+                                <!-- 悬停时显示的操作按钮，位置在中下方 -->
+                                <div class="absolute inset-x-0 bottom-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/20">
+                                    <div class="flex space-x-3">
+                                        <button
+                                            @click.stop="triggerAudioUpload"
+                                            class="w-12 h-12 flex items-center justify-center bg-white/15 text-white p-3 rounded-full transition-all duration-200 hover:scale-110 shadow-lg"
+                                            title="重新上传">
+                                            <i class="fas fa-upload text-lg"></i>
+                                        </button>
+                                        <button
+                                            @click.stop="removeAudio"
+                                            class="w-12 h-12 flex items-center justify-center bg-white/15 text-white p-3 rounded-full transition-all duration-200 hover:scale-110 shadow-lg"
+                                            title="删除音频">
+                                            <i class="fas fa-trash text-lg"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <input
+                                type="file"
+                                ref="audioInput"
+                                @change="handleAudioUpload"
+                                accept="audio/*"
+                                style="display: none;">
+                        </div>
+                    </div>
+
+                    <!-- 提示词输入 -->
+                    <div class="mb-6 prompt-input-section">
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="block text-sm text-gray-400">提示词</label>
+                            <div class="flex space-x-2">
+                                <button @click="showPromptTemplates" class="text-xs text-gray-400 hover:text-gradient-icon transition-colors hover:text-gradient-icon" title="提示词模板">
+                                    <i class="fas fa-magic"></i>
+                                </button>
+                                <button @click="showPromptHistory" class="text-xs text-gray-400 hover:text-gradient-icon transition-colors hover:text-gradient-icon" title="历史记录">
+                                    <i class="fas fa-history"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 提示词模板选择 -->
+                        <div v-if="showTemplates" class="mb-4 p-4 bg-linear-dark/30 rounded-lg">
+                            <h4 class="text-sm font-medium mb-3 text-gradient-icon">选择提示词模板</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <button
+                                    v-for="template in getPromptTemplates(selectedTaskId)"
+                                    :key="template.id"
+                                    @click="selectPromptTemplate(template)"
+                                    class="p-3 text-left bg-dark-light rounded-lg hover:bg-laser-purple/20 transition-all border border-transparent hover:border-laser-purple/40"
+                                >
+                                    <div class="font-medium text-sm mb-1">{{ template.title }}</div>
+                                    <div class="text-xs text-gray-400 line-clamp-2">{{ template.prompt }}</div>
+                                </button>
+                            </div>
+                            <button @click="showTemplates = false" class="mt-3 text-xs text-gray-400 hover:text-gradient-icon">
+                                <i class="fas fa-times mr-1"></i>关闭模板
+                            </button>
+                        </div>
+
+                        <!-- 提示词历史记录 -->
+                        <div v-if="showHistory" class="mb-4 p-4 bg-secondary/30 rounded-lg">
+                            <div class="flex justify-between items-center mb-3">
+                                <h4 class="text-sm font-medium text-gradient-icon">提示词历史记录</h4>
+                                <button @click="clearPromptHistory" class="text-xs text-red-400 hover:text-red-300 transition-colors" title="清空历史记录">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                            <div v-if="getPromptHistory().length === 0" class="text-center py-4 text-gray-400 text-sm">
+                                暂无历史记录
+                            </div>
+                            <div v-else class="space-y-2 max-h-40 overflow-y-auto">
+                                <button
+                                    v-for="(history, index) in getPromptHistory()"
+                                    :key="index"
+                                    @click="selectPromptHistory(history)"
+                                    class="w-full p-3 text-left bg-dark-light rounded-lg hover:bg-laser-purple/20 transition-all border border-transparent hover:border-laser-purple/40"
+                                >
+                                    <div class="text-xs text-gray-300 line-clamp-2">{{ history }}</div>
+                                </button>
+                            </div>
+                            <button @click="showHistory = false" class="mt-3 text-xs text-gray-400 hover:text-gradient-icon">
+                                <i class="fas fa-times mr-1"></i>关闭历史
+                            </button>
+                        </div>
+
+                        <div class="relative">
+                            <textarea
+                                v-model="getCurrentForm().prompt"
+                                class="w-full bg-dark-light border border-laser-purple/40 rounded-lg p-4 pr-16 text-sm min-h-[120px] focus:outline-none focus:ring-2 focus:ring-laser-purple/60 transition-all resize-none scrollbar-thin focus:border-laser focus:shadow-laser prompt-textarea"
+                                :placeholder="getPromptPlaceholder()"
+                                rows="3"
+                                required
+                            ></textarea>
+                        </div>
+
+                        <!-- 高级配置选项 -->
+                        <!-- <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-2">种子值</label>
+                                <input
+                                    v-model="getCurrentForm().seed"
+                                    type="number"
+                                    class="w-full bg-dark-light border border-laser-purple/40 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-laser-purple/60 transition-all"
+                                    placeholder="随机种子值"
+                                />
+                            </div> -->
+                            <!-- <div>
+                                <label class="block text-sm text-gray-400 mb-2">推理阶段</label>
+                                <select
+                                    v-model="getCurrentForm().stage"
+                                    class="w-full bg-dark-light border border-laser-purple/40 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-laser-purple/60 transition-all"
+                                >
+                                    <option value="single_stage">单阶段</option>
+                                    <option value="multi_stage">多阶段</option>
+                                    <option value="original">原始阶段</option>
+                                </select>
+                            </div> -->
+                        </div>
+
+                        <div class="flex justify-between items-center mt-4">
+                            <p class="text-xs text-gray-500">最多支持500个字符</p>
+                            <div class="flex space-x-2">
+                                <button @click="clearPrompt" class="text-xs px-3 py-1 rounded transition-all">
+                                    <i class="fas fa-sync-alt mr-1"></i>
+                                    清空
+                                </button>
+                                <button @click="submitTask" :disabled="submitting" class="btn-primary px-4 py-1 rounded transition-all">
+                                    <i class="fas fa-play mr-1"></i>
+                                    {{ submitting ? '生成中...' : '生成视频' }}
+                                </button>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- 任务详情显示面板 -->
+                <div v-if="selectedTask && !showCreator" class="max-w-4xl mx-auto task-detail-panel">
+                    <div class="mb-6">
+
+                        <!-- 输出视频 -->
+                        <div v-if="selectedTask.status === 'SUCCEED' && selectedTask.outputs && Object.keys(selectedTask.outputs).length > 0" class="bg-secondary/30 rounded-xl p-4 mb-6 task-completed-panel">
+                            <h4 class="text-sm font-medium mb-3 flex items-center">
+                                <i class="fas fa-video text-gradient-icon mr-2"></i>
+                                输出结果
+                            </h4>
+                            <div class="space-y-3">
+                                <div v-for="(output, key) in selectedTask.outputs" :key="key" class="flex items-center justify-between bg-dark-light rounded-lg p-3">
+                                    <div class="flex items-center">
+                                        <i class="fas fa-file-video text-gradient-icon mr-2"></i>
+                                        <span class="text-sm">{{ output }}</span>
+                                        <span v-if="selectedTaskFiles.outputs[key] && selectedTaskFiles.outputs[key].error"
+                                              class="ml-2 text-xs text-red-400">
+                                            <i class="fas fa-exclamation-triangle"></i> 加载失败
+                                        </span>
+                                    </div>
+                                    <div class="flex space-x-2">
+                                        <button v-if="selectedTaskFiles.outputs[key] && selectedTaskFiles.outputs[key].url"
+                                                @click="downloadFile(selectedTaskFiles.outputs[key])"
+                                                class="text-xs btn-primary px-2 py-1 rounded">
+                                            <i class="fas fa-download mr-1"></i>下载
+                                        </button>
+                                        <div v-else-if="!selectedTaskFiles.outputs[key]"
+                                             class="text-xs text-gray-400 px-2 py-1">
+                                            <i class="fas fa-spinner fa-spin mr-1"></i>加载中
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+<!-- 视频预览 -->
+<div class="w-full">
+    <div class="relative w-full h-[400px] flex items-center justify-center rounded-xl bg-black border border-laser-purple/50 overflow-hidden">
+        <div data-test-id="dragable-content" data-is-dragging="false" draggable="true" class="w-full h-full flex items-center justify-center">
+            <div class="w-full flexitems-center justify-center">
+                <video
+                    v-if="selectedTaskFiles.outputs.output_video && selectedTaskFiles.outputs.output_video.url"
+                    class="object-contain bg-black"
+                    style="object-fit: contain; height: 400px; visibility: visible;"
+                    controls
+                    preload="metadata"
+                    :src="selectedTaskFiles.outputs.output_video.url">
+                    您的浏览器不支持视频播放。
+                </video>
+
+                <div v-else-if="selectedTaskFiles.outputs.output_video && selectedTaskFiles.outputs.output_video.error"
+                    class="w-full h-full flex items-center justify-center bg-red-900/20">
+                    <div class="text-center">
+                        <i class="fas fa-exclamation-triangle text-red-400 text-2xl mb-2"></i>
+                        <p class="text-red-400 text-sm">视频加载失败</p>
+                    </div>
+                </div>
+
+                <div v-else
+                    class="w-full h-full flex items-center justify-center bg-gray-700">
+                    <div class="text-center">
+                        <i class="fas fa-spinner fa-spin text-gray-400 text-2xl mb-2"></i>
+                        <p class="text-gray-400 text-sm">加载视频中...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+                        </div>
+
+
+                        <!-- 任务进行中信息 -->
+                        <div v-if="['CREATED', 'PENDING', 'RUNNING'].includes(selectedTask.status) && !showCreator" class="max-w-4xl mx-auto task-running-panel">
+                            <div class="text-center py-8">
+                                <div class="w-24 h-24 mx-auto bg-laser-purple/20 rounded-full flex items-center justify-center mb-6 animate-pulse-slow">
+                                    <i class="fas fa-spinner fa-spin text-gradient-icon text-3xl"></i>
+                                </div>
+                                <h3 class="text-xl font-medium mb-2">视频生成中</h3>
+                                <p class="text-gray-400 mb-6">AI正在努力生成您的视频，请稍候...</p>
+                            </div>
+
+                        </div>
+
+                        <!-- 任务失败信息 -->
+                        <div v-if="selectedTask && selectedTask.status === 'FAILED' && !showCreator" class="max-w-4xl mx-auto task-failed-panel">
+                            <div class="text-center py-8">
+                                <div class="w-24 h-24 mx-auto bg-red-500/10 rounded-full flex items-center justify-center mb-6">
+                                    <i class="fas fa-exclamation-triangle text-red-500 text-3xl"></i>
+                                </div>
+                                <h3 class="text-xl font-medium mb-2">视频生成失败</h3>
+                                <p class="text-gray-400 mb-4 max-w-md mx-auto">
+                                    很抱歉，您的视频生成任务未能完成。这可能是由于资源限制或参数设置问题导致的。
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- 任务取消信息 -->
+                        <div v-if="selectedTask && selectedTask.status === 'CANCEL' && !showCreator" class="max-w-4xl mx-auto task-cancelled-panel">
+                            <div class="text-center py-8">
+                                <div class="w-24 h-24 mx-auto bg-yellow-500/10 rounded-full flex items-center justify-center mb-6">
+                                    <i class="fas fa-ban text-yellow-500 text-3xl"></i>
+                                </div>
+                                <h3 class="text-xl font-medium mb-2">任务已取消</h3>
+                                <p class="text-gray-400 mb-4 max-w-md mx-auto">
+                                    此任务已被取消，您可以重新生成或查看之前上传的素材。
+                                </p>
+                            </div>
+
+                        </div>
+
+                        <!-- 任务操作 -->
+                        <div class="flex justify-center space-x-3 p-4">
+                            <button v-if="['CREATED', 'PENDING', 'RUNNING'].includes(selectedTask.status)"
+                                    @click="cancelTask(selectedTask.task_id)"
+                                    class="px-4 py-2 btn-primary rounded-lg text-sm transition-all">
+                                <i class="fas fa-times mr-2"></i>
+                                取消任务
+                            </button>
+                            <button v-if="['SUCCEED', 'FAILED', 'CANCEL'].includes(selectedTask.status)"
+                                    @click="resumeTask(selectedTask.task_id)"
+                                    class="px-4 py-2 btn-primary rounded-lg text-sm transition-all">
+                                <i class="fas fa-redo mr-2"></i>
+                                重新生成
+                            </button>
+                        </div>
+                        <!-- 任务状态显示 -->
+                        <div class="bg-secondary/30 rounded-xl p-6 mb-6">
+                            <h4 class="text-sm font-medium mb-3 flex items-center">
+                                <i class="fas fa-info-circle text-gradient-icon mr-2"></i>
+                                任务信息
+                            </h4>
+                            <ul class="space-y-2 text-sm">
+                                <li class="flex justify-between">
+                                    <span class="text-gray-400">任务ID</span>
+                                    <span>{{ selectedTask.task_id }}</span>
+                                </li>
+                                <li class="flex justify-between">
+                                    <span class="text-gray-400">任务类型</span>
+                                    <span>{{ selectedTask.task_type }}</span>
+                                </li>
+                                <li class="flex justify-between">
+                                    <span class="text-gray-400">模型名称</span>
+                                    <span class="text-gradient-icon">{{ selectedTask.model_cls }}</span>
+                                </li>
+                                <li class="flex justify-between">
+                                    <span class="text-gray-400">创建时间</span>
+                                    <span>{{ formatTime(selectedTask.create_t) }}</span>
+                                </li>
+                                <li class="flex justify-between">
+                                    <span class="text-gray-400">状态</span>
+                                    <span :class="getStatusTextClass(selectedTask.status)">{{ selectedTask.status }}</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <!-- 提示词 -->
+                        <div class="bg-secondary/30 rounded-xl p-4 mb-6">
+                            <h4 class="text-sm font-medium mb-3 flex items-center">
+                                <i class="fas fa-file-alt text-gradient-icon mr-2"></i>
+                                提示词
+                            </h4>
+                            <div class="bg-dark-light rounded-lg p-4 text-sm text-gray-300">
+                                <p>{{ selectedTask.params.prompt || '无提示词' }}</p>
+                            </div>
+                        </div>
+
+                        <div v-if="selectedTask.inputs && Object.keys(selectedTask.inputs).length" class="bg-secondary/30 rounded-xl p-4 mb-6">
+                            <h4 class="text-sm font-medium mb-3 flex items-center">
+                                <i class="fas fa-upload text-gradient-icon mr-2"></i>
+                                上传素材
+                                <span v-if="loadingTaskFiles" class="ml-2 text-xs text-gray-400">(加载中...)</span>
+                            </h4>
+                            <div class="space-y-3">
+                                <template v-for="(input, key) in selectedTask.inputs" :key="key">
+                                    <div class="flex items-center gap-3">
+                                        <template v-if="key.includes('image')">
+                                            <i class="fas fa-image text-gradient-icon text-xl"></i>
+                                            <div class="flex items-center gap-2">
+                                                <span v-if="!selectedTaskFiles.inputs[key] || !selectedTaskFiles.inputs[key].url"
+                                                      class="text-gray-400 text-sm">{{ typeof input === 'string' ? input : '图片' }}</span>
+                                                <div class="flex items-center gap-2 relative group">
+                                                    <img v-if="selectedTaskFiles.inputs[key] && selectedTaskFiles.inputs[key].url"
+                                                         :src="selectedTaskFiles.inputs[key].url"
+                                                         :alt="input"
+                                                         class="w-20 h-20 object-cover rounded bg-dark-light border border-gray-700">
+                                                    <div v-else-if="selectedTaskFiles.inputs[key] && selectedTaskFiles.inputs[key].error"
+                                                         class="w-20 h-20 rounded bg-red-900/20 border border-red-500/30 flex items-center justify-center">
+                                                        <i class="fas fa-exclamation-triangle text-red-400"></i>
+                                                    </div>
+                                                    <div v-else
+                                                         class="w-20 h-20 rounded bg-gray-700 border border-gray-600 flex items-center justify-center">
+                                                        <i class="fas fa-spinner fa-spin text-gray-400"></i>
+                                                    </div>
+                                                    <button v-if="selectedTaskFiles.inputs[key] && selectedTaskFiles.inputs[key].url"
+                                                            @click="downloadFile(selectedTaskFiles.inputs[key])"
+                                                            class="text-xs px-2 py-1 rounded">
+                                                        <i class="fas fa-download mr-1 text-white opacity-30 hover:opacity-100 transition-opacity"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </template>
+                                        <template v-else-if="key.includes('audio')">
+                                            <i class="fas fa-microphone text-gradient-icon text-xl"></i>
+                                            <div class="flex items-center gap-2">
+                                                <span v-if="!selectedTaskFiles.inputs[key] || !selectedTaskFiles.inputs[key].url"
+                                                      class="text-gray-400 text-sm">{{ typeof input === 'string' ? input : '音频文件' }}</span>
+                                                <div class="flex items-center gap-2">
+                                                    <audio v-if="selectedTaskFiles.inputs[key] && selectedTaskFiles.inputs[key].url"
+                                                           :src="selectedTaskFiles.inputs[key].url"
+                                                           controls
+                                                           class="h-8 text-gradient-icon">
+                                                        您的浏览器不支持音频播放
+                                                    </audio>
+                                                    <div v-else-if="selectedTaskFiles.inputs[key] && selectedTaskFiles.inputs[key].error"
+                                                         class="h-8 px-3 rounded bg-red-900/20 border border-red-500/30 flex items-center">
+                                                        <i class="fas fa-exclamation-triangle text-red-400 text-xs"></i>
+                                                    </div>
+                                                    <div v-else
+                                                         class="h-8 px-3 rounded bg-gray-700 border border-gray-600 flex items-center">
+                                                        <i class="fas fa-spinner fa-spin text-gray-400 text-xs"></i>
+                                                    </div>
+                                                    <button v-if="selectedTaskFiles.inputs[key] && selectedTaskFiles.inputs[key].url"
+                                                            @click="downloadFile(selectedTaskFiles.inputs[key])"
+                                                            class="text-xs px-2 py-1 rounded">
+                                                        <i class="fas fa-download mr-1 text-white opacity-30 hover:opacity-100 transition-opacity"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                        </div>
+                                        </template>
+                            </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        </div>
+                    </div>
+                </div>
+
+
+        <!-- 加载指示器 -->
+        <div v-if="loading" class="loading position-fixed top-50 start-50 translate-middle show">
+            <div class="spinner-border text-gradient-icon" role="status">
+                <span class="visually-hidden">加载中...</span>
+            </div>
+        </div>
+
+        <!-- 增强的提示消息系统 -->
+        <div v-cloak>
+            <div v-if="alert.show"
+                class="fixed top-3 left-1/2 transform -translate-x-1/2 z-50 max-w-[16rem] w-full px-1"
+                :class="getAlertClass(alert.type)">
+                <div class="alert flex items-center p-2 rounded-md shadow-md border-l-4 transition-all duration-300 ease-out"
+                    :class="getAlertBorderClass(alert.type)">
+                    <div class="flex-shrink-0 mr-1">
+                        <i :class="getAlertIcon(alert.type)" class="text-base"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-xs font-medium" :class="getAlertTextClass(alert.type)">
+                            {{ alert.message }}
+                        </p>
+                    </div>
+                    <div class="flex-shrink-0 ml-1">
+                        <button @click="alert.show = false"
+                                class="text-gray-400 hover:text-gray-600 transition-colors">
+                            <i class="fas fa-times text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+    </div>
+    </div>
+
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+    <script>
+        // 检测Font Awesome图标是否加载成功
+        function checkFontAwesome() {
+            const testIcon = document.createElement('i');
+            testIcon.className = 'fas fa-check';
+            testIcon.style.position = 'absolute';
+            testIcon.style.left = '-9999px';
+            document.body.appendChild(testIcon);
+
+            const computedStyle = window.getComputedStyle(testIcon, ':before');
+            const content = computedStyle.getPropertyValue('content');
+
+            document.body.removeChild(testIcon);
+
+            // 如果图标没有正确显示，使用备用方案
+            if (!content || content === 'none' || content === 'normal') {
+                console.warn('Font Awesome 图标加载失败，使用备用方案');
+                replaceIconsWithFallback();
+            }
+        }
+
+        // 使用备用图标替换失败的图标
+        function replaceIconsWithFallback() {
+            const iconMap = {
+                'fas fa-video': '🎥',
+                'fas fa-plus': '➕',
+                'fas fa-search': '🔍',
+                'fas fa-clock': '⏰',
+                'fas fa-bars': '☰',
+                'fas fa-sign-out-alt': '🚪',
+                'fas fa-star': '⭐',
+                'fas fa-cloud-upload-alt': '☁️',
+                'fas fa-microphone': '🎤',
+                'fas fa-magic': '✨',
+                'fas fa-history': '📚',
+                'fas fa-times': '✖️',
+                'fas fa-trash': '🗑️',
+                'fas fa-sync-alt': '🔄',
+                'fas fa-play': '▶️',
+                'fas fa-share-alt': '📤',
+                'fas fa-download': '⬇️',
+                'fas fa-info-circle': 'ℹ️',
+                'fas fa-file-alt': '📄',
+                'fas fa-file-video': '🎬',
+                'fas fa-eye': '👁️',
+                'fas fa-exclamation-triangle': '⚠️',
+                'fas fa-lightbulb': '💡',
+                'fas fa-check': '✅',
+                'fas fa-user': '👤',
+                'fas fa-image': '🖼️',
+                'fas fa-font': '🔤',
+                'fas fa-spinner': '🌀',
+                'fas fa-check-circle': '✅',
+                'fas fa-hourglass-half': '⏳',
+                'fas fa-ban': '🚫',
+                'fas fa-question-circle': '❓',
+                'fas fa-times-circle': '❌',
+                'fas fa-music': '🎵',
+                'fas fa-tags': '🏷️',
+                'fas fa-chart-bar': '📊',
+                'fas fa-redo': '🔄',
+                'fas fa-pause': '⏸️'
+            };
+
+            // 替换所有图标
+            Object.keys(iconMap).forEach(iconClass => {
+                const icons = document.querySelectorAll(`.${iconClass.replace(/\s+/g, '.')}`);
+                icons.forEach(icon => {
+                    icon.innerHTML = iconMap[iconClass];
+                    icon.className = icon.className.replace(/fas fa-[a-z-]+/g, '');
+                });
+            });
+        }
+
+        // 页面加载完成后检查图标
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(checkFontAwesome, 1000); // 延迟1秒检查，确保CDN加载完成
+        });
+    </script>
+
+    <script>
+        const { createApp, ref, computed, onMounted, watch } = Vue;
+
+        createApp({
+            setup() {
+                // 响应式数据
+                const loading = ref(false);
+                const alert = ref({ show: false, message: '', type: 'info' });
+                const submitting = ref(false);
+                const showCreator = ref(true);
+                const searchQuery = ref('');
+                const generatingThumbnails = ref(false);
+                const sidebarCollapsed = ref(false);
+
+                const thumbnailCache = ref(new Map());
+                const thumbnailCacheLoaded = ref(false);
+
+                const imageTemplates = ref([]);
+                const audioTemplates = ref([]);
+                const showImageTemplates = ref(false);
+                const showAudioTemplates = ref(false);
+                const currentUser = ref({});
+                const models = ref([]);
+                const tasks = ref([]);
+                const isLoggedIn = ref(false);
+
+                const selectedTaskId = ref(null);
+                const selectedTask = ref(null);
+                const selectedTaskFiles = ref({ inputs: {}, outputs: {} }); // 存储任务的输入输出文件
+                const loadingTaskFiles = ref(false); // 加载任务文件的状态
+                const statusFilter = ref('ALL');
+                const pagination = ref(null);
+                const currentPage = ref(1);
+                const pageSize = ref(10);
+
+                // 为三个任务类型分别创建独立的表单
+                const t2vForm = ref({
+                    task: 't2v',
+                    model_cls: '',
+                    stage: 'single_stage',
+                    prompt: '',
+                    seed: 42
+                });
+
+                const i2vForm = ref({
+                    task: 'i2v',
+                    model_cls: '',
+                    stage: 'multi_stage',
+                    imageFile: null,
+                    prompt: '',
+                    seed: 42
+                });
+
+                const digitalHumanForm = ref({
+                    task: 'digital_human',
+                    model_cls: '',
+                    stage: 'single_stage',
+                    imageFile: null,
+                    audioFile: null,
+                    prompt: '',
+                    seed: 42
+                });
+
+                // 根据当前选择的任务类型获取对应的表单
+                const getCurrentForm = () => {
+                    switch (selectedTaskId.value) {
+                        case 't2v':
+                            return t2vForm.value;
+                        case 'i2v':
+                            return i2vForm.value;
+                        case 'digital_human':
+                            return digitalHumanForm.value;
+                        default:
+                            return t2vForm.value;
+                    }
+                };
+
+                // 为每个任务类型创建独立的预览变量
+                const i2vImagePreview = ref(null);
+                const digitalHumanImagePreview = ref(null);
+                const digitalHumanAudioPreview = ref(null);
+
+                // 根据当前任务类型获取对应的预览变量
+                const getCurrentImagePreview = () => {
+                    switch (selectedTaskId.value) {
+                        case 't2v':
+                            return null;
+                        case 'i2v':
+                            return i2vImagePreview.value;
+                        case 'digital_human':
+                            return digitalHumanImagePreview.value;
+                        default:
+                            return null;
+                    }
+                };
+
+                const getCurrentAudioPreview = () => {
+                    switch (selectedTaskId.value) {
+                        case 't2v':
+                            return null
+                        case 'i2v':
+                            return null
+                        case 'digital_human':
+                            return digitalHumanAudioPreview.value;
+                        default:
+                            return null;
+                    }
+                };
+
+                const setCurrentImagePreview = (value) => {
+                    switch (selectedTaskId.value) {
+                        case 't2v':
+                            break;
+                        case 'i2v':
+                            i2vImagePreview.value = value;
+                            break;
+                        case 'digital_human':
+                            digitalHumanImagePreview.value = value;
+                            break;
+                    }
+                };
+
+                const setCurrentAudioPreview = (value) => {
+                    switch (selectedTaskId.value) {
+                        case 't2v':
+                            break;
+                        case 'i2v':
+                            break;
+                        case 'digital_human':
+                            digitalHumanAudioPreview.value = value;
+                            break;
+                    }
+                };
+
+                // 提示词模板相关
+                const showTemplates = ref(false);
+                const showHistory = ref(false);
+
+                // 计算属性
+                const availableTaskTypes = computed(() => {
+                    const types = [...new Set(models.value.map(m => m.task))];
+                    // 重新排序，确保数字人在最左边
+                    const orderedTypes = [];
+
+                    // 检查是否有包含audio或seko的i2v模型，如果有则添加digital_human类型
+                    const hasDigitalHumanModels = models.value.some(m =>
+                        m.task === 'i2v' && (m.model_cls.toLowerCase().includes('audio') || m.model_cls.toLowerCase().includes('seko'))
+                    );
+
+                    // 优先添加数字人（如果存在相关模型）
+                    if (hasDigitalHumanModels) {
+                        orderedTypes.push('digital_human');
+                    }
+
+                    // 然后添加其他类型
+                    types.forEach(type => {
+                        if (type !== 'digital_human') {
+                            orderedTypes.push(type);
+                        }
+                    });
+
+                    return orderedTypes;
+                });
+
+                const availableModelClasses = computed(() => {
+                    if (!selectedTaskId.value) return [];
+
+                    // 如果是数字人任务类型，显示包含audio或seko的i2v模型
+                    if (selectedTaskId.value === 'digital_human') {
+                        return [...new Set(models.value
+                            .filter(m => m.task === 'i2v' && (m.model_cls.toLowerCase().includes('audio') || m.model_cls.toLowerCase().includes('seko')))
+                            .map(m => m.model_cls))];
+                    }
+
+                    // 如果是i2v任务类型，剔除包含audio或seko的模型
+                    if (selectedTaskId.value === 'i2v') {
+                        return [...new Set(models.value
+                            .filter(m => m.task === 'i2v' && !m.model_cls.toLowerCase().includes('audio') && !m.model_cls.toLowerCase().includes('seko'))
+                            .map(m => m.model_cls))];
+                    }
+
+                    // 其他任务类型正常处理
+                    return [...new Set(models.value
+                        .filter(m => m.task === selectedTaskId.value)
+                        .map(m => m.model_cls))];
+                });
+
+                const filteredTasks = computed(() => {
+                    let filtered = tasks.value;
+
+                    // 状态过滤
+                    if (statusFilter.value !== 'ALL') {
+                        filtered = filtered.filter(task => task.status === statusFilter.value);
+                    }
+
+                    // 搜索过滤
+                    if (searchQuery.value) {
+                        filtered = filtered.filter(task =>
+                        task.params.prompt?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+                        task.task_id.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+                        task.task_type.toLowerCase().includes(searchQuery.value.toLowerCase())
+                    );
+                    }
+
+                    // 按时间排序，最新的任务在前面
+                    filtered = filtered.sort((a, b) => {
+                        const timeA = parseInt(a.create_t) || 0;
+                        const timeB = parseInt(b.create_t) || 0;
+                        return timeB - timeA; // 降序排列，最新的在前
+                    });
+
+                    return filtered;
+                });
+
+                // 方法
+                const showAlert = (message, type = 'info') => {
+                    alert.value = { show: true, message, type };
+                    setTimeout(() => {
+                        alert.value.show = false;
+                    }, 5000);
+                };
+
+                const setLoading = (value) => {
+                    loading.value = value;
+                };
+
+                const apiCall = async (endpoint, options = {}) => {
+                    const url = `${endpoint}`;
+                    const headers = {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    };
+
+                    if (localStorage.getItem('accessToken')) {
+                        headers['Authorization'] = `Bearer ${localStorage.getItem('accessToken')}`;
+                    }
+
+                    const response = await fetch(url, {
+                        ...options,
+                        headers
+                    });
+
+                    if (response.status === 401) {
+                        logout();
+                        throw new Error('认证失败，请重新登录'); }
+                    if (response.status === 400) {
+                        const error = await response.json();
+                        showAlert(error.message, 'danger');
+                        throw new Error(error.message);
+                    }
+
+                    // 添加50ms延迟，防止触发服务端频率限制
+                    await new Promise(resolve => setTimeout(resolve, 50));
+
+                    return response;
+                };
+
+                const loginWithGitHub = async () => {
+                    try {
+                        setLoading(true);
+                        const response = await fetch('./auth/login/github');
+                        const data = await response.json();
+                        window.location.href = data.auth_url;
+                    } catch (error) {
+                        showAlert('获取GitHub认证URL失败', 'danger');
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+
+                const handleGitHubCallback = async (code) => {
+                    try {
+                        setLoading(true);
+                        const response = await fetch(`./auth/callback/github?code=${code}`);
+                        if (response.ok) {
+                            const data = await response.json();
+                            console.log(data);
+                            localStorage.setItem('accessToken', data.access_token);
+                            localStorage.setItem('currentUser', JSON.stringify(data.user_info));
+                            currentUser.value = data.user_info;
+                            isLoggedIn.value = true;
+                        } else {
+                            const error = await response.json();
+                            showAlert(`登录失败: ${error.detail}`, 'danger');
+                        }
+                        window.location.href = '/';
+                    } catch (error) {
+                        showAlert('登录过程中发生错误', 'danger');
+                        console.error(error);
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+
+
+
+                const logout = () => {
+                    localStorage.removeItem('accessToken');
+                    localStorage.removeItem('currentUser');
+                    currentUser.value = {};
+                    isLoggedIn.value = false;
+                    models.value = [];
+                    tasks.value = [];
+                    showAlert('已退出登录', 'info');
+                };
+
+                const loadModels = async () => {
+                    try {
+                        console.log('开始加载模型列表...');
+                        const response = await apiRequest('./api/v1/model/list');
+                        if (response && response.ok) {
+                            const data = await response.json();
+                            console.log('模型列表数据:', data);
+                            models.value = data.models || [];
+                            console.log('设置后的models.value:', models.value);
+                        } else if (response) {
+                            console.error('模型列表API响应失败:', response);
+                            showAlert('加载模型列表失败', 'danger');
+                        }
+                        // 如果response为null，说明是认证错误，apiRequest已经处理了
+                    } catch (error) {
+                        console.error('加载模型失败:', error);
+                        showAlert(`加载模型失败: ${error.message}`, 'danger');
+                    }
+                };
+
+                // 加载模板文件
+                const loadTemplates = async () => {
+                    try {
+                        const response = await apiCall('./api/v1/template/list');
+                        if (response.ok) {
+                            const data = await response.json();
+                            imageTemplates.value = data.templates.images || [];
+                            audioTemplates.value = data.templates.audios || [];
+                        } else {
+                            console.warn('加载模板失败');
+                        }
+                    } catch (error) {
+                        console.warn('加载模板失败:', error);
+                    }
+                };
+
+                // 选择图片模板
+                const selectImageTemplate = async (template) => {
+                    try {
+                        const response = await fetch(template.url);
+                        if (response.ok) {
+                            const blob = await response.blob();
+                            const file = new File([blob], template.filename, { type: blob.type });
+
+                            if (selectedTaskId.value === 'i2v') {
+                                i2vForm.value.imageFile = file;
+                            } else if (selectedTaskId.value === 'digital_human') {
+                                digitalHumanForm.value.imageFile = file;
+                            }
+
+                            // 创建预览
+                            const reader = new FileReader();
+                            reader.onload = (e) => {
+                                setCurrentImagePreview(e.target.result);
+                            };
+                            reader.readAsDataURL(file);
+
+                            showImageTemplates.value = false;
+                            showAlert('图片模板已选择', 'success');
+                        } else {
+                            showAlert('加载图片模板失败', 'danger');
+                        }
+                    } catch (error) {
+                        showAlert(`加载图片模板失败: ${error.message}`, 'danger');
+                    }
+                };
+
+                // 选择音频模板
+                const selectAudioTemplate = async (template) => {
+                    try {
+                        const response = await fetch(template.url);
+                        if (response.ok) {
+                            const blob = await response.blob();
+                            const file = new File([blob], template.filename, { type: blob.type });
+
+                            digitalHumanForm.value.audioFile = file;
+
+                            // 创建预览
+                            const reader = new FileReader();
+                            reader.onload = (e) => {
+                                setCurrentAudioPreview(e.target.result);
+                            };
+                            reader.readAsDataURL(file);
+
+                            showAudioTemplates.value = false;
+                            showAlert('音频模板已选择', 'success');
+                        } else {
+                            showAlert('加载音频模板失败', 'danger');
+                        }
+                    } catch (error) {
+                        showAlert(`加载音频模板失败: ${error.message}`, 'danger');
+                    }
+                };
+
+                // 预览音频模板
+                const previewAudioTemplate = (template) => {
+                    const audio = new Audio(template.url);
+                    audio.play().catch(error => {
+                        console.error('音频播放失败:', error);
+                        showAlert('音频播放失败', 'danger');
+                    });
+                };
+
+                const handleImageUpload = (event) => {
+                    const file = event.target.files[0];
+                    if (file) {
+                        if (selectedTaskId.value === 'i2v') {
+                            i2vForm.value.imageFile = file;
+                        } else if (selectedTaskId.value === 'digital_human') {
+                            digitalHumanForm.value.imageFile = file;
+                        }
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            setCurrentImagePreview(e.target.result);
+                        };
+                        reader.readAsDataURL(file);
+                    } else {
+                        // 用户取消了选择，保持原有图片不变
+                        // 不做任何操作
+                    }
+                };
+
+                const selectTask = (taskType) => {
+                    selectedTaskId.value = taskType;
+
+                    // 根据任务类型恢复对应的预览
+                    if (taskType === 'i2v' && i2vForm.value.imageFile) {
+                        // 恢复图片预览
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            setCurrentImagePreview(e.target.result);
+                        };
+                        reader.readAsDataURL(i2vForm.value.imageFile);
+                    } else if (taskType === 'digital_human') {
+                        // 恢复数字人任务的图片和音频预览
+                        if (digitalHumanForm.value.imageFile) {
+                            const reader = new FileReader();
+                            reader.onload = (e) => {
+                                setCurrentImagePreview(e.target.result);
+                            };
+                            reader.readAsDataURL(digitalHumanForm.value.imageFile);
+                        }
+                        if (digitalHumanForm.value.audioFile) {
+                            const reader = new FileReader();
+                            reader.onload = (e) => {
+                                setCurrentAudioPreview(e.target.result);
+                            };
+                            reader.readAsDataURL(digitalHumanForm.value.audioFile);
+                        }
+                    }
+
+                    // 如果当前表单没有选择模型，自动选择第一个可用的模型
+                    const currentForm = getCurrentForm();
+                    if (!currentForm.model_cls) {
+                    const availableModels = models.value.filter(m => m.task === taskType);
+                    if (availableModels.length > 0) {
+                        const firstModel = availableModels[0];
+                            currentForm.model_cls = firstModel.model_cls;
+                            currentForm.stage = firstModel.stage;
+                        }
+                    }
+                };
+
+                const selectModel = (model) => {
+                    getCurrentForm().model_cls = model;
+                };
+
+                const triggerImageUpload = () => {
+                    document.querySelector('input[type="file"][accept="image/*"]').click();
+                };
+
+                const triggerAudioUpload = () => {
+                    document.querySelector('input[type="file"][accept="audio/*"]').click();
+                };
+
+                const removeImage = () => {
+                    setCurrentImagePreview(null);
+                    if (selectedTaskId.value === 'i2v') {
+                        i2vForm.value.imageFile = null;
+                    } else if (selectedTaskId.value === 'digital_human') {
+                        digitalHumanForm.value.imageFile = null;
+                    }
+                    // 重置文件输入框，确保可以重新选择相同文件
+                    const imageInput = document.querySelector('input[type="file"][accept="image/*"]');
+                    if (imageInput) {
+                        imageInput.value = '';
+                    }
+                };
+
+                const removeAudio = () => {
+                    setCurrentAudioPreview(null);
+                    digitalHumanForm.value.audioFile = null;
+                    console.log('音频已移除');
+                    // 重置音频文件输入框，确保可以重新选择相同文件
+                    const audioInput = document.querySelector('input[type="file"][accept="audio/*"]');
+                    if (audioInput) {
+                        audioInput.value = '';
+                    }
+                };
+
+                const getAudioMimeType = () => {
+                    if (digitalHumanForm.value.audioFile) {
+                        console.log('音频文件类型:', digitalHumanForm.value.audioFile.type);
+                        return digitalHumanForm.value.audioFile.type;
+                    }
+                    console.log('使用默认音频类型: audio/mpeg');
+                    return 'audio/mpeg'; // 默认类型
+                };
+
+                const handleAudioUpload = (event) => {
+                    const file = event.target.files[0];
+
+                    if (file) {
+                        digitalHumanForm.value.audioFile = file;
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            setCurrentAudioPreview(e.target.result);
+                            console.log('音频预览已设置:', e.target.result);
+                        };
+                        reader.readAsDataURL(file);
+                    } else {
+                        setCurrentAudioPreview(null);
+                    }
+                };
+
+                const submitTask = async () => {
+                    try {
+                        const currentForm = getCurrentForm();
+
+                        // 表单验证
+                        if (!selectedTaskId.value) {
+                            showAlert('请选择任务类型', 'warning');
+                            return;
+                        }
+
+                        if (!currentForm.model_cls) {
+                            showAlert('请选择模型', 'warning');
+                            return;
+                        }
+
+                        if (!currentForm.prompt || currentForm.prompt.trim().length === 0) {
+                            showAlert('请输入提示词', 'warning');
+                            return;
+                        }
+
+                        if (currentForm.prompt.length > 500) {
+                            showAlert('提示词长度不能超过500个字符', 'warning');
+                            return;
+                        }
+
+                        if (selectedTaskId.value === 'i2v' && !currentForm.imageFile) {
+                            showAlert('图生视频任务需要上传参考图片', 'warning');
+                            return;
+                        }
+
+                        if (selectedTaskId.value === 'digital_human' && !currentForm.imageFile) {
+                            showAlert('数字人任务需要上传参考图片', 'warning');
+                            return;
+                        }
+
+                        if (selectedTaskId.value === 'digital_human' && !currentForm.audioFile) {
+                            showAlert('数字人任务需要上传音频文件', 'warning');
+                            return;
+                        }
+
+                        setLoading(true);
+                        submitting.value = true;
+
+                        // 确定实际提交的任务类型
+                        let actualTaskType = selectedTaskId.value;
+                        if (selectedTaskId.value === 'digital_human') {
+                            actualTaskType = 'i2v'; // 数字人任务实际提交为i2v
+                        }
+
+                        var formData = {
+                            task: actualTaskType,
+                            model_cls: currentForm.model_cls,
+                            stage: currentForm.stage,
+                            prompt: currentForm.prompt.trim(),
+                            seed: currentForm.seed || Math.floor(Math.random() * 1000000)
+                        };
+
+                        if (currentForm.model_cls.startsWith('wan2.1')) {
+                            formData.negative_prompt = "镜头晃动，色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走"
+                        }
+
+                        if (selectedTaskId.value === 'i2v' && currentForm.imageFile) {
+                            const base64 = await fileToBase64(currentForm.imageFile);
+                            formData.input_image = {
+                                type: 'base64',
+                                data: base64
+                            };
+                        }
+
+                        if (selectedTaskId.value === 'digital_human') {
+                            if (currentForm.imageFile) {
+                                const base64 = await fileToBase64(currentForm.imageFile);
+                                formData.input_image = {
+                                    type: 'base64',
+                                    data: base64
+                                };
+                            }
+                            if (currentForm.audioFile) {
+                                const base64 = await fileToBase64(currentForm.audioFile);
+                                formData.input_audio = {
+                                    type: 'base64',
+                                    data: base64
+                                };
+                                formData.negative_prompt = "色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走"
+                            }
+                        }
+
+                        const response = await apiRequest('./api/v1/task/submit', {
+                            method: 'POST',
+                            body: JSON.stringify(formData)
+                        });
+
+                        if (response && response.ok) {
+                            const result = await response.json();
+                            showAlert(`任务提交成功！任务ID: ${result.task_id}`, 'success');
+
+                            // 保存提示词到历史记录
+                            addPromptToHistory(currentForm.prompt);
+
+                            await refreshTasks();
+                            showCreator.value = true;
+
+                            // 重新选择数字人任务（如果可用）
+                            if (availableTaskTypes.value.includes('digital_human')) {
+                                selectTask('digital_human');
+                            }
+
+                            // 重置所有表单
+                            t2vForm.value = {
+                                task: 't2v',
+                                model_cls: '',
+                                stage: 'single_stage',
+                                prompt: '',
+                                seed: Math.floor(Math.random() * 1000000)
+                            };
+                            i2vForm.value = {
+                                task: 'i2v',
+                                model_cls: '',
+                                stage: 'multi_stage',
+                                imageFile: null,
+                                prompt: '',
+                                seed: 42
+                            };
+                            digitalHumanForm.value = {
+                                task: 'digital_human',
+                                model_cls: '',
+                                stage: 'single_stage',
+                                imageFile: null,
+                                audioFile: null,
+                                prompt: '',
+                                seed: Math.floor(Math.random() * 1000000)
+                            };
+                            // 重置所有预览
+                            i2vImagePreview.value = null;
+                            digitalHumanImagePreview.value = null;
+                            digitalHumanAudioPreview.value = null;
+                        } else {
+                            const error = await response.json();
+                            showAlert(`任务提交失败: ${error.message},${error.detail}`, 'danger');
+                        }
+                    } catch (error) {
+                        showAlert(`提交任务失败: ${error.message}`, 'danger');
+                    } finally {
+                        submitting.value = false;
+                        setLoading(false);
+                    }
+                };
+
+                const fileToBase64 = (file) => {
+                    return new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.readAsDataURL(file);
+                        reader.onload = () => {
+                            const base64 = reader.result.split(',')[1];
+                            resolve(base64);
+                        };
+                        reader.onerror = error => reject(error);
+                    });
+                };
+
+                const formatTime = (timestamp) => {
+                    if (!timestamp) return '';
+                    const date = new Date(timestamp * 1000);
+                    return date.toLocaleString('zh-CN');
+                };
+
+                const preloadInputImages = async (tasks) => {
+                    // 为所有任务预加载输入图片
+                    for (const task of tasks) {
+                        if (task.inputs) {
+                            // 查找输入中的图片文件
+                            const imageInputs = Object.keys(task.inputs).filter(key =>
+                                key.includes('image') ||
+                                task.inputs[key].toString().toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|webp)$/)
+                            );
+
+                            // 预加载第一个输入图片
+                            if (imageInputs.length > 0) {
+                                const firstImageKey = imageInputs[0];
+                                try {
+                                    const imageUrl = getTaskInputUrl(task.task_id, firstImageKey);
+                                    // 创建Image对象预加载输入图片
+                                    const img = new Image();
+                                    img.src = imageUrl;
+
+                                    // 监听加载完成事件
+                                    img.onload = () => {
+                                        console.log(`Input image preloaded for task ${task.task_id}: ${firstImageKey}`);
+                                    };
+
+                                    img.onerror = () => {
+                                        console.warn(`Failed to preload input image for task ${task.task_id}: ${firstImageKey}`);
+                                    };
+                                } catch (error) {
+                                    console.warn(`Failed to preload input image for task ${task.task_id}:`, error);
+                                }
+                            }
+                        }
+                    }
+                };
+
+                const preloadThumbnailCache = async (tasks) => {
+                    setTimeout(async () => {
+                        try {
+                            const response = await apiRequest('./api/v1/task/thumbnails');
+                            if (response && response.ok) {
+                                const data = await response.json();
+                                const thumbnails = data.thumbnails || {};
+
+                                for (const [taskId, thumbnailUrl] of Object.entries(thumbnails)) {
+                                    thumbnailCache.value.set(taskId, thumbnailUrl);
+                                }
+
+                                thumbnailCacheLoaded.value = true;
+                                console.log(`缩略图一次性加载完成，共缓存${Object.keys(thumbnails).length}个任务`);
+                            } else {
+                                // 如果API调用失败，回退到原来的逐个加载方式
+                                await preloadThumbnailsIndividually(tasks.slice(0, 30));
+                            }
+                        } catch (error) {
+                            // 如果API调用异常，回退到原来的逐个加载方式
+                            await preloadThumbnailsIndividually(tasks.slice(0, 30));
+                        }
+                    }, 100); // 延迟100ms开始，让页面先渲染
+                };
+
+                const preloadThumbnailsIndividually = async (tasksToCache) => {
+                    // 使用串行加载避免过快访问
+                    for (let i = 0; i < tasksToCache.length; i++) {
+                        const task = tasksToCache[i];
+
+                        if (task.inputs) {
+                            // 查找输入中的图片文件
+                            const imageInputs = Object.keys(task.inputs).filter(key =>
+                                key.includes('image') ||
+                                task.inputs[key].toString().toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|webp)$/)
+                            );
+
+                            if (imageInputs.length > 0) {
+                                const firstImageKey = imageInputs[0];
+                                try {
+                                    const imageUrl = getTaskInputUrl(task.task_id, firstImageKey);
+
+                                    // 使用重试机制加载图片
+                                    const success = await loadImageWithRetry(task.task_id, imageUrl, 3);
+                                    if (success) {
+                                        thumbnailCache.value.set(task.task_id, imageUrl);
+                                    }
+                                } catch (error) {
+                                    console.warn(`缩略图缓存错误 ${task.task_id}:`, error);
+                                }
+                            }
+                        }
+
+                        // 添加延迟避免过快访问
+                        if (i < tasksToCache.length - 1) {
+                            await new Promise(resolve => setTimeout(resolve, 200)); // 200ms延迟
+                        }
+                    }
+                    thumbnailCacheLoaded.value = true;
+                };
+
+                const loadImageWithRetry = async (taskId, imageUrl, maxRetries = 3) => {
+                    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                        try {
+                            const success = await new Promise((resolve) => {
+                                const img = new Image();
+                                img.onload = () => resolve(true);
+                                img.onerror = () => resolve(false);
+
+                                // 设置超时
+                                const timeout = setTimeout(() => {
+                                    resolve(false);
+                                }, 10000); // 10秒超时
+
+                                img.onload = () => {
+                                    clearTimeout(timeout);
+                                    resolve(true);
+                                };
+
+                                img.onerror = () => {
+                                    clearTimeout(timeout);
+                                    resolve(false);
+                                };
+
+                                img.src = imageUrl;
+                            });
+
+                            if (success) {
+                                return true;
+                            } else if (attempt < maxRetries) {
+                                await new Promise(resolve => setTimeout(resolve, 3000 * attempt));
+                            }
+                        } catch (error) {
+                            if (attempt < maxRetries) {
+                                await new Promise(resolve => setTimeout(resolve, 3000 * attempt));
+                            }
+                        }
+                    }
+                    return false;
+                };
+
+                const refreshTasks = async () => {
+                    try {
+                        const params = new URLSearchParams({
+                            page: currentPage.value.toString(),
+                            page_size: pageSize.value.toString()
+                        });
+
+                        if (statusFilter.value !== 'ALL') {
+                            params.append('status', statusFilter.value);
+                        }
+
+                        const response = await apiRequest(`./api/v1/task/list?${params.toString()}`);
+                        if (response && response.ok) {
+                            const data = await response.json();
+                            tasks.value = data.tasks || [];
+                            pagination.value = data.pagination || null;
+
+                            if (!thumbnailCacheLoaded.value) {
+                                await preloadThumbnailCache(tasks.value);
+                            } else {
+                                await preloadInputImages(tasks.value);
+                            }
+                        } else if (response) {
+                            showAlert('刷新任务列表失败', 'danger');
+                        }
+                        // 如果response为null，说明是认证错误，apiRequest已经处理了
+                    } catch (error) {
+                        showAlert(`刷新任务列表失败: ${error.message}`, 'danger');
+                    }
+                };
+
+                const getStatusBadgeClass = (status) => {
+                    const statusMap = {
+                        'SUCCEED': 'bg-success',
+                        'FAILED': 'bg-danger',
+                        'RUNNING': 'bg-warning',
+                        'PENDING': 'bg-secondary',
+                        'CREATED': 'bg-secondary'
+                    };
+                    return statusMap[status] || 'bg-secondary';
+                };
+
+                const downloadSingleResult = async (taskId, key, outputPath) => {
+                    try {
+                        setLoading(true);
+                        const response = await apiCall(`./api/v1/task/result?task_id=${taskId}&name=${key}`);
+                        if (response.ok) {
+                            const blob = await response.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            // 使用原始文件名，如果没有则使用outputPath
+                            const filename = key || outputPath || `result_${taskId}`;
+                            a.download = filename;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            window.URL.revokeObjectURL(url);
+                            showAlert('文件下载成功', 'success');
+                        } else {
+                            showAlert('获取结果失败', 'danger');
+                        }
+                    } catch (error) {
+                        showAlert(`下载结果失败: ${error.message}`, 'danger');
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+
+                const viewSingleResult = async (taskId, key) => {
+                    try {
+                        setLoading(true);
+                        const response = await apiCall(`./api/v1/task/result?task_id=${taskId}&name=${key}`);
+                        if (response.ok) {
+                            const blob = await response.blob();
+                            const videoBlob = new Blob([blob], { type: 'video/mp4' });
+                            const url = window.URL.createObjectURL(videoBlob);
+                            window.open(url, '_blank');
+                        } else {
+                            showAlert('获取结果失败', 'danger');
+                        }
+                    } catch (error) {
+                        showAlert(`查看结果失败: ${error.message}`, 'danger');
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+
+                const getVideoUrl = (taskId, key) => {
+                    const token = localStorage.getItem('accessToken');
+                    if (token) {
+                        return `./api/v1/task/result?task_id=${taskId}&name=${key}&token=${encodeURIComponent(token)}`;
+                    }
+                    return `./api/v1/task/result?task_id=${taskId}&name=${key}`;
+                };
+
+                const cancelTask = async (taskId) => {
+                    try {
+                        const response = await apiRequest(`./api/v1/task/cancel?task_id=${taskId}`);
+                        if (response && response.ok) {
+                            showAlert('任务取消成功', 'success');
+                            await refreshTasks();
+                        } else if (response) {
+                            const error = await response.json();
+                            showAlert(`取消任务失败: ${error.message}`, 'danger');
+                        }
+                        // 如果response为null，说明是认证错误，apiRequest已经处理了
+                    } catch (error) {
+                        showAlert(`取消任务失败: ${error.message}`, 'danger');
+                    }
+                };
+
+                const resumeTask = async (taskId) => {
+                    try {
+                        const response = await apiRequest(`./api/v1/task/resume?task_id=${taskId}`);
+                        if (response && response.ok) {
+                            showAlert('任务重试成功', 'success');
+                            await refreshTasks();
+                        } else if (response) {
+                            const error = await response.json();
+                            showAlert(`重试任务失败: ${error.message}`, 'danger');
+                        }
+                        // 如果response为null，说明是认证错误，apiRequest已经处理了
+                    } catch (error) {
+                        showAlert(`重试任务失败: ${error.message}`, 'danger');
+                    }
+                };
+
+
+
+                const loadTaskFiles = async (taskId) => {
+                    try {
+                        loadingTaskFiles.value = true;
+
+                        // 通过API获取任务详情
+                        const response = await apiRequest(`./api/v1/task/query?task_id=${taskId}`);
+                        if (!response || !response.ok) {
+                            showAlert('获取任务详情失败', 'danger');
+                            return;
+                        }
+
+                        const task = await response.json();
+                        if (!task) {
+                            showAlert('任务不存在', 'danger');
+                            return;
+                        }
+
+                        const files = { inputs: {}, outputs: {} };
+
+                        // 获取输入文件（所有状态的任务都需要）
+                        if (task.inputs) {
+                            for (const [key, inputPath] of Object.entries(task.inputs)) {
+                                try {
+                                    const response = await apiRequest(`./api/v1/task/input?task_id=${taskId}&name=${key}`);
+                                    if (response && response.ok) {
+                                        const blob = await response.blob();
+                                        files.inputs[key] = {
+                                            name: inputPath, // 使用原始文件名而不是key
+                                            path: inputPath,
+                                            blob: blob,
+                                            url: URL.createObjectURL(blob)
+                                        };
+                                    }
+                                } catch (error) {
+                                    console.error(`Failed to load input ${key}:`, error);
+                                    files.inputs[key] = {
+                                        name: inputPath, // 使用原始文件名而不是key
+                                        path: inputPath,
+                                        error: true
+                                    };
+                                }
+                            }
+                        }
+
+                        // 只对成功完成的任务获取输出文件
+                        if (task.status === 'SUCCEED' && task.outputs) {
+                            for (const [key, outputPath] of Object.entries(task.outputs)) {
+                                try {
+                                    const response = await apiRequest(`./api/v1/task/result?task_id=${taskId}&name=${key}`);
+                                    if (response && response.ok) {
+                                        const blob = await response.blob();
+                                        files.outputs[key] = {
+                                            name: outputPath, // 使用原始文件名而不是key
+                                            path: outputPath,
+                                            blob: blob,
+                                            url: URL.createObjectURL(blob)
+                                        };
+                                    }
+                                } catch (error) {
+                                    console.error(`Failed to load output ${key}:`, error);
+                                    files.outputs[key] = {
+                                        name: outputPath, // 使用原始文件名而不是key
+                                        path: outputPath,
+                                        error: true
+                                    };
+                                }
+                            }
+                        }
+
+                        selectedTaskFiles.value = files;
+
+                    } catch (error) {
+                        console.error('Failed to load task files:', error);
+                        showAlert('加载任务文件失败', 'danger');
+                    } finally {
+                        loadingTaskFiles.value = false;
+                    }
+                };
+
+                const viewTaskDetail = async (task) => {
+                    // 清理之前的文件缓存
+                    clearTaskFiles();
+
+                    selectedTask.value = task;
+                    selectedTaskId.value = task.task_type;
+                    showCreator.value = false;
+
+                    // 一次性加载所有任务文件
+                    await loadTaskFiles(task.task_id);
+                };
+
+                const downloadFile = (fileInfo) => {
+                    if (!fileInfo || !fileInfo.blob) {
+                        showAlert('文件不可用', 'danger');
+                        return;
+                    }
+
+                    try {
+                        const url = URL.createObjectURL(fileInfo.blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = fileInfo.name || 'download';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    } catch (error) {
+                        console.error('Download failed:', error);
+                        showAlert('下载失败', 'danger');
+                    }
+                };
+
+                const viewFile = (fileInfo) => {
+                    if (!fileInfo || !fileInfo.url) {
+                        showAlert('文件不可用', 'danger');
+                        return;
+                    }
+
+                    // 在新窗口中打开文件
+                    window.open(fileInfo.url, '_blank');
+                };
+
+                const clearTaskFiles = () => {
+                    // 清理 URL 对象，释放内存
+                    Object.values(selectedTaskFiles.value.inputs).forEach(file => {
+                        if (file.url) {
+                            URL.revokeObjectURL(file.url);
+                        }
+                    });
+                    Object.values(selectedTaskFiles.value.outputs).forEach(file => {
+                        if (file.url) {
+                            URL.revokeObjectURL(file.url);
+                        }
+                    });
+                    selectedTaskFiles.value = { inputs: {}, outputs: {} };
+                };
+
+                const showTaskCreator = () => {
+                    showCreator.value = true;
+                    selectedTask.value = null;
+                    // clearTaskFiles(); // 清空文件缓存
+                    selectedTaskId.value = 'digital_human'; // 默认选择数字人任务
+                };
+
+                const toggleSidebar = () => {
+                    sidebarCollapsed.value = !sidebarCollapsed.value;
+                };
+
+                const clearPrompt = () => {
+                    getCurrentForm().prompt = '';
+                };
+
+                const getTaskItemClass = (status) => {
+                    if (status === 'SUCCEED') return 'bg-laser-purple/15 border border-laser-purple/30';
+                    if (status === 'RUNNING') return 'bg-laser-purple/15 border border-laser-purple/30';
+                    if (status === 'FAILED') return 'bg-red-500/15 border border-red-500/30';
+                    return 'bg-dark-light border border-gray-700';
+                };
+
+                const getStatusIndicatorClass = (status) => {
+                const base = 'inline-block w-2 aspect-square rounded-full shrink-0 align-middle';
+                    if (status === 'SUCCEED')
+                        return `${base} bg-gradient-to-r from-emerald-200 to-green-300 shadow-md shadow-emerald-300/30`;
+                    if (status === 'RUNNING')
+                        return `${base} bg-gradient-to-r from-amber-200 to-yellow-300 shadow-md shadow-amber-300/30 animate-pulse`;
+                    if (status === 'FAILED')
+                        return `${base} bg-gradient-to-r from-red-200 to-pink-300 shadow-md shadow-red-300/30`;
+                    return `${base} bg-gradient-to-r from-gray-200 to-gray-300 shadow-md shadow-gray-300/30`;
+                    };
+
+
+                const getTaskTypeBtnClass = (taskType) => {
+                    if (selectedTaskId.value === taskType) {
+                        return 'text-gradient-icon border-b-2 border-laser-purple';
+                    }
+                    return 'text-gray-400 hover:text-gradient-icon';
+                };
+
+                const getModelBtnClass = (model) => {
+                    if (getCurrentForm().model_cls === model) {
+                        return 'bg-laser-purple/20 border border-laser-purple/40 active shadow-laser animate-electric-pulse';
+                    }
+                    return 'bg-dark-light border border-gray-700 hover:bg-laser-purple/15 hover:border-laser-purple/40 transition-all hover:shadow-laser';
+                };
+
+                const getTaskTypeIcon = (taskType) => {
+                    const iconMap = {
+                        't2v': 'fas fa-font',
+                        'i2v': 'fas fa-image',
+                        'digital_human': 'fas fa-user'
+                    };
+                    return iconMap[taskType] || 'fas fa-video';
+                };
+
+                const getTaskTypeName = (task) => {
+                    // 如果传入的是字符串，直接返回映射
+                    if (typeof task === 'string') {
+                        const nameMap = {
+                            't2v': '文生视频',
+                            'i2v': '图生视频',
+                            'digital_human': '数字人'
+                        };
+                        return nameMap[task] || task;
+                    }
+
+                    // 如果传入的是任务对象，根据模型类型判断
+                    if (task && task.model_cls) {
+                        const modelCls = task.model_cls.toLowerCase();
+
+                        // 检查是否是数字人模型（包含audio或seko）
+                        if (modelCls.includes('audio') || modelCls.includes('seko')) {
+                            return '数字人';
+                        }
+
+                        // 根据task_type判断
+                        const nameMap = {
+                            't2v': '文生视频',
+                            'i2v': '图生视频',
+                            'digital_human': '数字人'
+                        };
+                        return nameMap[task.task_type] || task.task_type;
+                    }
+
+                    // 默认返回task_type
+                    return task.task_type || '未知';
+                };
+
+                const getPromptPlaceholder = () => {
+                    if (selectedTaskId.value === 't2v') {
+                        return '请输入视频生成提示词，描述视频内容、风格、场景等...';
+                    } else if (selectedTaskId.value === 'i2v') {
+                        return '请输入视频生成提示词，描述基于图片的视频内容、动作要求等...';
+                    } else if (selectedTaskId.value === 'digital_human') {
+                        return '请输入视频生成提示词，描述数字人形象、背景风格、动作要求等...';
+                    }
+                    return '请输入视频生成提示词...';
+                };
+
+                const getStatusTextClass = (status) => {
+                    if (status === 'SUCCEED') return 'text-emerald-400';
+                    if (status === 'RUNNING') return 'text-amber-400';
+                    if (status === 'FAILED') return 'text-red-400';
+                    return 'text-gray-400';
+                };
+
+
+
+                const getImagePreview = (base64Data) => {
+                    if (!base64Data) return '';
+                    return `data:image/jpeg;base64,${base64Data}`;
+                };
+
+                const getTaskInputUrl = (taskId, key) => {
+                    const token = localStorage.getItem('accessToken');
+                    if (token) {
+                        return `./api/v1/task/input?task_id=${taskId}&name=${key}&token=${encodeURIComponent(token)}`;
+                    }
+                    return `./api/v1/task/input?task_id=${taskId}&name=${key}`;
+                };
+
+                const getTaskInputImage = (task) => {
+                    if (!task || !task.inputs) return null;
+                    const imageInputs = Object.keys(task.inputs).filter(key =>
+                        key.includes('image') ||
+                        task.inputs[key].toString().toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|webp)$/)
+                    );
+
+                    if (imageInputs.length > 0) {
+                        const firstImageKey = imageInputs[0];
+                        return getTaskInputUrl(task.task_id, firstImageKey);
+                    }
+
+                    return null;
+                };
+
+                const getVideoThumbnail = (taskId, name) => {
+                    if (thumbnailCache.value.has(taskId)) {
+                        return thumbnailCache.value.get(taskId);
+                    }
+
+                    const task = tasks.value.find(t => t.task_id === taskId);
+                    if (task) {
+                        const inputImageUrl = getTaskInputImage(task);
+                        if (inputImageUrl) {
+                            return inputImageUrl;
+                        } else {
+                            console.log(`任务 ${taskId} 没有输入图片`);
+                        }
+                    } else {
+                        console.log(`未找到任务: ${taskId}`);
+                    }
+
+                    // 如果没有输入图片，返回空字符串，让handleThumbnailError处理
+                    return '';
+                };
+
+                const getVideoThumbnailInfo = (taskId, name) => {
+                    // 首先检查缓存
+                    if (thumbnailCache.value.has(taskId)) {
+                        return {
+                            url: thumbnailCache.value.get(taskId),
+                            hasThumbnail: true
+                        };
+                    }
+
+                    // 如果缓存中没有，异步加载并更新缓存
+                    loadThumbnailAsync(taskId, name);
+
+                    // 返回空，让模板显示默认图标
+                    return {
+                        url: '',
+                        hasThumbnail: false
+                    };
+                };
+
+                const loadThumbnailAsync = async (taskId, name) => {
+                    const task = tasks.value.find(t => t.task_id === taskId);
+                    if (!task || !task.inputs) return;
+
+                    // 查找输入中的图片文件
+                    const imageInputs = Object.keys(task.inputs).filter(key =>
+                        key.includes('image') ||
+                        task.inputs[key].toString().toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|webp)$/)
+                    );
+
+                    if (imageInputs.length > 0) {
+                        const firstImageKey = imageInputs[0];
+                        try {
+                            const imageUrl = getTaskInputUrl(taskId, firstImageKey);
+
+                            // 使用重试机制加载图片
+                            const success = await loadImageWithRetry(taskId, imageUrl, 3);
+                            if (success) {
+                                thumbnailCache.value.set(taskId, imageUrl);
+                            }
+                        } catch (error) {
+                            console.warn(`缩略图异步加载错误 ${taskId}:`, error);
+                        }
+                    }
+                };
+
+                const handleThumbnailError = (event) => {
+                    // 当输入图片加载失败时，显示默认图标
+                    const img = event.target;
+                    const parent = img.parentElement;
+                    parent.innerHTML = '<div class="w-full h-full bg-laser-purple/20 flex items-center justify-center"><i class="fas fa-video text-gradient-icon text-xl"></i></div>';
+                };
+
+                const handleImageError = (event) => {
+                    // 当图片加载失败时，隐藏图片，显示文件名
+                    const img = event.target;
+                    img.style.display = 'none';
+                    // 文件名已经显示，不需要额外处理
+                };
+
+                const handleImageLoad = (event) => {
+                    // 当图片加载成功时，显示图片和下载按钮，隐藏文件名
+                    const img = event.target;
+                    img.style.display = 'block';
+                    // 显示下载按钮
+                    const downloadBtn = img.parentElement.querySelector('button');
+                    if (downloadBtn) {
+                        downloadBtn.style.display = 'block';
+                    }
+                    // 隐藏文件名span
+                    const span = img.parentElement.parentElement.querySelector('span');
+                    if (span) {
+                        span.style.display = 'none';
+                    }
+                };
+
+                const handleAudioError = (event) => {
+                    // 当音频加载失败时，隐藏音频控件和下载按钮，显示文件名
+                    const audio = event.target;
+                    audio.style.display = 'none';
+                    // 隐藏下载按钮
+                    const downloadBtn = audio.parentElement.querySelector('button');
+                    if (downloadBtn) {
+                        downloadBtn.style.display = 'none';
+                    }
+                    // 文件名已经显示，不需要额外处理
+                };
+
+                const handleAudioLoad = (event) => {
+                    // 当音频加载成功时，显示音频控件和下载按钮，隐藏文件名
+                    const audio = event.target;
+                    audio.style.display = 'block';
+                    // 显示下载按钮
+                    const downloadBtn = audio.parentElement.querySelector('button');
+                    if (downloadBtn) {
+                        downloadBtn.style.display = 'block';
+                    }
+                    // 隐藏文件名span
+                    const span = audio.parentElement.parentElement.querySelector('span');
+                    if (span) {
+                        span.style.display = 'none';
+                    }
+                };
+
+
+                const downloadTaskInput = async (taskId, inputName, fileName) => {
+                    try {
+                        const url = getTaskInputUrl(taskId, inputName);
+                        const response = await apiRequest(url);
+
+                        if (!response || !response.ok) {
+                            throw new Error(`下载失败: ${response ? response.status : '认证失败'}`);
+                        }
+
+                        const blob = await response.blob();
+                        const downloadUrl = window.URL.createObjectURL(blob);
+
+                        // 创建下载链接
+                        const link = document.createElement('a');
+                        link.href = downloadUrl;
+                        // 使用原始文件名，如果没有则使用inputName
+                        const filename = inputName || fileName || `input_${taskId}`;
+                        link.download = filename;
+                        document.body.appendChild(link);
+                        link.click();
+
+                        // 清理
+                        document.body.removeChild(link);
+                        window.URL.revokeObjectURL(downloadUrl);
+
+                        showAlert('文件下载成功', 'success');
+                    } catch (error) {
+                        console.error('下载失败:', error);
+                        showAlert(`下载失败: ${error.message}`, 'danger');
+                    }
+                };
+
+                const initModelAndTasks = async () => {
+                    await loadModels();
+                    await refreshTasks();
+                };
+
+                // 任务状态管理
+                const getTaskStatusDisplay = (status) => {
+                    const statusMap = {
+                        'CREATED': '创建',
+                        'PENDING': '等待',
+                        'RUNNING': '进行',
+                        'SUCCEED': '完成',
+                        'FAILED': '失败',
+                        'CANCEL': '取消'
+                    };
+                    return statusMap[status] || status;
+                };
+
+                const getTaskStatusColor = (status) => {
+                    const colorMap = {
+                        'CREATED': 'text-blue-400',
+                        'PENDING': 'text-yellow-400',
+                        'RUNNING': 'text-amber-400',
+                        'SUCCEED': 'text-emerald-400',
+                        'FAILED': 'text-red-400',
+                        'CANCEL': 'text-gray-400'
+                    };
+                    return colorMap[status] || 'text-gray-400';
+                };
+
+                const getTaskStatusIcon = (status) => {
+                    const iconMap = {
+                        'CREATED': 'fas fa-clock',
+                        'PENDING': 'fas fa-hourglass-half',
+                        'RUNNING': 'fas fa-spinner fa-spin',
+                        'SUCCEED': 'fas fa-check-circle',
+                        'FAILED': 'fas fa-exclamation-triangle',
+                        'CANCEL': 'fas fa-ban'
+                    };
+                    return iconMap[status] || 'fas fa-question-circle';
+                };
+
+
+                // 任务时间格式化
+                const getTaskDuration = (startTime, endTime) => {
+                    if (!startTime || !endTime) return '未知';
+                    const start = new Date(startTime * 1000);
+                    const end = new Date(endTime * 1000);
+                    const diff = end - start;
+                    const minutes = Math.floor(diff / 60000);
+                    const seconds = Math.floor((diff % 60000) / 1000);
+                    return `${minutes}分${seconds}秒`;
+                };
+
+                // 相对时间格式化
+                const getRelativeTime = (timestamp) => {
+                    if (!timestamp) return '未知';
+                    const now = new Date();
+                    const time = new Date(timestamp * 1000);
+                    const diff = now - time;
+
+                    const minutes = Math.floor(diff / 60000);
+                    const hours = Math.floor(diff / 3600000);
+                    const days = Math.floor(diff / 86400000);
+                    const months = Math.floor(diff / 2592000000); // 30天
+                    const years = Math.floor(diff / 31536000000);
+
+                    if (years > 0) {
+                        return years === 1 ? '一年前' : `${years}年前`;
+                    } else if (months > 0) {
+                        return months === 1 ? '一个月前' : `${months}个月前`;
+                    } else if (days > 0) {
+                        return days === 1 ? '一天前' : `${days}天前`;
+                    } else if (hours > 0) {
+                        return hours === 1 ? '一小时前' : `${hours}小时前`;
+                    } else if (minutes > 0) {
+                        return minutes === 1 ? '一分钟前' : `${minutes}分钟前`;
+                    } else {
+                        return '刚刚';
+                    }
+                };
+
+                // 任务历史记录管理
+                const getTaskHistory = () => {
+                    return tasks.value.filter(task =>
+                        ['SUCCEED', 'FAILED', 'CANCEL'].includes(task.status)
+                    );
+                };
+
+                const getActiveTasks = () => {
+                    return tasks.value.filter(task =>
+                        ['CREATED', 'PENDING', 'RUNNING'].includes(task.status)
+                    );
+                };
+
+                // 任务搜索和过滤增强
+                const searchTasks = (query) => {
+                    if (!query) return tasks.value;
+                    return tasks.value.filter(task => {
+                        const searchText = [
+                            task.task_id,
+                            task.task_type,
+                            task.model_cls,
+                            task.params?.prompt || '',
+                            getTaskStatusDisplay(task.status)
+                        ].join(' ').toLowerCase();
+                        return searchText.includes(query.toLowerCase());
+                    });
+                };
+
+                const filterTasksByStatus = (status) => {
+                    if (status === 'ALL') return tasks.value;
+                    return tasks.value.filter(task => task.status === status);
+                };
+
+                const filterTasksByType = (type) => {
+                    if (!type) return tasks.value;
+                    return tasks.value.filter(task => task.task_type === type);
+                };
+
+                // 提示消息样式管理
+                const getAlertClass = (type) => {
+                    const classMap = {
+                        'success': 'animate-slide-down',
+                        'warning': 'animate-slide-down',
+                        'danger': 'animate-slide-down',
+                        'info': 'animate-slide-down'
+                    };
+                    return classMap[type] || 'animate-slide-down';
+                };
+
+                const getAlertBorderClass = (type) => {
+                    const borderMap = {
+                        'success': 'border-green-500',
+                        'warning': 'border-yellow-500',
+                        'danger': 'border-red-500',
+                        'info': 'border-blue-500'
+                    };
+                    return borderMap[type] || 'border-gray-500';
+                };
+
+                const getAlertTextClass = (type) => {
+                    // 字体为灰色偏白色
+                    const textMap = {
+                        'success': 'text-gray-100 bg-white-500',
+                        'warning': 'text-gray-100 bg-white-500',
+                        'danger': 'text-gray-100 bg-white-500',
+                        'info': 'text-gray-100 bg-white-500'
+                    };
+                    return textMap[type] || 'text-gray-100 bg-white-500';
+                };
+
+                const getAlertIcon = (type) => {
+                    const iconMap = {
+                        'success': 'fas fa-check-circle text-green-400',
+                        'warning': 'fas fa-exclamation-triangle text-yellow-400',
+                        'danger': 'fas fa-times-circle text-red-400',
+                        'info': 'fas fa-info-circle text-blue-400'
+                    };
+                    return iconMap[type] || 'fas fa-info-circle text-gray-400';
+                };
+
+                // 监听器 - 监听任务类型变化
+                watch(() => selectedTaskId.value, () => {
+                    const currentForm = getCurrentForm();
+
+                    // 只有当当前表单没有选择模型时，才自动选择第一个可用的模型
+                    if (!currentForm.model_cls) {
+                        let availableModels;
+
+                        // 如果是数字人任务，从i2v模型中筛选包含audio或seko的模型
+                        if (selectedTaskId.value === 'digital_human') {
+                            availableModels = models.value.filter(m =>
+                                m.task === 'i2v' && (m.model_cls.toLowerCase().includes('audio') || m.model_cls.toLowerCase().includes('seko'))
+                            );
+                        } else if (selectedTaskId.value === 'i2v') {
+                            // 如果是i2v任务，排除包含audio或seko的模型
+                            availableModels = models.value.filter(m =>
+                                m.task === 'i2v' && !m.model_cls.toLowerCase().includes('audio') && !m.model_cls.toLowerCase().includes('seko')
+                            );
+                        } else {
+                            availableModels = models.value.filter(m => m.task === selectedTaskId.value);
+                        }
+
+                        if (availableModels.length > 0) {
+                            const firstModel = availableModels[0];
+                            currentForm.model_cls = firstModel.model_cls;
+                            currentForm.stage = firstModel.stage;
+                        }
+                    }
+
+                    // 注意：这里不需要重置预览，因为我们要保持每个任务的独立性
+                    // 预览会在 selectTask 函数中根据文件状态恢复
+                });
+
+                watch(() => getCurrentForm().model_cls, () => {
+                    const currentForm = getCurrentForm();
+
+                    // 只有当当前表单没有选择阶段时，才自动选择第一个可用的阶段
+                    if (!currentForm.stage) {
+                        let availableStages;
+
+                        // 如果是数字人任务，从i2v模型中筛选
+                        if (selectedTaskId.value === 'digital_human') {
+                            availableStages = models.value
+                                .filter(m => m.task === 'i2v' && m.model_cls === currentForm.model_cls)
+                                .map(m => m.stage);
+                        } else if (selectedTaskId.value === 'i2v') {
+                            // 如果是i2v任务，排除包含audio或seko的模型
+                            availableStages = models.value
+                                .filter(m => m.task === 'i2v' && m.model_cls === currentForm.model_cls && !m.model_cls.toLowerCase().includes('audio') && !m.model_cls.toLowerCase().includes('seko'))
+                                .map(m => m.stage);
+                        } else {
+                            availableStages = models.value
+                                .filter(m => m.task === selectedTaskId.value && m.model_cls === currentForm.model_cls)
+                                .map(m => m.stage);
+                        }
+
+                        if (availableStages.length > 0) {
+                            currentForm.stage = availableStages[0];
+                        }
+                    }
+                });
+
+                // 生命周期
+                onMounted(async () => {
+
+                    // 检查是否已登录
+                    const savedToken = localStorage.getItem('accessToken');
+                    const savedUser = localStorage.getItem('currentUser');
+
+                    if (savedToken && savedUser) {
+                        // 验证token是否仍然有效
+                        const isValid = await validateToken(savedToken);
+                        if (isValid) {
+                            currentUser.value = JSON.parse(savedUser);
+                            isLoggedIn.value = true;
+                        } else {
+                            // Token无效，清除本地存储
+                            logout();
+                            showAlert('登录已过期，请重新登录', 'warning');
+                        }
+                    } else {
+                        // 检查是否是GitHub回调
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const code = urlParams.get('code');
+                        if (code) {
+                            handleGitHubCallback(code);
+                        }
+                    }
+
+                    // 无论是否登录都要加载模型数据
+                    await initModelAndTasks();
+                    loadPromptHistory();
+                    loadTemplates();
+
+                    // 等待模型数据加载完成后再检查任务类型
+                    if (availableTaskTypes.value.includes('digital_human')) {
+                        selectTask('digital_human');
+                    }
+                    console.log('当前用户:', currentUser.value);
+                    console.log('可用模型:', models.value);
+                    console.log('任务列表:', tasks.value);
+                });
+
+                // 提示词模板管理
+                const promptTemplates = {
+                    'digital_human': [
+                        {
+                            id: 'dh_1',
+                            title: '商务演讲',
+                            prompt: '数字人进行商务演讲，表情自然，手势得体，背景为现代化的会议室，整体风格专业商务。'
+                        },
+                        {
+                            id: 'dh_2',
+                            title: '产品介绍',
+                            prompt: '数字人介绍产品特点，语气亲切，动作自然，背景为产品展示区，突出产品的科技感和实用性。'
+                        }
+                    ],
+                    't2v': [
+                        {
+                            id: 't2v_1',
+                            title: '自然风景',
+                            prompt: '一个宁静的山谷，阳光透过云层洒在绿色的草地上，远处有雪山，近处有清澈的溪流，画面温暖自然，充满生机。'
+                        },
+                        {
+                            id: 't2v_2',
+                            title: '城市夜景',
+                            prompt: '繁华的城市夜景，霓虹灯闪烁，高楼大厦林立，车流如织，天空中有星星点缀，营造出都市的繁华氛围。'
+                        },
+                        {
+                            id: 't2v_3',
+                            title: '科技未来',
+                            prompt: '未来科技城市，飞行汽车穿梭，全息投影随处可见，建筑具有流线型设计，充满科技感和未来感。'
+                        }
+                    ],
+                    'i2v': [
+                        {
+                            id: 'i2v_1',
+                            title: '人物动作',
+                            prompt: '基于参考图片，让角色做出自然的行走动作，保持原有的服装和风格，背景可以适当变化。'
+                        },
+                        {
+                            id: 'i2v_2',
+                            title: '场景转换',
+                            prompt: '保持参考图片中的人物形象，将背景转换为不同的季节或环境，如从室内到户外，从白天到夜晚。'
+                        }
+                    ]
+                };
+
+                const getPromptTemplates = (taskType) => {
+                    return promptTemplates[taskType] || [];
+                };
+
+                const showPromptTemplates = () => {
+                    if (!selectedTaskId.value) {
+                        showAlert('请先选择任务类型', 'warning');
+                        return;
+                    }
+                    showTemplates.value = !showTemplates.value;
+                };
+
+                const showPromptHistory = () => {
+                    showHistory.value = !showHistory.value;
+                };
+
+                const selectPromptTemplate = (template) => {
+                    getCurrentForm().prompt = template.prompt;
+                    showTemplates.value = false;
+                    showAlert(`已应用模板: ${template.title}`, 'success');
+                };
+
+                // 提示词历史记录管理
+                const promptHistory = ref([]);
+
+                const getPromptHistory = () => {
+                    return promptHistory.value.slice(-10); // 只显示最近10条
+                };
+
+                const addPromptToHistory = (prompt) => {
+                    if (!prompt || prompt.trim().length === 0) return;
+
+                    // 避免重复添加
+                    const trimmedPrompt = prompt.trim();
+                    if (promptHistory.value.includes(trimmedPrompt)) {
+                        // 将已存在的提示词移到最前面
+                        promptHistory.value = promptHistory.value.filter(p => p !== trimmedPrompt);
+                    }
+
+                    promptHistory.value.push(trimmedPrompt);
+
+                    // 限制历史记录数量
+                    if (promptHistory.value.length > 50) {
+                        promptHistory.value = promptHistory.value.slice(-50);
+                    }
+
+                    // 保存到本地存储
+                    localStorage.setItem('promptHistory', JSON.stringify(promptHistory.value));
+                };
+
+                const selectPromptHistory = (prompt) => {
+                    getCurrentForm().prompt = prompt;
+                    showHistory.value = false;
+                    showAlert('已应用历史提示词', 'success');
+                };
+
+                const clearPromptHistory = () => {
+                    promptHistory.value = [];
+                    localStorage.removeItem('promptHistory');
+                    showAlert('提示词历史已清空', 'info');
+                };
+
+                // 加载提示词历史记录
+                const loadPromptHistory = () => {
+                    try {
+                        const saved = localStorage.getItem('promptHistory');
+                        if (saved) {
+                            promptHistory.value = JSON.parse(saved);
+                        }
+                    } catch (error) {
+                        console.warn('加载提示词历史记录失败:', error);
+                    }
+                };
+
+                const getAuthHeaders = () => {
+                    const headers = {
+                        'Content-Type': 'application/json'
+                    };
+
+                    const token = localStorage.getItem('accessToken');
+                    if (token) {
+                        headers['Authorization'] = `Bearer ${token}`;
+                        console.log('使用Token进行认证:', token.substring(0, 20) + '...');
+                    } else {
+                        console.warn('没有找到accessToken');
+                    }
+                    return headers;
+                };
+
+                // 验证token是否有效
+                const validateToken = async (token) => {
+                    try {
+                        const response = await fetch('./api/v1/model/list', {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        return response.ok;
+                    } catch (error) {
+                        console.error('Token validation failed:', error);
+                        return false;
+                    }
+                };
+
+                // 增强的API请求函数，自动处理认证错误
+                const apiRequest = async (url, options = {}) => {
+                    const headers = getAuthHeaders();
+
+                    try {
+                        const response = await fetch(url, {
+                            ...options,
+                            headers: {
+                                ...headers,
+                                ...options.headers
+                            }
+                        });
+
+                        // 检查是否是认证错误
+                        if (response.status === 401 || response.status === 403) {
+                            // Token无效，清除本地存储并跳转到登录页
+                            logout();
+                            showAlert('登录已过期，请重新登录', 'warning');
+                            return null;
+                        }
+
+                        return response;
+                    } catch (error) {
+                        console.error('API request failed:', error);
+                        showAlert('网络请求失败', 'danger');
+                        return null;
+                    }
+                };
+
+                // 侧边栏拖拽调整功能
+                const sidebar = ref(null);
+                let isResizing = false;
+                let startX = 0;
+                let startWidth = 0;
+
+                const startResize = (e) => {
+                    e.preventDefault();
+
+                    // 在小屏幕时禁用拖拽调整
+                    const windowWidth = window.innerWidth;
+                    if (windowWidth <= 1200) {
+                        return;
+                    }
+
+                    isResizing = true;
+                    startX = e.clientX;
+                    startWidth = sidebar.value.offsetWidth;
+
+                    document.body.classList.add('resizing');
+                    document.addEventListener('mousemove', handleResize);
+                    document.addEventListener('mouseup', stopResize);
+                };
+
+                const handleResize = (e) => {
+                    if (!isResizing) return;
+
+                    // 在小屏幕时停止拖拽调整
+                    const windowWidth = window.innerWidth;
+                    if (windowWidth <= 1200) {
+                        stopResize();
+                        return;
+                    }
+
+                    const deltaX = e.clientX - startX;
+                    const newWidth = startWidth + deltaX;
+                    const minWidth = 200;
+                    const maxWidth = 500;
+
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        sidebar.value.style.width = newWidth + 'px';
+                        // 同时调整主内容区域宽度
+                        const mainContent = document.querySelector('main');
+                        if (mainContent) {
+                            mainContent.style.width = `calc(100% - ${newWidth}px)`;
+                        }
+                    }
+                };
+
+                const stopResize = () => {
+                    isResizing = false;
+                    document.body.classList.remove('resizing');
+                    document.removeEventListener('mousemove', handleResize);
+                    document.removeEventListener('mouseup', stopResize);
+
+                    // 保存当前宽度到localStorage
+                    if (sidebar.value) {
+                        localStorage.setItem('sidebarWidth', sidebar.value.offsetWidth);
+                    }
+                };
+
+                // 应用响应式侧边栏宽度
+                const applyResponsiveWidth = () => {
+                    if (!sidebar.value) return;
+
+                    const windowWidth = window.innerWidth;
+                    let sidebarWidth;
+
+                    if (windowWidth <= 768) {
+                        sidebarWidth = '200px';
+                    } else if (windowWidth <= 1200) {
+                        sidebarWidth = '250px';
+                    } else {
+                        // 大屏幕时使用保存的宽度或默认宽度
+                        const savedWidth = localStorage.getItem('sidebarWidth');
+                        if (savedWidth) {
+                            const width = parseInt(savedWidth);
+                            if (width >= 200 && width <= 500) {
+                                sidebarWidth = width + 'px';
+                            } else {
+                                sidebarWidth = '256px'; // 默认 w-64
+                            }
+                        } else {
+                            sidebarWidth = '256px'; // 默认 w-64
+                        }
+                    }
+
+                    sidebar.value.style.width = sidebarWidth;
+                    const mainContent = document.querySelector('main');
+                    if (mainContent) {
+                        mainContent.style.width = `calc(100% - ${sidebarWidth})`;
+                    }
+                };
+
+                // 恢复保存的侧边栏宽度
+                onMounted(() => {
+                    applyResponsiveWidth();
+
+                    // 监听窗口大小变化
+                    window.addEventListener('resize', applyResponsiveWidth);
+                });
+
+                return {
+                    isLoggedIn,
+                    loading,
+                    loginWithGitHub,
+                    submitting,
+                    showCreator,
+                    searchQuery,
+                    currentUser,
+                    models,
+                    tasks,
+                    alert,
+                    t2vForm,
+                    i2vForm,
+                    digitalHumanForm,
+                    getCurrentForm,
+                    i2vImagePreview,
+                    digitalHumanImagePreview,
+                    digitalHumanAudioPreview,
+                    getCurrentImagePreview,
+                    getCurrentAudioPreview,
+                    availableTaskTypes,
+                    availableModelClasses,
+                    filteredTasks,
+                    selectedTaskId,
+                    selectedTask,
+                    selectedTaskFiles,
+                    loadingTaskFiles,
+                    statusFilter,
+                    pagination,
+                    currentPage,
+                    pageSize,
+                    showAlert,
+                    setLoading,
+                    apiCall,
+                    logout,
+                    loadModels,
+                    generatingThumbnails,
+                    sidebarCollapsed,
+                    thumbnailCache,
+                    thumbnailCacheLoaded,
+                    loadTaskFiles,
+                    downloadFile,
+                    viewFile,
+                    handleImageUpload,
+                    selectTask,
+                    selectModel,
+                    triggerImageUpload,
+                    triggerAudioUpload,
+                    removeImage,
+                    removeAudio,
+                    handleAudioUpload,
+                    loadTemplates,
+                    selectImageTemplate,
+                    selectAudioTemplate,
+                    previewAudioTemplate,
+                    imageTemplates,
+                    audioTemplates,
+                    showImageTemplates,
+                    showAudioTemplates,
+                    showTemplates,
+                    showHistory,
+                    submitTask,
+                    fileToBase64,
+                    formatTime,
+                    refreshTasks,
+                    preloadThumbnailCache,
+                    preloadThumbnailsIndividually,
+                    loadImageWithRetry,
+                    getStatusBadgeClass,
+                    downloadSingleResult,
+                    viewSingleResult,
+                    cancelTask,
+                    resumeTask,
+                    viewTaskDetail,
+                    showTaskCreator,
+                    toggleSidebar,
+                    clearPrompt,
+                    getTaskItemClass,
+                    getStatusIndicatorClass,
+                    getTaskTypeBtnClass,
+                    getModelBtnClass,
+                    getTaskTypeIcon,
+                    getTaskTypeName,
+                    getPromptPlaceholder,
+                    getStatusTextClass,
+                    getImagePreview,
+                    getTaskInputUrl,
+                    getVideoThumbnail,
+                    getVideoThumbnailInfo,
+                    loadThumbnailAsync,
+                    handleThumbnailError,
+                    handleImageError,
+                    handleImageLoad,
+                    handleAudioError,
+                    handleAudioLoad,
+                    downloadTaskInput,
+                    getVideoUrl,
+                    getTaskStatusDisplay,
+                    getTaskStatusColor,
+                    getTaskStatusIcon,
+                    getTaskDuration,
+                    getRelativeTime,
+                    getTaskHistory,
+                    getActiveTasks,
+                    searchTasks,
+                    filterTasksByStatus,
+                    filterTasksByType,
+                    getAlertClass,
+                    getAlertBorderClass,
+                    getAlertTextClass,
+                    getAlertIcon,
+                    getPromptTemplates,
+                    showPromptTemplates,
+                    showPromptHistory,
+                    selectPromptTemplate,
+                    promptHistory,
+                    getPromptHistory,
+                    addPromptToHistory,
+                    selectPromptHistory,
+                    clearPromptHistory,
+                    loadPromptHistory,
+                    getAudioMimeType,
+                    getAuthHeaders,
+                    sidebar,
+                    startResize
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
