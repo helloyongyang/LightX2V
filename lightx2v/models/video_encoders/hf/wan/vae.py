@@ -893,7 +893,7 @@ class WanVAE:
     def _calculate_2d_grid(self, latent_height, latent_width, world_size):
         if (latent_height, latent_width, world_size) in self.grid_table:
             best_h, best_w = self.grid_table[(latent_height, latent_width, world_size)]
-            logger.info(f"Vae using cached 2D grid: {best_h}x{best_w} grid for {latent_height}x{latent_width} latent")
+            # logger.info(f"Vae using cached 2D grid: {best_h}x{best_w} grid for {latent_height}x{latent_width} latent")
             return best_h, best_w
 
         best_h, best_w = 1, world_size
@@ -908,7 +908,7 @@ class WanVAE:
                     if aspect_diff < min_aspect_diff:
                         min_aspect_diff = aspect_diff
                         best_h, best_w = h, w
-        logger.info(f"Vae using 2D grid & Update cache: {best_h}x{best_w} grid for {latent_height}x{latent_width} latent")
+        # logger.info(f"Vae using 2D grid & Update cache: {best_h}x{best_w} grid for {latent_height}x{latent_width} latent")
         self.grid_table[(latent_height, latent_width, world_size)] = (best_h, best_w)
         return best_h, best_w
 

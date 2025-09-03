@@ -23,7 +23,7 @@
         "seq_p_attn_type": "ulysses"
     },
     "mm_config": {
-        "mm_type": "W-fp8-channel-sym-A-fp8-channel-sym-dynamic-Vllm"
+        "mm_type": "W-fp8-channel-sym-A-fp8-channel-sym-dynamic-Sgl"
     },
     "adapter_quantized": true,
     "adapter_quant_scheme": "fp8",

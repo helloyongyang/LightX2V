@@ -456,7 +456,7 @@ class WanAudioRunner(WanRunner):  # type:ignore
 
         self.config.seed = self.config.seed + segment_idx
         torch.manual_seed(self.config.seed)
-        logger.info(f"Processing segment {segment_idx + 1}/{self.video_segment_num}, seed: {self.config.seed}")
+        # logger.info(f"Processing segment {segment_idx + 1}/{self.video_segment_num}, seed: {self.config.seed}")
 
         if (self.config.get("lazy_load", False) or self.config.get("unload_modules", False)) and not hasattr(self, "audio_encoder"):
             self.audio_encoder = self.load_audio_encoder()

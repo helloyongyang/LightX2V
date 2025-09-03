@@ -217,7 +217,8 @@ class DefaultRunner(BaseRunner):
     def run_main(self, total_steps=None):
         self.init_run()
         for segment_idx in range(self.video_segment_num):
-            with ProfilingContext4Debug(f"segment end2end {segment_idx}"):
+            logger.info(f"🔄 segment_idx: {segment_idx + 1}/{self.video_segment_num}")
+            with ProfilingContext(f"segment end2end {segment_idx}"):
                 # 1. default do nothing
                 self.init_run_segment(segment_idx)
                 # 2. main inference loop
