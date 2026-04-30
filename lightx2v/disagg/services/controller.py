@@ -66,6 +66,14 @@ class ControllerService(BaseService):
         self._slot_reuse_block_until: dict[int, float] = {}
         self._local_host_aliases: set[str] = set()
         self._request_metrics_by_room: dict[int, dict[str, Any]] = {}
+        self._monitor_samples: list[dict[str, Any]] = []
+        self._controller_start_ts: float | None = None
+        self._metrics_output_json = Path(
+            os.getenv(
+                "DISAGG_CONTROLLER_METRICS_OUTPUT_JSON",
+                str(Path(__file__).resolve().parents[3] / "save_results" / "disagg_controller_metrics.json"),
+            )
+        )
 
     def _is_monitor_enabled(self) -> bool:
         raw = os.getenv("ENABLE_MONITOR")
@@ -870,6 +878,16 @@ class ControllerService(BaseService):
         if not isinstance(last_scale_ts, dict):
             return
 
+        sample_ts = time.time()
+        sample_ts_from_start_s = sample_ts - self._controller_start_ts if self._controller_start_ts is not None else None
+        for item in results:
+            if not isinstance(item, dict):
+                continue
+            sample = dict(item)
+            sample["sample_ts"] = sample_ts
+            sample["sample_ts_from_global_start_s"] = sample_ts_from_start_s
+            self._monitor_samples.append(sample)
+
         if warmup_duration_s > 0.0:
             elapsed_s = max(0.0, time.monotonic() - autoscale_start_mono)
             if elapsed_s < warmup_duration_s:
@@ -1059,6 +1077,25 @@ class ControllerService(BaseService):
                 )
             except Exception:
                 pass
+
+    def _dump_controller_metrics(self, received_results: list[dict[str, Any]], batch_request_start_ts: float | None) -> Path:
+        summary = {
+            "requests": self._to_plain(received_results),
+            "monitor_samples": self._to_plain(self._monitor_samples),
+            "generated_at": time.time(),
+        }
+        if batch_request_start_ts is not None:
+            summary["batch_total_time_s"] = time.time() - batch_request_start_ts
+        if self._controller_start_ts is not None:
+            summary["controller_uptime_s"] = time.time() - self._controller_start_ts
+
+        out_path = self._metrics_output_json
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        with out_path.open("w", encoding="utf-8") as handle:
+            json.dump(summary, handle, ensure_ascii=False, indent=2)
+
+        self.logger.info("Controller metrics saved to %s", out_path)
+        return out_path
 
     def _handle_decoder_result(
         self,
@@ -1891,6 +1928,8 @@ class ControllerService(BaseService):
         if config is None:
             raise ValueError("config cannot be None")
 
+        self._controller_start_ts = time.time()
+        self._monitor_samples = []
         self._shutting_down = False
 
         bootstrap_addr = config.get("data_bootstrap_addr", "127.0.0.1")
@@ -2139,3 +2178,8 @@ class ControllerService(BaseService):
             for thread in list(self._sidecar_reclaim_threads):
                 if thread.is_alive():
                     thread.join(timeout=3.0)
+
+            try:
+                self._dump_controller_metrics(received_results, batch_request_start_ts)
+            except Exception:
+                self.logger.exception("Failed to write controller metrics to %s", self._metrics_output_json)
