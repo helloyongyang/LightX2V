@@ -11,8 +11,9 @@
     "sample_shift": 10.0,
     "enable_cfg": false,
     "cpu_offload": false,
-    "t5_cpu_offload": true,
-    "vae_cpu_offload": true,
+    "offload_granularity": "block",
+    "t5_cpu_offload": false,
+    "vae_cpu_offload": false,
     "use_image_encoder": false,
     "dit_original_ckpt": "/data/nvme4/models/lingbot-world-base-cam/lingbot_world_fast/",
     "ar_config": {
@@ -22,10 +23,12 @@
         "sink_size": 3,
         "kv_quant": {
             "calibrate": false,
-            "smooth_k": true,
-            "calib_path": "calib_kv.pt"
+            "calib_path": "calib_kv.pt",
+            "quant_scheme": "sage",
+            "k_cache_type": "int8",
+            "v_cache_type": "fp8"
         },
-        "kv_offload": true
+        "kv_offload": false
     },
     "rms_norm_type": "self_forcing"
 }
