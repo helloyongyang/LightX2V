@@ -1,13 +1,12 @@
 #!/bin/bash
 
 # set path and first
-lightx2v_path=/data/nvme4/gushiqiao/new/LightX2V
-model_path=/data/nvme0/gushiqiao/models/seedvr2-3b/
+lightx2v_path=
+model_path=path/to/seedvr2-3b/
 
-video_path=/data/nvme4/gushiqiao/videos/output_lightx2v_wan_t2v_sf.mp4
+video_path=path/to/test.mp4
 
-
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=0
 
 # set environment variables
 source ${lightx2v_path}/scripts/base/base.sh
