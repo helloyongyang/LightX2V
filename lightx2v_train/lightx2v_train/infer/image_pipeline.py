@@ -27,7 +27,7 @@ class ImagePipelineInferencer(BaseInferencer):
         negative_prompt = infer_config.get("negative_prompt", " ")
         base_seed = infer_config.get("seed", 42)
         lora_path = infer_config.get("lora_path", None)
-        output = infer_config.get("output", None)
+        output_dir = infer_config.get("output_dir", None)
 
         # Model-specific kwargs (e.g. QwenImage uses `true_cfg_scale` instead of `guidance_scale`)
         pipeline_kwargs = self.model.get_pipeline_infer_kwargs(infer_config)
@@ -49,10 +49,9 @@ class ImagePipelineInferencer(BaseInferencer):
                     **pipeline_kwargs,
                 )
 
-                if output is not None:
-                    p = Path(output)
-                    save_path = p if len(prompts) == 1 else p.parent / f"{p.stem}_{i}{p.suffix}"
-                    os.makedirs(save_path.parent, exist_ok=True)
+                if output_dir is not None:
+                    os.makedirs(output_dir, exist_ok=True)
+                    save_path = Path(output_dir) / f"{i:05d}.png"
                     result.images[0].save(save_path)
                     print(f"Saved to {save_path}")
                     saved_paths.append(str(save_path))

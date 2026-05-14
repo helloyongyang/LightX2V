@@ -1,9 +1,8 @@
 from dataclasses import dataclass
 
-import numpy as np
 import torch
-from PIL import Image
 from diffusers import AutoencoderKLQwenImage, QwenImagePipeline, QwenImageTransformer2DModel
+from diffusers.image_processor import VaeImageProcessor
 
 from lightx2v_train.utils.registry import MODEL_REGISTER
 
@@ -41,6 +40,7 @@ class QwenImageModel(BaseModel):
         self.text_pipeline.text_encoder.requires_grad_(False)
         self.vae.requires_grad_(False)
         self.vae_scale_factor = 2 ** len(self.vae.temperal_downsample)
+        self.image_processor = VaeImageProcessor(vae_scale_factor=self.vae_scale_factor * 2)
 
     def encode_to_latent(self, sample):
         image = sample["target_image"].to(device=self.device, dtype=self.running_dtype)
@@ -65,7 +65,7 @@ class QwenImageModel(BaseModel):
         }
 
     def prepare_denoiser_input(self, noisy_latent):
-        # noisy_latent: (B, z_dim, T, H, W)
+        # noisy_latent: (B, C, T, H, W)
         n = noisy_latent.shape[0]
         h, w = noisy_latent.shape[3], noisy_latent.shape[4]
         packed = QwenImagePipeline._pack_latents(noisy_latent, n, noisy_latent.shape[1], h, w)
@@ -103,18 +103,16 @@ class QwenImageModel(BaseModel):
 
     def decode_latent(self, latent):
         # Reverse the normalization from encode_to_latent:
-        # encode: normalized = (raw - mean) * (1 / latents_std)
+        # encode: normalized = (raw - mean) / latents_std
         # decode: raw = normalized * latents_std + mean
         latent_mean = torch.tensor(self.vae.config.latents_mean, device=self.device, dtype=self.running_dtype).view(1, self.vae.config.z_dim, 1, 1, 1)
         latent_std = torch.tensor(self.vae.config.latents_std, device=self.device, dtype=self.running_dtype).view(1, self.vae.config.z_dim, 1, 1, 1)
-        latent = latent * latent_std + latent_mean  # (B, z_dim, T, H, W)
+        latent = latent * latent_std + latent_mean  # (B, C, T, H, W), C == z_dim
 
         image = self.vae.decode(latent).sample  # (B, C, T, H, W)
-        image = image[:, :, 0, :, :]  # drop temporal dim -> (B, C, H, W)
+        image = image[:, :, 0, :, :]  # drop temporal dim -> (B, C, H, W), T == 1
 
-        image = (image / 2 + 0.5).clamp(0, 1)
-        image = image.permute(0, 2, 3, 1).float().cpu().numpy()
-        return [Image.fromarray((img * 255).round().astype(np.uint8)) for img in image]
+        return self.image_processor.postprocess(image, output_type="pil")
 
     def assemble_pipeline(self, scheduler=None):
         return QwenImagePipeline(

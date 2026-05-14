@@ -75,7 +75,7 @@ inference:
     num_inference_steps: 50
     cfg_guidance_scale: 4.0
     seed: 42
-    output: ./output_infer/result.png
+    output_dir: ./output_infer
     # set infer_every_iters to run inference during training (e.g. every 500 iters)
     # leave unset or null to disable training-time inference
     infer_every_iters: 500
