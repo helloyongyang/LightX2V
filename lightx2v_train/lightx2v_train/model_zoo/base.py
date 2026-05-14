@@ -55,10 +55,9 @@ class BaseModel:
         return velocity
 
     def postprocess_infer_step_output(self, pred):
-        """Convert velocity prediction back to the inference latent format for scheduler.step().
+        """Convert denoiser prediction to the latent format expected by scheduler.step().
 
-        Override when postprocess_denoiser_output returns a different tensor layout than
-        encode_to_latent (e.g. QwenImage permutes between training-target and latent formats).
+        Override when postprocess_denoiser_output returns a different layout than encode_to_latent.
         """
         return pred
 

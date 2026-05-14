@@ -28,6 +28,7 @@ class QwenImageModel(BaseModel):
         self.vae = AutoencoderKLQwenImage.from_pretrained(model_path, subfolder="vae").to(self.device, dtype=self.running_dtype)
         self.transformer = QwenImageTransformer2DModel.from_pretrained(model_path, subfolder="transformer").to(self.device, dtype=self.running_dtype)
         self.vae.requires_grad_(False)
+        self.text_pipeline.text_encoder.requires_grad_(False)
 
     @property
     def vae_scale_factor(self):
