@@ -10,32 +10,22 @@ from .base import BaseInferencer
 
 @INFERENCER_REGISTER("image_pipeline")
 class ImagePipelineInferencer(BaseInferencer):
-    """Pipeline-based inferencer for result alignment.
-
-    Calls the model's assembled diffusers pipeline directly, using the pipeline's
-    original scheduler and built-in denoising loop. Useful for verifying that the
-    custom ImageInferencer produces equivalent results.
-
-    Switch between the two by setting `inference.method` in the config:
-        method: image           # custom denoising loop (default)
-        method: image_pipeline  # diffusers pipeline (for alignment)
-    """
-
-    def infer(self, config):
-        infer_config = config.get("inference", {})
-        prompts = infer_config.get("prompts") or [infer_config.get("prompt", "")]
-        negative_prompt = infer_config.get("negative_prompt", " ")
-        base_seed = infer_config.get("seed", 42)
-        lora_path = infer_config.get("lora_path", None)
-        output_dir = infer_config.get("output_dir", None)
+    @torch.no_grad()
+    def infer(self):
+        prompts = self.infer_config.get("prompts") or [self.infer_config.get("prompt", "")]
+        enable_cfg = self.infer_config.get("enable_cfg", False)
+        negative_prompt = self.infer_config.get("negative_prompt", " ") if enable_cfg else None
+        base_seed = self.infer_config.get("seed", 42)
 
         # Model-specific kwargs (e.g. QwenImage uses `true_cfg_scale` instead of `guidance_scale`)
-        pipeline_kwargs = self.model.get_pipeline_infer_kwargs(infer_config)
+        pipeline_kwargs = self.model.get_pipeline_infer_kwargs(self.infer_config)
 
         # Use the pipeline's original pretrained scheduler for bit-exact alignment with diffusers
         pipe = self.model.assemble_pipeline()
-        if lora_path:
-            pipe.load_lora_weights(lora_path)
+
+        # self.lora_path = self.infer_config.get("lora_path", None)
+        # if self.lora_path:
+        #     pipe.load_lora_weights(self.lora_path)
 
         saved_paths = []
         self.model.transformer.eval()
@@ -49,11 +39,14 @@ class ImagePipelineInferencer(BaseInferencer):
                     **pipeline_kwargs,
                 )
 
-                if output_dir is not None:
-                    os.makedirs(output_dir, exist_ok=True)
-                    save_path = Path(output_dir) / f"{i:05d}.png"
+                if self.output_infer_dir is not None:
+                    os.makedirs(self.output_infer_dir, exist_ok=True)
+                    save_path = Path(self.output_infer_dir) / f"{i:05d}.png"
                     result.images[0].save(save_path)
                     print(f"Saved to {save_path}")
                     saved_paths.append(str(save_path))
+
+        # if self.lora_path:
+        #     self.model.unload_lora_for_infer()
 
         return saved_paths

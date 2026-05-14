@@ -20,7 +20,7 @@ def main():
 
     inferencer = build_inferencer(config)
     inferencer.set_model(model)
-    inferencer.infer(config)
+    inferencer.infer()
 
 
 if __name__ == "__main__":

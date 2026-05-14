@@ -120,7 +120,7 @@ class QwenImageModel(BaseModel):
             text_encoder=self.text_pipeline.text_encoder,
             vae=self.vae,
             transformer=self.transformer,
-            scheduler=scheduler or self.text_pipeline.scheduler,
+            scheduler=scheduler or self.text_pipeline.scheduler,  # use the original scheduler for bit-exact alignment with diffusers
         ).to(self.device)
 
     def get_pipeline_infer_kwargs(self, infer_config):

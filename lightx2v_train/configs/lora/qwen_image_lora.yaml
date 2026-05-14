@@ -62,20 +62,16 @@ training:
     output_dir: ./output_train/qwen_image_lora
 
 inference:
-    # method: image           -- custom denoising loop (default, uses framework scheduler)
-    # method: image_pipeline  -- diffusers pipeline call (for result alignment)
+    # method: image, image_pipeline
     method: image
-    # prompts used for both standalone infer.py and training-time inference
-    # use a list to generate multiple images per evaluation
     prompts:
-        - "一个小狗的黑板画，要求傻傻的，像是一个幼儿园小朋友画的。"
+        - "A family holding hands ChalkBoardDrawing"
     negative_prompt: " "
     width: 1024
     height: 1024
     num_inference_steps: 50
+    enable_cfg: true
     cfg_guidance_scale: 4.0
     seed: 42
-    output_dir: ./output_infer
-    # set infer_every_iters to run inference during training (e.g. every 500 iters)
-    # leave unset or null to disable training-time inference
-    infer_every_iters: 500
+    output_dir: ./output_infer/qwen_image_lora
+    infer_every_iters: 100

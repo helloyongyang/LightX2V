@@ -1,4 +1,3 @@
-import copy
 import os
 
 import torch
@@ -16,36 +15,33 @@ from .base import BaseTrainer
 @TRAINER_REGISTER("lora")
 class LoraTrainer(BaseTrainer):
     def get_configs(self):
-        model_config = self.config["model"]
-        self.running_dtype = get_running_dtype(model_config["running_dtype"])
+        self.running_dtype = get_running_dtype(self.model_config["running_dtype"])
 
-        training_config = self.config["training"]
-
-        lora_config = training_config.get("lora", {})
+        lora_config = self.training_config.get("lora", {})
         self.lora_rank = lora_config.get("rank", 16)
         self.lora_alpha = lora_config.get("alpha", self.lora_rank)
         self.lora_target_modules = lora_config.get("target_modules")
 
-        self.gradient_checkpointing = training_config.get("gradient_checkpointing", True)
+        self.gradient_checkpointing = self.training_config.get("gradient_checkpointing", True)
 
-        optimizer_config = training_config.get("optimizer", {})
+        optimizer_config = self.training_config.get("optimizer", {})
         self.optimizer_learning_rate = optimizer_config.get("learning_rate", 1e-4)
         self.optimizer_adam_beta1 = optimizer_config.get("adam_beta1", 0.9)
         self.optimizer_adam_beta2 = optimizer_config.get("adam_beta2", 0.999)
         self.optimizer_weight_decay = optimizer_config.get("weight_decay", 0.01)
         self.optimizer_adam_epsilon = optimizer_config.get("adam_epsilon", 1e-8)
 
-        self.lr_scheduler_name = training_config.get("lr_scheduler", "constant")
-        self.lr_warmup_iters = training_config["lr_warmup_iters"]
-        self.max_train_iters = training_config["max_train_iters"]
+        self.lr_scheduler_name = self.training_config.get("lr_scheduler", "constant")
+        self.lr_warmup_iters = self.training_config["lr_warmup_iters"]
+        self.max_train_iters = self.training_config["max_train_iters"]
 
-        self.output_dir = training_config["output_dir"]
-        self.gradient_accumulation_iters = training_config["gradient_accumulation_iters"]
-        self.max_grad_norm = training_config.get("max_grad_norm", 1.0)
-        self.save_every_iters = training_config["save_every_iters"]
-        self.save_total_limit = training_config["save_total_limit"]
+        self.output_train_dir = self.training_config["output_dir"]
+        self.gradient_accumulation_iters = self.training_config["gradient_accumulation_iters"]
+        self.max_grad_norm = self.training_config.get("max_grad_norm", 1.0)
+        self.save_every_iters = self.training_config["save_every_iters"]
+        self.save_total_limit = self.training_config["save_total_limit"]
 
-        self.infer_every_iters = self.config.get("inference", {}).get("infer_every_iters", None)
+        self.infer_every_iters = self.infer_config.get("infer_every_iters", None)
 
     def setup(self):
         self.get_configs()
@@ -91,7 +87,7 @@ class LoraTrainer(BaseTrainer):
 
     def train(self):
         self.setup()
-        os.makedirs(self.output_dir, exist_ok=True)
+        os.makedirs(self.output_train_dir, exist_ok=True)
 
         max_train_iters = self.max_train_iters
         grad_accum_iters = self.gradient_accumulation_iters
@@ -103,6 +99,9 @@ class LoraTrainer(BaseTrainer):
         running_loss = 0.0
 
         progress = tqdm(total=max_train_iters, desc="Training iterations")
+        if self.infer_every_iters:
+            self.run_inference(current_iter)
+
         while current_iter < max_train_iters:
             for sample in self.dataloader:
                 loss = self.compute_loss_on_sample(sample)
@@ -135,20 +134,19 @@ class LoraTrainer(BaseTrainer):
         progress.close()
 
     def run_inference(self, current_iter):
-        infer_dir = os.path.join(self.output_dir, "inference")
-        iter_config = copy.deepcopy(self.config)
-        iter_config.setdefault("inference", {})["output"] = os.path.join(infer_dir, f"iter{current_iter:06d}.png")
+        base_output_dir = self.infer_config.get("output_dir", "./output_infer")
+        iter_output_dir = os.path.join(base_output_dir, f"iter-{current_iter:09d}")
 
-        self.inferencer.infer(iter_config)
+        self.inferencer.output_infer_dir = iter_output_dir
+        self.inferencer.infer()
 
         self.model.transformer.train()
         for name, param in self.model.transformer.named_parameters():
             param.requires_grad = "lora" in name
 
     def save_checkpoint(self, iteration, save_total_limit):
-        output_dir = self.output_dir
-        prune_checkpoints(output_dir, save_total_limit)
+        prune_checkpoints(self.output_train_dir, save_total_limit)
 
-        save_dir = os.path.join(output_dir, f"checkpoint-{iteration}")
+        save_dir = os.path.join(self.output_train_dir, f"checkpoint-{iteration:09d}")
         os.makedirs(save_dir, exist_ok=True)
         self.model.save_lora_weights(save_dir)
