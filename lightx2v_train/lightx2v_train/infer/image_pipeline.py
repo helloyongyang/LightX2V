@@ -32,8 +32,8 @@ class ImagePipelineInferencer(BaseInferencer):
         # Model-specific kwargs (e.g. QwenImage uses `true_cfg_scale` instead of `guidance_scale`)
         pipeline_kwargs = self.model.get_pipeline_infer_kwargs(infer_config)
 
-        # Inject the framework scheduler so inference uses the same schedule as training
-        pipe = self.model.assemble_pipeline(scheduler=self.scheduler)
+        # Use the pipeline's original pretrained scheduler for bit-exact alignment with diffusers
+        pipe = self.model.assemble_pipeline()
         if lora_path:
             pipe.load_lora_weights(lora_path)
 
