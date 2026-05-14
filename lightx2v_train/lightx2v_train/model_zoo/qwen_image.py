@@ -2,8 +2,8 @@ from dataclasses import dataclass
 
 import numpy as np
 import torch
-from diffusers import AutoencoderKLQwenImage, QwenImagePipeline, QwenImageTransformer2DModel
 from PIL import Image
+from diffusers import AutoencoderKLQwenImage, QwenImagePipeline, QwenImageTransformer2DModel
 
 from lightx2v_train.utils.registry import MODEL_REGISTER
 

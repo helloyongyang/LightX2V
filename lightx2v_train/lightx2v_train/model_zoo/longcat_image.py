@@ -2,10 +2,10 @@ from dataclasses import dataclass
 
 import numpy as np
 import torch
+from PIL import Image
 from diffusers import AutoencoderKL, LongCatImagePipeline
 from diffusers.models.transformers import LongCatImageTransformer2DModel
 from diffusers.pipelines.longcat_image.pipeline_longcat_image import prepare_pos_ids
-from PIL import Image
 
 from lightx2v_train.utils.registry import MODEL_REGISTER
 
