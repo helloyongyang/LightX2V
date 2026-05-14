@@ -1,3 +1,6 @@
+import numpy as np
+import torch
+from PIL import Image
 from diffusers import AutoencoderKL, LongCatImagePipeline
 from diffusers.models.transformers import LongCatImageTransformer2DModel
 from diffusers.pipelines.longcat_image.pipeline_longcat_image import prepare_pos_ids
@@ -22,17 +25,6 @@ class LongCatImageModel(BaseModel):
         self.vae = AutoencoderKL.from_pretrained(model_path, subfolder="vae").to(self.device, dtype=self.running_dtype)
         self.transformer = LongCatImageTransformer2DModel.from_pretrained(model_path, subfolder="transformer").to(self.device, dtype=self.running_dtype)
         self.vae.requires_grad_(False)
-
-    def build_pipeline(self):
-        pipe = LongCatImagePipeline(
-            scheduler=self.flow_matching,
-            vae=self.vae,
-            text_encoder=self.text_pipeline.text_encoder,
-            tokenizer=self.text_pipeline.tokenizer,
-            text_processor=self.text_pipeline.text_processor,
-            transformer=self.transformer,
-        )
-        return pipe
 
     @property
     def vae_scale_factor(self):
@@ -102,3 +94,32 @@ class LongCatImageModel(BaseModel):
             width=denoiser_input.extra["width"] * self.vae_scale_factor,
             vae_scale_factor=self.vae_scale_factor,
         )
+
+    def prepare_infer_latents(self, height, width, generator=None):
+        latent_h = height // self.vae_scale_factor
+        latent_w = width // self.vae_scale_factor
+        # latent shape: (batch=1, latent_channels, latent_h, latent_w)
+        shape = (1, self.vae.config.latent_channels, latent_h, latent_w)
+        return torch.randn(shape, generator=generator, device=self.device, dtype=self.running_dtype)
+
+    def decode_latent(self, latent):
+        # Reverse the normalization from encode_to_latent:
+        # encode: normalized = (raw - shift) * scale
+        # decode: raw = normalized / scale + shift
+        shift = getattr(self.vae.config, "shift_factor", 0.0)
+        scale = getattr(self.vae.config, "scaling_factor", 1.0)
+        latent = latent / scale + shift
+
+        image = self.vae.decode(latent).sample  # (B, C, H, W)
+        image = (image / 2 + 0.5).clamp(0, 1)
+        image = image.permute(0, 2, 3, 1).float().cpu().numpy()
+        return [Image.fromarray((img * 255).round().astype(np.uint8)) for img in image]
+
+    def assemble_pipeline(self, scheduler=None):
+        return LongCatImagePipeline(
+            tokenizer=self.text_pipeline.tokenizer,
+            text_encoder=self.text_pipeline.text_encoder,
+            vae=self.vae,
+            transformer=self.transformer,
+            scheduler=scheduler or self.text_pipeline.scheduler,
+        ).to(self.device)

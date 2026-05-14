@@ -14,14 +14,14 @@ data:
         shuffle: true
         # examples: https://github.com/ModelTC/LightX2V_train_data_examples
         data_path:
-            - /data/nvme1/yongyang/kkk/LightX2V_train_data_examples/dataset_v1/train.jsonl
+            - /data/nvme1/yongyang/kkk/datasets/chalkboarddrawing_lightx2v_train_data/train.jsonl
     val:
         name: image_dataset
         num_workers: 8
         image_size: 1024
         shuffle: false
         data_path:
-            - /data/nvme1/yongyang/kkk/LightX2V_train_data_examples/dataset_v1/val.jsonl
+            - /data/nvme1/yongyang/kkk/datasets/chalkboarddrawing_lightx2v_train_data/val.jsonl
 
 scheduler:
     training:
@@ -59,11 +59,23 @@ training:
         adam_beta2: 0.999
         weight_decay: 0.01
         adam_epsilon: 0.00000001
-    output_dir: ./train_output/qwen_image_lora
+    output_dir: ./output_train/qwen_image_lora
 
 inference:
+    # method: image           -- custom denoising loop (default, uses framework scheduler)
+    # method: image_pipeline  -- diffusers pipeline call (for result alignment)
+    method: image
+    # prompts used for both standalone infer.py and training-time inference
+    # use a list to generate multiple images per evaluation
+    prompts:
+        - "一个小狗的黑板画，要求傻傻的，像是一个幼儿园小朋友画的。"
+    negative_prompt: " "
     width: 1024
     height: 1024
     num_inference_steps: 50
     cfg_guidance_scale: 4.0
-    negative_prompt: " "
+    seed: 42
+    output: ./output_infer/result.png
+    # set infer_every_iters to run inference during training (e.g. every 500 iters)
+    # leave unset or null to disable training-time inference
+    infer_every_iters: 500

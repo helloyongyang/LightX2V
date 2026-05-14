@@ -1,9 +1,11 @@
+import copy
 import os
 
 import torch
 from diffusers.optimization import get_scheduler
 from tqdm.auto import tqdm
 
+from lightx2v_train.infer import build_inferencer
 from lightx2v_train.runtime.checkpoint import prune_checkpoints
 from lightx2v_train.utils.registry import TRAINER_REGISTER
 from lightx2v_train.utils.utils import get_running_dtype
@@ -43,12 +45,18 @@ class LoraTrainer(BaseTrainer):
         self.save_every_iters = training_config["save_every_iters"]
         self.save_total_limit = training_config["save_total_limit"]
 
+        self.infer_every_iters = self.config.get("inference", {}).get("infer_every_iters", None)
+
     def setup(self):
         self.get_configs()
         self.model.add_lora(self.lora_rank, self.lora_alpha, self.lora_target_modules)
         self.model.set_lora_trainable()
         if self.gradient_checkpointing:
             self.model.enable_gradient_checkpointing()
+
+        if self.infer_every_iters:
+            self.inferencer = build_inferencer(self.config)
+            self.inferencer.set_model(self.model)
 
         self.optimizer = torch.optim.AdamW(
             self.model.trainable_parameters(),
@@ -118,10 +126,24 @@ class LoraTrainer(BaseTrainer):
                 if save_every_iters and current_iter % save_every_iters == 0:
                     self.save_checkpoint(current_iter, save_total_limit)
 
+                if self.infer_every_iters and current_iter % self.infer_every_iters == 0:
+                    self.run_inference(current_iter)
+
                 if current_iter >= max_train_iters:
                     break
 
         progress.close()
+
+    def run_inference(self, current_iter):
+        infer_dir = os.path.join(self.output_dir, "inference")
+        iter_config = copy.deepcopy(self.config)
+        iter_config.setdefault("inference", {})["output"] = os.path.join(infer_dir, f"iter{current_iter:06d}.png")
+
+        self.inferencer.infer(iter_config)
+
+        self.model.transformer.train()
+        for name, param in self.model.transformer.named_parameters():
+            param.requires_grad = "lora" in name
 
     def save_checkpoint(self, iteration, save_total_limit):
         output_dir = self.output_dir

@@ -23,12 +23,8 @@ class RectifiedFlowMatchingScheduler:
         self.time_shift_mu = scheduler_training_config.get("time_shift_mu", 5.0)
         self.time_shift_power = scheduler_training_config.get("time_shift_power", 1.0)
 
-        _sigmas = torch.linspace(1.0, 1.0 / self.num_train_timesteps, self.num_train_timesteps)
-        self._train_sigmas = _sigmas
-        self._train_timesteps = _sigmas * self.num_train_timesteps
-
-        self.sigmas = torch.cat([_sigmas, torch.zeros(1)])
-        self.timesteps = self._train_timesteps
+        self.sigmas = None
+        self.timesteps = None
         self.num_inference_steps = None
 
         self.running_dtype = get_running_dtype(config["model"]["running_dtype"])
@@ -56,11 +52,16 @@ class RectifiedFlowMatchingScheduler:
     def build_train_gt(self, latent, noise):
         return noise - latent
 
-    def set_timesteps(self, num_inference_steps, device=None):
+    def set_timesteps(self, num_inference_steps, device=None, sigmas=None):
         self.num_inference_steps = num_inference_steps
         device = device or self.device
 
-        sigmas = torch.linspace(1.0, 1.0 / num_inference_steps, num_inference_steps)
+        if sigmas is None:
+            sigmas = torch.linspace(1.0, 1.0 / num_inference_steps, num_inference_steps)
+            if self.do_time_shift:
+                sigmas = self.time_shift(sigmas)
+        else:
+            sigmas = torch.tensor(sigmas, dtype=torch.float32)
         self.sigmas = torch.cat([sigmas, torch.zeros(1)]).to(device)
         self.timesteps = (sigmas * self.num_train_timesteps).to(device)
 
