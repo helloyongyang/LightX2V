@@ -7,12 +7,6 @@ from safetensors.torch import save_file
 from lightx2v_train.utils.utils import get_running_dtype
 
 
-class DenoiserInput:
-    def __init__(self, hidden_states, extra):
-        self.hidden_states = hidden_states
-        self.extra = extra
-
-
 class BaseModel:
     def __init__(self, config):
         self.config = config

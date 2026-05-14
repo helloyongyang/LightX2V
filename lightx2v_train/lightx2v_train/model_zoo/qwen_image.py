@@ -1,11 +1,21 @@
+from dataclasses import dataclass
+
 import numpy as np
 import torch
-from PIL import Image
 from diffusers import AutoencoderKLQwenImage, QwenImagePipeline, QwenImageTransformer2DModel
+from PIL import Image
 
 from lightx2v_train.utils.registry import MODEL_REGISTER
 
-from .base import BaseModel, DenoiserInput
+from .base import BaseModel
+
+
+@dataclass
+class QwenImageDenoiserInput:
+    hidden_states: torch.Tensor
+    img_shapes: list
+    height: int
+    width: int
 
 
 @MODEL_REGISTER("qwen_image")
@@ -37,7 +47,7 @@ class QwenImageModel(BaseModel):
     def encode_to_latent(self, sample):
         image = sample["target_image"].to(device=self.device, dtype=self.running_dtype)
         pixel_values = image.unsqueeze(2)
-        latent = self.vae.encode(pixel_values).latent_dist.sample()  # (B, z_dim, T, H, W)
+        latent = self.vae.encode(pixel_values).latent_dist.sample()  # (B, C, T, H, W)
 
         latent_mean = torch.tensor(self.vae.config.latents_mean, device=self.device, dtype=self.running_dtype).view(1, self.vae.config.z_dim, 1, 1, 1)
         latent_std = 1.0 / torch.tensor(self.vae.config.latents_std, device=self.device, dtype=self.running_dtype).view(1, self.vae.config.z_dim, 1, 1, 1)
@@ -56,24 +66,16 @@ class QwenImageModel(BaseModel):
             "prompt_embed_mask": prompt_embed_mask,
         }
 
-    def prepare_denoiser_input(self, noisy_latent, sample, condition):
+    def prepare_denoiser_input(self, noisy_latent):
         # noisy_latent: (B, z_dim, T, H, W)
         n = noisy_latent.shape[0]
-        packed = QwenImagePipeline._pack_latents(
-            noisy_latent,
-            n,
-            noisy_latent.shape[1],  # z_dim (C)
-            noisy_latent.shape[3],  # H
-            noisy_latent.shape[4],  # W
-        )
-        img_shapes = [(1, noisy_latent.shape[3] // 2, noisy_latent.shape[4] // 2)] * n
-        return DenoiserInput(
+        h, w = noisy_latent.shape[3], noisy_latent.shape[4]
+        packed = QwenImagePipeline._pack_latents(noisy_latent, n, noisy_latent.shape[1], h, w)
+        return QwenImageDenoiserInput(
             hidden_states=packed,
-            extra={
-                "img_shapes": img_shapes,
-                "height": noisy_latent.shape[3],
-                "width": noisy_latent.shape[4],
-            },
+            img_shapes=[(1, h // 2, w // 2)] * n,
+            height=h,
+            width=w,
         )
 
     def denoise(self, denoiser_input, timestep_or_sigma, condition):
@@ -83,15 +85,15 @@ class QwenImageModel(BaseModel):
             guidance=None,
             encoder_hidden_states_mask=condition["prompt_embed_mask"],
             encoder_hidden_states=condition["prompt_embed"],
-            img_shapes=denoiser_input.extra["img_shapes"],
+            img_shapes=denoiser_input.img_shapes,
             return_dict=False,
         )[0]
 
     def postprocess_denoiser_output(self, prediction, denoiser_input):
         return QwenImagePipeline._unpack_latents(
             prediction,
-            height=denoiser_input.extra["height"] * self.vae_scale_factor,
-            width=denoiser_input.extra["width"] * self.vae_scale_factor,
+            height=denoiser_input.height * self.vae_scale_factor,
+            width=denoiser_input.width * self.vae_scale_factor,
             vae_scale_factor=self.vae_scale_factor,
         )
 

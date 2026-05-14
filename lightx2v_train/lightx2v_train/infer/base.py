@@ -16,7 +16,7 @@ class BaseInferencer:
         The denoiser_input only depends on latents (not on the condition), so we
         prepare it once and reuse it for both the positive and negative passes.
         """
-        denoiser_input = self.model.prepare_denoiser_input(latents, {}, pos_cond)
+        denoiser_input = self.model.prepare_denoiser_input(latents)
 
         pred_pos = self.model.denoise(denoiser_input, sigma, pos_cond)
         pred_pos = self.model.postprocess_denoiser_output(pred_pos, denoiser_input)
