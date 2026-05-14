@@ -8,11 +8,11 @@ from lightx2v_train.utils.registry import INFERENCER_REGISTER
 from .base import BaseInferencer
 
 
-@INFERENCER_REGISTER("image_pipeline")
-class ImagePipelineInferencer(BaseInferencer):
+@INFERENCER_REGISTER("native_pipeline")
+class NativePipelineInferencer(BaseInferencer):
     @torch.no_grad()
     def infer(self):
-        prompts = self.infer_config.get("prompts") or [self.infer_config.get("prompt", "")]
+        prompts = [sample["prompt"] for sample in self.dataloader_eval.dataset.samples]
         enable_cfg = self.infer_config.get("enable_cfg", False)
         negative_prompt = self.infer_config.get("negative_prompt", " ") if enable_cfg else None
         base_seed = self.infer_config.get("seed", 42)

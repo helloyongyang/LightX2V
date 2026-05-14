@@ -53,6 +53,7 @@ class LoraTrainer(BaseTrainer):
         if self.infer_every_iters:
             self.inferencer = build_inferencer(self.config)
             self.inferencer.set_model(self.model)
+            # set_data is deferred to train() when dataloader_eval is available
 
         self.optimizer = torch.optim.AdamW(
             self.model.trainable_parameters(),
@@ -100,10 +101,11 @@ class LoraTrainer(BaseTrainer):
 
         progress = tqdm(total=max_train_iters, desc="Training iterations")
         if self.infer_every_iters:
+            self.inferencer.set_data(self.dataloader_eval)
             self.run_inference(current_iter)
 
         while current_iter < max_train_iters:
-            for sample in self.dataloader:
+            for sample in self.dataloader_train:
                 loss = self.compute_loss_on_sample(sample)
                 (loss / grad_accum_iters).backward()
                 running_loss += loss.item() / grad_accum_iters

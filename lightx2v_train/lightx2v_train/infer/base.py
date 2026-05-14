@@ -10,10 +10,14 @@ class BaseInferencer:
         self.output_infer_dir = self.infer_config.get("output_dir", None)
 
         self.model = None
+        self.dataloader_eval = None
         self.enable_cfg = True
         self.guidance_scale = None
 
         self.scheduler = RectifiedFlowMatchingScheduler(config)
+
+    def set_data(self, dataloader_val):
+        self.dataloader_eval = dataloader_val
 
     def set_model(self, model):
         self.model = model

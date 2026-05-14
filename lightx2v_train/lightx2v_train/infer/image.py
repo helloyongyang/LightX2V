@@ -13,7 +13,7 @@ from .base import BaseInferencer
 class ImageInferencer(BaseInferencer):
     @torch.no_grad()
     def infer(self):
-        prompts = self.infer_config.get("prompts")
+        prompts = [sample["prompt"] for sample in self.dataloader_eval.dataset.samples]
 
         height = self.infer_config.get("height", 1024)
         width = self.infer_config.get("width", 1024)

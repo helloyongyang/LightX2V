@@ -13,8 +13,8 @@ class BaseTrainer:
     def set_model(self, model):
         self.model = model
 
-    def set_data(self, dataloader, dataloader_eval=None):
-        self.dataloader = dataloader
+    def set_data(self, dataloader_train, dataloader_eval=None):
+        self.dataloader_train = dataloader_train
         self.dataloader_eval = dataloader_eval
 
     def train(self):
