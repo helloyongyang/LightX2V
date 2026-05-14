@@ -1,3 +1,5 @@
+import os
+
 import torch
 
 from lightx2v_train.schedulers.flow_matching import RectifiedFlowMatchingScheduler
@@ -8,6 +10,8 @@ class BaseInferencer:
         self.config = config
         self.infer_config = config.get("inference", {})
         self.output_infer_dir = self.infer_config.get("output_dir", None)
+        if self.output_infer_dir is not None:
+            os.makedirs(self.output_infer_dir, exist_ok=True)
 
         self.model = None
         self.dataloader_eval = None

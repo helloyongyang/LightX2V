@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 import torch
@@ -59,7 +58,6 @@ class ImageInferencer(BaseInferencer):
                 images = self.model.decode_latent(latent)
 
                 if self.output_infer_dir is not None:
-                    os.makedirs(self.output_infer_dir, exist_ok=True)
                     save_path = Path(self.output_infer_dir) / f"{i:05d}.png"
                     images[0].save(save_path)
                     print(f"Saved to {save_path}")

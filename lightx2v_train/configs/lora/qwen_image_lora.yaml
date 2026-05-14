@@ -14,14 +14,14 @@ data:
         shuffle: true
         # examples: https://github.com/ModelTC/LightX2V_train_data_examples
         data_path:
-            - /data/nvme1/yongyang/kkk/datasets/chalkboarddrawing_lightx2v_train_data/train.jsonl
+            - /data/nvme1/yongyang/kkk/LightX2V_train_data_examples/dataset_v1/train.jsonl
     val:
         name: image_dataset
         num_workers: 8
         image_size: 1024
         shuffle: false
         data_path:
-            - /data/nvme1/yongyang/kkk/datasets/chalkboarddrawing_lightx2v_train_data/val.jsonl
+            - /data/nvme1/yongyang/kkk/LightX2V_train_data_examples/dataset_v1/val.jsonl
 
 scheduler:
     training:
@@ -43,7 +43,7 @@ training:
     max_grad_norm: 1.0
     lr_scheduler: constant
     lr_warmup_iters: 10
-    save_every_iters: 250
+    save_every_iters: 100
     save_total_limit: 10
     lora:
         rank: 16
@@ -71,4 +71,4 @@ inference:
     cfg_guidance_scale: 4.0
     seed: 42
     output_dir: ./output_infer/qwen_image_lora
-    infer_every_iters: 100
+    infer_every_iters: ${training.save_every_iters}

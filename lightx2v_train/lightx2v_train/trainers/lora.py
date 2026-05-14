@@ -140,6 +140,7 @@ class LoraTrainer(BaseTrainer):
         iter_output_dir = os.path.join(base_output_dir, f"iter-{current_iter:09d}")
 
         self.inferencer.output_infer_dir = iter_output_dir
+        os.makedirs(iter_output_dir, exist_ok=True)
         self.inferencer.infer()
 
         self.model.set_lora_trainable()
