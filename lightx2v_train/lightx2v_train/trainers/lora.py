@@ -142,9 +142,7 @@ class LoraTrainer(BaseTrainer):
         self.inferencer.output_infer_dir = iter_output_dir
         self.inferencer.infer()
 
-        self.model.transformer.train()
-        for name, param in self.model.transformer.named_parameters():
-            param.requires_grad = "lora" in name
+        self.model.set_lora_trainable()
 
     def save_checkpoint(self, iteration, save_total_limit):
         prune_checkpoints(self.output_train_dir, save_total_limit)
