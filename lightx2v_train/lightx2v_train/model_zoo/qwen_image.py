@@ -133,7 +133,3 @@ class QwenImageModel(BaseModel):
             "num_inference_steps": infer_config.get("num_inference_steps", 50),
             "true_cfg_scale": infer_config.get("cfg_guidance_scale", 4.0),
         }
-
-    def prepare_flow_matching_target(self, velocity):
-        # velocity from _unpack_latents is already (B, z_dim, T, H, W), no permute needed
-        return velocity

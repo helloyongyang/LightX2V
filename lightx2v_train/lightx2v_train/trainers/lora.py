@@ -85,7 +85,7 @@ class LoraTrainer(BaseTrainer):
         prediction = self.model.denoise(denoiser_input, timestep_or_sigma, condition)
         prediction = self.model.postprocess_denoiser_output(prediction, denoiser_input)
 
-        target = self.model.prepare_flow_matching_target(self.noise_scheduler.build_train_gt(latent, noise))
+        target = self.noise_scheduler.build_train_gt(latent, noise)
         loss = torch.mean(((prediction.float() - target.float()) ** 2).reshape(target.shape[0], -1), dim=1)
         return loss.mean()
 
