@@ -37,12 +37,10 @@ class QwenImageModel(BaseModel):
         ).to(self.device)
         self.vae = AutoencoderKLQwenImage.from_pretrained(model_path, subfolder="vae").to(self.device, dtype=self.running_dtype)
         self.transformer = QwenImageTransformer2DModel.from_pretrained(model_path, subfolder="transformer").to(self.device, dtype=self.running_dtype)
-        self.vae.requires_grad_(False)
-        self.text_pipeline.text_encoder.requires_grad_(False)
 
-    @property
-    def vae_scale_factor(self):
-        return 2 ** len(self.vae.temperal_downsample)
+        self.text_pipeline.text_encoder.requires_grad_(False)
+        self.vae.requires_grad_(False)
+        self.vae_scale_factor = 2 ** len(self.vae.temperal_downsample)
 
     def encode_to_latent(self, sample):
         image = sample["target_image"].to(device=self.device, dtype=self.running_dtype)
@@ -100,7 +98,6 @@ class QwenImageModel(BaseModel):
     def prepare_infer_latents(self, height, width, generator=None):
         latent_h = height // self.vae_scale_factor
         latent_w = width // self.vae_scale_factor
-        # latent shape: (batch=1, z_dim, frames=1, latent_h, latent_w)
         shape = (1, self.vae.config.z_dim, 1, latent_h, latent_w)
         return torch.randn(shape, generator=generator, device=self.device, dtype=self.running_dtype)
 
