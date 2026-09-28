@@ -5,6 +5,7 @@ from lightx2v_platform.base.cambricon_mlu import MluDevice
 from lightx2v_platform.base.hygon_dcu import HygonDcuDevice
 from lightx2v_platform.base.mthreads_musa import MusaDevice
 from lightx2v_platform.base.metax_cuda import MetaxDevice
+from lightx2v_platform.base.mps import MpsDevice
 from lightx2v_platform.base.nvidia import CudaDevice
 from lightx2v_platform.base.ppu_cuda import PpuDevice
 from lightx2v_platform.base.enflame_gcu import EnflameGcuDevice
@@ -27,4 +28,5 @@ __all__ = [
     "IntelXpuDevice",
     "IluvatarDevice",
     "BirenSupaDevice",
+    "MpsDevice",
 ]
