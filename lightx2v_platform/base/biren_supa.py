@@ -56,8 +56,8 @@ class BirenSupaDevice:
             os.environ["SUPA_VISIBLE_DEVICES"] = os.environ["BIREN_VISIBLE_DEVICES"]
 
         import torch_br  # noqa: F401 — activates SUPA PrivateUse1 backend
-        from torch_br.contrib import transfer_to_supa  # noqa: F401
         import torch_br.supa._debug as supa_debug
+        from torch_br.contrib import transfer_to_supa  # noqa: F401
 
         supa_debug.set_enable_sublas_api(True)
         supa_debug.set_disable_zero_ws(True)

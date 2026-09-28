@@ -54,6 +54,7 @@ def convBB(input_tensor, layout=None):
     out.copy_(input_tensor)
     return out
 
+
 def convSB(input_tensor, axis=0, layout=None):
     if torch_br is None:
         return input_tensor

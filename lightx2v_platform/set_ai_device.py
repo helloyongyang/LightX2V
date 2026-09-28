@@ -51,11 +51,7 @@ def set_ai_device():
     platform = os.getenv("PLATFORM", "cuda")
     plugin_loaders = _load_platform_plugins(platform)
     if platform == "biren_supa" and not plugin_loaders:
-        raise RuntimeError(
-            "Using PLATFORM=biren_supa requires the "
-            "lightx2v-patch-biren package. Install it before starting "
-            "Biren inference."
-        )
+        raise RuntimeError("Using PLATFORM=biren_supa requires the lightx2v-patch-biren package. Install it before starting Biren inference.")
     init_ai_device(platform)
     check_ai_device(platform)
     # Register in-tree shallow platform operators before optional plugins

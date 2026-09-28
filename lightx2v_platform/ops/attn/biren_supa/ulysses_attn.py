@@ -2,7 +2,6 @@ import os
 
 import torch
 import torch.distributed as dist
-from loguru import logger
 
 from lightx2v_platform.ops.attn.template import AttnWeightTemplate
 from lightx2v_platform.registry_factory import PLATFORM_ATTN_WEIGHT_REGISTER
@@ -16,9 +15,7 @@ except ImportError:
 
 from lightx2v_platform_biren import _lightx2v_kernel_biren as _wan_native
 
-if _wan_native is not None and not all(
-    hasattr(_wan_native, name) for name in ("wan_chunk_to_buffers", "wan_buffers_to_cat")
-):
+if _wan_native is not None and not all(hasattr(_wan_native, name) for name in ("wan_chunk_to_buffers", "wan_buffers_to_cat")):
     # An older installed extension may not provide the Wan native operations.
     # Treat it like an unavailable extension until `build.sh` is rerun.
     _wan_native = None
@@ -60,15 +57,13 @@ class BirenUlyssesAttnWeight(AttnWeightTemplate):
 
         # TP-2die SBP mode: q/k/v come in as [1, s, n*d] with SBP format
         if len(q.shape) == 3 and q.shape[0] == 1:
-            is_sbp = hasattr(q, 'sbp') and callable(q.sbp) and not q.sbp().is_bb
-            if not is_sbp and hasattr(v, 'sbp') and callable(v.sbp) and not v.sbp().is_bb:
+            is_sbp = hasattr(q, "sbp") and callable(q.sbp) and not q.sbp().is_bb
+            if not is_sbp and hasattr(v, "sbp") and callable(v.sbp) and not v.sbp().is_bb:
                 is_sbp = True
             if is_sbp:
-                num_heads = kwargs.get('num_heads', 40)
-                head_dim = kwargs.get('head_dim', q.shape[2] // num_heads)
-                return self._apply_sbp_mode(q, k, v, slice_qkv_len, cu_seqlens_qkv,
-                                            attention_module, seq_p_group, world_size,
-                                            num_heads, head_dim, img_first)
+                num_heads = kwargs.get("num_heads", 40)
+                head_dim = kwargs.get("head_dim", q.shape[2] // num_heads)
+                return self._apply_sbp_mode(q, k, v, slice_qkv_len, cu_seqlens_qkv, attention_module, seq_p_group, world_size, num_heads, head_dim, img_first)
 
         if len(q.shape) == 4:
             q = q.reshape(-1, q.shape[-2], q.shape[-1])
@@ -78,12 +73,9 @@ class BirenUlyssesAttnWeight(AttnWeightTemplate):
         num_heads = q.shape[1]
         head_dim = q.shape[2]
 
-        return self._apply_bb_mode(q, k, v, slice_qkv_len, cu_seqlens_qkv,
-                                   attention_module, seq_p_group, world_size,
-                                   num_heads, head_dim, img_first)
+        return self._apply_bb_mode(q, k, v, slice_qkv_len, cu_seqlens_qkv, attention_module, seq_p_group, world_size, num_heads, head_dim, img_first)
 
-    def _apply_sbp_mode(self, q, k, v, slice_qkv_len, cu_seqlens_qkv,
-                        attention_module, seq_p_group, world_size, num_heads, head_dim, img_first):
+    def _apply_sbp_mode(self, q, k, v, slice_qkv_len, cu_seqlens_qkv, attention_module, seq_p_group, world_size, num_heads, head_dim, img_first):
         """TP-2die mode: use supa_shape_transform_qkv for SBP-aware reshape.
 
         Input: q/k [1, s, n*d] BB format, v [1, s, n*d] S2B format
@@ -101,9 +93,7 @@ class BirenUlyssesAttnWeight(AttnWeightTemplate):
         v_s0b = torch_br.supa_shape_transform_qkv(v, b, shard_seq, num_heads, head_dim, True)
 
         # Distributed attention (all-to-all on S0B tensors)
-        x = self._distributed_attention_sbp(q_s0b, k_s0b, v_s0b, shard_seq,
-                                            attention_module, seq_p_group, world_size,
-                                            num_heads, head_dim)
+        x = self._distributed_attention_sbp(q_s0b, k_s0b, v_s0b, shard_seq, attention_module, seq_p_group, world_size, num_heads, head_dim)
 
         # shape_transpose_post_attn: [b*n, s, d] S0B -> [b, s, n*d] S2B
         x_s2b = torch_br.supa_shape_transform_qkv(x, b, shard_seq, num_heads, head_dim, False, False, Sbp.sb(2))
@@ -111,8 +101,7 @@ class BirenUlyssesAttnWeight(AttnWeightTemplate):
         # Squeeze batch dim: [1, s, n*d] -> [s, n*d]
         return x_s2b.squeeze(0)
 
-    def _distributed_attention_sbp(self, q, k, v, shard_seq, attention_module,
-                                   seq_p_group, world_size, num_heads, head_dim):
+    def _distributed_attention_sbp(self, q, k, v, shard_seq, attention_module, seq_p_group, world_size, num_heads, head_dim):
         """Ulysses all-to-all on S0B tensors: scatter heads, gather sequence."""
         # All-to-all: scatter dim=0 (heads), gather dim=1 (sequence)
         q_gathered = self._all_to_all(q, scatter_dim=0, gather_dim=1, group=seq_p_group)
@@ -139,7 +128,7 @@ class BirenUlyssesAttnWeight(AttnWeightTemplate):
             dropout_prob=0,
             is_causal=False,
             scale=None,
-            algorithm='FMHA',
+            algorithm="FMHA",
         )
 
         # Reverse all-to-all: scatter sequence, gather heads
@@ -151,7 +140,7 @@ class BirenUlyssesAttnWeight(AttnWeightTemplate):
         """All-to-all matching reference Wan2.2 implementation for SBP tensors."""
         world_size = dist.get_world_size(group)
 
-        if hasattr(input_t, 'sbp') and callable(input_t.sbp) and input_t.sbp().is_bb:
+        if hasattr(input_t, "sbp") and callable(input_t.sbp) and input_t.sbp().is_bb:
             # BB path
             inputs = [u.contiguous() for u in input_t.chunk(world_size, dim=scatter_dim)]
             inputs = [torch_br._empty_with_sbp(u.shape, dtype=u.dtype, tensor_type="buffer_any", device=u.device).copy_(u) for u in inputs]
@@ -170,12 +159,7 @@ class BirenUlyssesAttnWeight(AttnWeightTemplate):
             cat_output_shape = list(input_t.shape)
             cat_output_shape[gather_dim] = transfer_shape[gather_dim] * world_size
             cat_output_shape[scatter_dim] = transfer_shape[scatter_dim]
-            if (
-                _WAN_NATIVE_USP_ENABLED
-                and _wan_native is not None
-                and world_size in (2, 4)
-                and cat_output_shape[0] % 2 == 0
-            ):
+            if _WAN_NATIVE_USP_ENABLED and _wan_native is not None and world_size in (2, 4) and cat_output_shape[0] % 2 == 0:
                 input_bufs = []
                 for _ in range(world_size):
                     buf = torch_br._empty_with_sbp(
@@ -207,8 +191,7 @@ class BirenUlyssesAttnWeight(AttnWeightTemplate):
             outputs = [u.view_as_colmajor(transfer_shape, Sbp.sb(0)) for u in outputs]
             return torch.cat(outputs, dim=gather_dim).contiguous()
 
-    def _apply_bb_mode(self, q, k, v, slice_qkv_len, cu_seqlens_qkv,
-                       attention_module, seq_p_group, world_size, num_heads, head_dim, img_first):
+    def _apply_bb_mode(self, q, k, v, slice_qkv_len, cu_seqlens_qkv, attention_module, seq_p_group, world_size, num_heads, head_dim, img_first):
         """Standard BB mode (non-TP-2die): original implementation."""
         if img_first:
             img_qkv_len = slice_qkv_len
@@ -295,7 +278,7 @@ class BirenUlyssesAttnWeight(AttnWeightTemplate):
             txt_result_shard = txt_attn_out.reshape(txt_qkv_len, shard_heads, head_dim)
             txt_result_full = torch.zeros(txt_qkv_len, num_heads, head_dim, dtype=txt_result_shard.dtype, device=txt_result_shard.device)
             cur_rank = dist.get_rank(seq_p_group)
-            txt_result_full[:, cur_rank * shard_heads:(cur_rank + 1) * shard_heads, :] = txt_result_shard
+            txt_result_full[:, cur_rank * shard_heads : (cur_rank + 1) * shard_heads, :] = txt_result_shard
             dist.all_reduce(txt_result_full, group=seq_p_group)
 
             if img_first:

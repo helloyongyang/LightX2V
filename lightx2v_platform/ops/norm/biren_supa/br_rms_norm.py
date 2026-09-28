@@ -39,11 +39,7 @@ class BirenRmsNormWeight(RMSWeightTemplate):
 
     def _get_fp32_weight(self, weight):
         """Convert a norm weight once per device residency interval."""
-        if (
-            self._weight_source is weight
-            and self._weight_fp32 is not None
-            and self._weight_fp32.device == weight.device
-        ):
+        if self._weight_source is weight and self._weight_fp32 is not None and self._weight_fp32.device == weight.device:
             return self._weight_fp32
         if weight.dtype == torch.float32 and weight.is_contiguous():
             converted = weight

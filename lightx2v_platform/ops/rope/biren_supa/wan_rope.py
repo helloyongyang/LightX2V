@@ -40,19 +40,13 @@ class BirenWanRope(RopeTemplate):
             if padding_size > 0:
                 freqs_cat = F.pad(freqs_cat, (0, 0, 0, 0, 0, padding_size), value=1)
             s_pad = freqs_cat.shape[0]
-            cos_supa, sin_supa = [
-                x.squeeze(2).reshape(s_pad, head_size)
-                for x in freqs_cat.unsqueeze(-1).expand(s_pad, c, 2, 2).chunk(2, dim=2)
-            ]
+            cos_supa, sin_supa = [x.squeeze(2).reshape(s_pad, head_size) for x in freqs_cat.unsqueeze(-1).expand(s_pad, c, 2, 2).chunk(2, dim=2)]
             local_len = s_pad // world_size
             start = cur_rank * local_len
             end = (cur_rank + 1) * local_len
             return torch.stack([sin_supa[start:end], cos_supa[start:end]], dim=0)
 
-        cos_supa, sin_supa = [
-            x.squeeze(2).reshape(seq_len, head_size)
-            for x in freqs_cat.unsqueeze(-1).expand(seq_len, c, 2, 2).chunk(2, dim=2)
-        ]
+        cos_supa, sin_supa = [x.squeeze(2).reshape(seq_len, head_size) for x in freqs_cat.unsqueeze(-1).expand(seq_len, c, 2, 2).chunk(2, dim=2)]
         return torch.stack([sin_supa, cos_supa], dim=0)
 
     @staticmethod
@@ -81,19 +75,13 @@ class BirenWanRope(RopeTemplate):
             if padding_size > 0:
                 freqs_cat = F.pad(freqs_cat, (0, 0, 0, 0, 0, padding_size), value=1)
             s_pad = freqs_cat.shape[0]
-            cos_supa, sin_supa = [
-                x.squeeze(2).reshape(s_pad, head_size)
-                for x in freqs_cat.unsqueeze(-1).expand(s_pad, c, 2, 2).chunk(2, dim=2)
-            ]
+            cos_supa, sin_supa = [x.squeeze(2).reshape(s_pad, head_size) for x in freqs_cat.unsqueeze(-1).expand(s_pad, c, 2, 2).chunk(2, dim=2)]
             local_len = s_pad // world_size
             start = cur_rank * local_len
             end = (cur_rank + 1) * local_len
             return torch.stack([sin_supa[start:end], cos_supa[start:end]], dim=0)
 
-        cos_supa, sin_supa = [
-            x.squeeze(2).reshape(seq_len, head_size)
-            for x in freqs_cat.unsqueeze(-1).expand(seq_len, c, 2, 2).chunk(2, dim=2)
-        ]
+        cos_supa, sin_supa = [x.squeeze(2).reshape(seq_len, head_size) for x in freqs_cat.unsqueeze(-1).expand(seq_len, c, 2, 2).chunk(2, dim=2)]
         return torch.stack([sin_supa, cos_supa], dim=0)
 
     def _get_seq_parallel_rank(self):
@@ -137,11 +125,7 @@ class BirenWanRope(RopeTemplate):
 
         seq_rank = self._get_seq_parallel_rank()
         world_size = self._get_seq_parallel_world_size()
-        if (
-            self._cached_seq_len != seq_len
-            or self._cached_rank != seq_rank
-            or self._cached_world_size != world_size
-        ):
+        if self._cached_seq_len != seq_len or self._cached_rank != seq_rank or self._cached_world_size != world_size:
             self._cached_seq_len = seq_len
             self._cached_rank = seq_rank
             self._cached_world_size = world_size

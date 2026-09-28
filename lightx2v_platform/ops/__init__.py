@@ -57,6 +57,6 @@ elif PLATFORM == "biren_supa":
     # at the same layer as Ascend and MetaX. Model-specific patches are
     # supplied by the optional lightx2v-patch-biren package.
     from .attn.biren_supa import *
+    from .mm.biren_supa import *
     from .norm.biren_supa import *
     from .rope.biren_supa import *
-    from .mm.biren_supa import *

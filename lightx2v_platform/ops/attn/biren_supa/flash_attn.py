@@ -70,12 +70,14 @@ class BirenFMHAAttnWeight(AttnWeightTemplate):
         # Cross-attention (different Q/KV lengths) is handled by the kernel
         # based on the actual tensor shapes.
         output, _ = torch_br.sueager_scaled_dot_product_attention_fwd(
-            q_t, k_t, v_t,
+            q_t,
+            k_t,
+            v_t,
             mask=None,
             dropout_prob=0,
             is_causal=False,
             scale=None,
-            algorithm='FMHA',
+            algorithm="FMHA",
             cu_seqlens_q=cu_seqlens_q_t,
             max_seqlen_q=max_seqlen_q_t,
         )
@@ -87,9 +89,7 @@ class BirenFMHAAttnWeight(AttnWeightTemplate):
         # after transpose, and D2D copy doesn't support split on dim != 0.
         # Solution: copy Split_0 to a standard BB tensor (copy from split dim=0
         # IS supported), then do normal transpose+reshape on the BB tensor.
-        output_bb = torch.empty(
-            num_heads, seq_len_q, head_dim, dtype=output.dtype, device=output.device
-        )
+        output_bb = torch.empty(num_heads, seq_len_q, head_dim, dtype=output.dtype, device=output.device)
         output_bb.copy_(output)
         output = output_bb.transpose(0, 1).contiguous().view(seq_len_q, num_heads * head_dim)
 

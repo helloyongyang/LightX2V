@@ -1,4 +1,3 @@
-import torch
 import torch_br
 from torch_br.utils.tensor_methods import Sbp
 
@@ -37,7 +36,9 @@ class SupaSDPAWeight(AttnWeightTemplate):
             v = v.transpose(0, 1).contiguous()
 
         output = torch_br.sueager_scaled_dot_product_attention_fwd(
-            q, k, v,
+            q,
+            k,
+            v,
             mask=None,
             dropout_prob=0.0,
             is_causal=causal,
